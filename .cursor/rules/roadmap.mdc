@@ -1,0 +1,16 @@
+---
+description: Reference the project roadmap for planned initiatives and track completion
+alwaysApply: true
+---
+
+# Project Roadmap
+
+The file `ROADMAP.md` in the project root is the living roadmap of planned features and initiatives.
+
+## Rules
+
+- **Read ROADMAP.md** at the start of any session involving new features or planning.
+- When a roadmap item is **completed**, move it to the "Completed" section with a `[x]` checkbox and add the completion date.
+- When the user describes a **new initiative**, add it to the "Backlog" section with a `[ ]` checkbox.
+- Keep items concise: `- [ ] **Feature name** — Brief description.`
+- When the user asks "what's on the roadmap?" or "what's left to do?", read and summarize ROADMAP.md.

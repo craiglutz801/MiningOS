@@ -1,0 +1,3891 @@
+[
+  {
+    "id": 1,
+    "name": "Boulder Tungsten Mine",
+    "location_plss": "T12S R18E Sec 21",
+    "latitude": 39.5506,
+    "longitude": -112.4161,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10154736",
+      "https://ngmdb.usgs.gov/Prodesc/prod001/00100118.htm"
+    ],
+    "validity_notes": "Known tungsten producer with historical significance.\nOwner/source: BLM Case File: UTU-079539",
+    "created_at": "2026-03-04 04:12:56.551198+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 2,
+    "name": "Baker Tungsten Mine",
+    "location_plss": "T7N R23E Sec 35",
+    "latitude": 44.7663,
+    "longitude": -116.2671,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10154732",
+      "https://ngmdb.usgs.gov/Prodesc/prod001/00100117.htm"
+    ],
+    "validity_notes": "Past-producing mine with potential for new claims.\nOwner/source: BLM Case File: IDI-036007",
+    "created_at": "2026-03-04 04:13:03.962447+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 3,
+    "name": "Carson City Tungsten District",
+    "location_plss": "T15N R20E Sec 30",
+    "latitude": 39.1648,
+    "longitude": -119.7674,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10095389",
+      "https://ngmdb.usgs.gov/Prodesc/prod001/00100119.htm"
+    ],
+    "validity_notes": "Historical tungsten mining area with existing infrastructure.\nOwner/source: USGS Report",
+    "created_at": "2026-03-04 04:13:10.521925+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 4,
+    "name": "Lone Mountain Tungsten Mine",
+    "location_plss": "T12N R34E Sec 10",
+    "latitude": 39.5381,
+    "longitude": -116.0933,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10095390",
+      "https://ngmdb.usgs.gov/Prodesc/prod001/00100120.htm"
+    ],
+    "validity_notes": "Known tungsten deposits with potential for new claims.\nOwner/source: BLM Case File: NMC-100000",
+    "created_at": "2026-03-04 04:13:49.257361+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 5,
+    "name": "Lundberg Mine",
+    "location_plss": "T14S R16E Sec 10",
+    "latitude": 39.6106,
+    "longitude": -113.4676,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10078861",
+      "https://pubs.usgs.gov/periodicals/mcs2020/mcs2020-scandium.pdf"
+    ],
+    "validity_notes": "Known producing mine with reported Scandium presence.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:14:32.824960+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 6,
+    "name": "Bingham Canyon Mine",
+    "location_plss": "T2S R1W Sec 1",
+    "latitude": 40.5833,
+    "longitude": -112.2,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10078860",
+      "https://www.miningweekly.com/article/scandium-2020-09-18"
+    ],
+    "validity_notes": "Large copper mine with known Scandium occurrences.\nOwner/source: Rio Tinto",
+    "created_at": "2026-03-04 04:14:45.170192+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 7,
+    "name": "Wheeler Peak",
+    "location_plss": "T12N R67E Sec 5",
+    "latitude": 39.0031,
+    "longitude": -115.0933,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://pubs.usgs.gov/periodicals/mcs2020/mcs2020-scandium.pdf",
+      "https://www.blm.gov/programs/mining-and-minerals/faq"
+    ],
+    "validity_notes": "Historical mining area with potential Scandium resources.\nOwner/source: BLM",
+    "created_at": "2026-03-04 04:15:22.171630+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 8,
+    "name": "Magma Mine",
+    "location_plss": "T10N R64E Sec 3",
+    "latitude": 39.4175,
+    "longitude": -116.0583,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10078862",
+      "https://pubs.usgs.gov/periodicals/mcs2020/mcs2020-scandium.pdf"
+    ],
+    "validity_notes": "Reported Scandium presence in historical mining reports.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:15:55.523626+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 9,
+    "name": "Boulder Mountain",
+    "location_plss": "T5N R1E Sec 12",
+    "latitude": 43.7975,
+    "longitude": -113.1925,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10078863",
+      "https://pubs.usgs.gov/periodicals/mcs2020/mcs2020-scandium.pdf"
+    ],
+    "validity_notes": "Known area with Scandium potential and past exploration.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:16:02.234119+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 10,
+    "name": "Navajo Mine",
+    "location_plss": "T36S R14E Sec 25",
+    "latitude": 37.025,
+    "longitude": -112.072,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10210336",
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10007729",
+      "https://pubs.usgs.gov/bul/2130/report.pdf",
+      "https://pubs.usgs.gov/bul/2151/report.pdf"
+    ],
+    "validity_notes": "Known beryllium production site with historical data.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:16:39.936571+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 11,
+    "name": "Topaz-Snowflake District",
+    "location_plss": "T14S R15E Sec 12",
+    "latitude": 39.2,
+    "longitude": -112.5,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10210337",
+      "https://ngmdb.usgs.gov/Prodesc/proddesc_10461.htm"
+    ],
+    "validity_notes": "Historical mining district known for beryllium deposits.\nOwner/source: BLM",
+    "created_at": "2026-03-04 04:16:53.797601+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 12,
+    "name": "Beryllium Mine (Beryllium Hill)",
+    "location_plss": "T12N R62E Sec 30",
+    "latitude": 39.5,
+    "longitude": -116.5,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10210338",
+      "https://pubs.usgs.gov/bul/2151/report.pdf"
+    ],
+    "validity_notes": "Past producing mine with known beryllium presence.\nOwner/source: BLM",
+    "created_at": "2026-03-04 04:17:05.113062+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 13,
+    "name": "Beryllium Ridge",
+    "location_plss": "T10N R25E Sec 5",
+    "latitude": 44.5,
+    "longitude": -116.5,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10210339",
+      "https://ngmdb.usgs.gov/Prodesc/proddesc_10462.htm"
+    ],
+    "validity_notes": "Historical site with beryllium occurrences.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:17:17.302174+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 14,
+    "name": "Daneros Mine",
+    "location_plss": "T24S R16E Sec 20",
+    "latitude": 38.2675,
+    "longitude": -113.4897,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008137",
+      "https://www.uraniumwatch.org/uranium-mining-in-utah/"
+    ],
+    "validity_notes": "Known uranium mine with historical production, potential for unpatented claims.\nOwner/source: Unknown",
+    "created_at": "2026-03-04 04:17:57.927488+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 15,
+    "name": "La Sal Uranium District",
+    "location_plss": "T25S R23E",
+    "latitude": 38.305,
+    "longitude": -109.221,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.usgs.gov/centers/nmic/uranium-mineral-resources-uranium-mining-la-sal-district-utah"
+    ],
+    "validity_notes": "Historic uranium district with multiple unpatented claims available.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:18:05.317747+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 16,
+    "name": "Rochelle Mine",
+    "location_plss": "T22N R92W Sec 4",
+    "latitude": 42.5175,
+    "longitude": -106.435,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008138"
+    ],
+    "validity_notes": "Former uranium mine with potential for new claims.\nOwner/source: Unknown",
+    "created_at": "2026-03-04 04:22:29.349605+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 17,
+    "name": "Green River Basin",
+    "location_plss": "T15N R108W Sec 10",
+    "latitude": 41.586,
+    "longitude": -109.451,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.wyomingmining.org/green-river-basin-uranium/"
+    ],
+    "validity_notes": "Known uranium presence with historical reports, potential for unpatented claims.\nOwner/source: Wyoming Mining Association",
+    "created_at": "2026-03-04 04:23:07.833201+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 18,
+    "name": "Jackpot Uranium Project",
+    "location_plss": "T36N R54E Sec 12",
+    "latitude": 41.983,
+    "longitude": -114.254,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008139"
+    ],
+    "validity_notes": "Active exploration project with potential for monetization.\nOwner/source: Unknown",
+    "created_at": "2026-03-04 04:23:15.566289+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 19,
+    "name": "Shirley Basin",
+    "location_plss": "T24N R78W Sec 1",
+    "latitude": 41.582,
+    "longitude": -106.327,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.usgs.gov/centers/nmic/uranium-mineral-resources-shirley-basin-wyoming"
+    ],
+    "validity_notes": "Historic uranium mining area with potential for new claims.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:23:26.874454+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 20,
+    "name": "Humboldt Fluorspar Mine",
+    "location_plss": "T22N R33E Sec 30",
+    "latitude": 40.5783,
+    "longitude": -116.9734,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Fluorspar"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10135137",
+      "https://www.blm.gov/sites/blm.gov/files/documents/files/NV_Fluorspar_Mines.pdf"
+    ],
+    "validity_notes": "Known producing mine with historical data supporting fluorspar presence.\nOwner/source: BLM Case File NVN 084892",
+    "created_at": "2026-03-04 04:25:16.717188+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 21,
+    "name": "Mason Valley Fluorspar District",
+    "location_plss": "T15N R21E Sec 10",
+    "latitude": 39.4693,
+    "longitude": -119.2064,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Fluorspar"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10135136",
+      "https://www.blm.gov/sites/blm.gov/files/documents/files/NV_Fluorspar_Mines.pdf"
+    ],
+    "validity_notes": "Historic district with multiple claims and evidence of fluorspar.\nOwner/source: BLM Case File NVN 084893",
+    "created_at": "2026-03-04 04:25:17.766067+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 22,
+    "name": "Fluorspar Mine (Old)",
+    "location_plss": "T17N R88W Sec 1",
+    "latitude": 42.5011,
+    "longitude": -106.2583,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Fluorspar"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10016871",
+      "https://www.wsgs.wyo.gov/PDF/Publications/Report_of_Investigation/RI-56.pdf"
+    ],
+    "validity_notes": "Historic mine with documented fluorspar production; potential for new claims.\nOwner/source: Wyoming State Geological Survey",
+    "created_at": "2026-03-04 04:25:18.793519+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 23,
+    "name": "Bingham Canyon Fluorspar",
+    "location_plss": "T3S R1W Sec 25",
+    "latitude": 40.5833,
+    "longitude": -112.0667,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Fluorspar",
+      "Germanium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10008137",
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10016870",
+      "https://ngmdb.usgs.gov/Prodesc/proddesc_10055884.htm",
+      "https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-germanium.pdf"
+    ],
+    "validity_notes": "Known fluorspar presence with potential for unpatented claims.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:25:19.818013+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 24,
+    "name": "Boulder Tungsten Mine",
+    "location_plss": "T10S R12E Sec 20",
+    "latitude": 39.1925,
+    "longitude": -112.5503,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10019712",
+      "https://www.mindat.org/loc-2053.html"
+    ],
+    "validity_notes": "Known tungsten mine with historical production.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:31:49.224005+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 25,
+    "name": "Pine Grove Mine",
+    "location_plss": "T18N R30E Sec 5",
+    "latitude": 39.2845,
+    "longitude": -116.4082,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10007982",
+      "https://www.sciencedirect.com/science/article/pii/S0959652617301133"
+    ],
+    "validity_notes": "Known for Scandium production; potential for unpatented claims.\nOwner/source: Unknown",
+    "created_at": "2026-03-04 04:33:16.460070+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 26,
+    "name": "Navajo Beryllium Mine",
+    "location_plss": "T36S R16E Sec 30",
+    "latitude": 37.0,
+    "longitude": -112.5,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-beryllium.pdf",
+      "https://www.mindat.org/loc-1286.html"
+    ],
+    "validity_notes": "Known beryllium production site with historical significance.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:33:42.268027+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 27,
+    "name": "Boulder Tungsten Mine",
+    "location_plss": "T14S R10W Sec 1",
+    "latitude": 39.534,
+    "longitude": -112.538,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10007814",
+      "https://ngmdb.usgs.gov/Prodesc/prod/020/20200.pdf"
+    ],
+    "validity_notes": "Known tungsten producer with historical significance.\nOwner/source: BLM Case File UTU-080633",
+    "created_at": "2026-03-04 04:34:37.494027+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 28,
+    "name": "La Sal Uranium District",
+    "location_plss": "T25S R23E Sec 10",
+    "latitude": 38.1933,
+    "longitude": -109.2203,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://pubs.usgs.gov/bul/2172/report.pdf",
+      "https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008187"
+    ],
+    "validity_notes": "Known uranium district with historical production.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:34:47.600415+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 29,
+    "name": "Baker Tungsten Mine",
+    "location_plss": "T11N R25E Sec 5",
+    "latitude": 44.578,
+    "longitude": -116.153,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10007815",
+      "https://ngmdb.usgs.gov/Prodesc/prod/020/20201.pdf"
+    ],
+    "validity_notes": "Past-producing tungsten mine with potential for new claims.\nOwner/source: BLM Case File IDI-038321",
+    "created_at": "2026-03-04 04:36:05.126192+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 30,
+    "name": "Humboldt Fluorspar Mine",
+    "location_plss": "T21N R32E Sec 12",
+    "latitude": 40.1842,
+    "longitude": -116.9645,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Fluorspar"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10007759"
+    ],
+    "validity_notes": "Known producing mine with historical fluorspar production.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:36:31.257627+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 31,
+    "name": "Mount Hope Tungsten Mine",
+    "location_plss": "T15N R41E Sec 12",
+    "latitude": 39.951,
+    "longitude": -116.034,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10007816",
+      "https://ngmdb.usgs.gov/Prodesc/prod/020/20202.pdf"
+    ],
+    "validity_notes": "Current tungsten project with existing infrastructure.\nOwner/source: General Moly, Inc.",
+    "created_at": "2026-03-04 04:36:46.382350+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 32,
+    "name": "Tungsten Queen Mine",
+    "location_plss": "T25N R88W Sec 7",
+    "latitude": 42.517,
+    "longitude": -106.207,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10007817",
+      "https://ngmdb.usgs.gov/Prodesc/prod/020/20203.pdf"
+    ],
+    "validity_notes": "Historic tungsten mine with potential for new exploration.\nOwner/source: BLM Case File WYO-123456",
+    "created_at": "2026-03-04 04:37:28.649655+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 34,
+    "name": "Dugway Proving Ground",
+    "location_plss": "T10S R14W Sec 12",
+    "latitude": 40.2,
+    "longitude": -113.2,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://pubs.usgs.gov/periodicals/mcs2022/mcs2022-scandium.pdf",
+      "https://www.mindat.org/loc-1980.html"
+    ],
+    "validity_notes": "Known to contain Scandium from past military and research activities.\nOwner/source: US Army",
+    "created_at": "2026-03-04 04:38:00.494049+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 35,
+    "name": "Bear Lodge Project",
+    "location_plss": "T53N R70W Sec 29",
+    "latitude": 44.5,
+    "longitude": -104.5,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.mindat.org/loc-1980.html",
+      "https://www.scandiuminternational.com/"
+    ],
+    "validity_notes": "Contains Scandium with existing reports indicating potential for mining.\nOwner/source: Scandium International Mining Corp.",
+    "created_at": "2026-03-04 04:38:01.526296+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 36,
+    "name": "Magma Mine",
+    "location_plss": "T1S R43E Sec 5",
+    "latitude": 39.5,
+    "longitude": -116.5,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.mindat.org/loc-1980.html",
+      "https://www.usgs.gov/centers/nmic/scandium-statistics-and-information"
+    ],
+    "validity_notes": "Past producing mine with Scandium presence reported.\nOwner/source: Unknown",
+    "created_at": "2026-03-04 04:38:02.549413+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 37,
+    "name": "Lundberg Mine",
+    "location_plss": "T11N R1E Sec 36",
+    "latitude": 43.5,
+    "longitude": -116.5,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.mindat.org/loc-1980.html",
+      "https://www.usgs.gov/centers/nmic/scandium-statistics-and-information"
+    ],
+    "validity_notes": "Historical mine with Scandium reports; potential for acquisition.\nOwner/source: Unknown",
+    "created_at": "2026-03-04 04:38:03.575598+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 38,
+    "name": "Boulder Tungsten Mine",
+    "location_plss": "T12N R49E Sec 25",
+    "latitude": 39.5,
+    "longitude": -116.0,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10182616",
+      "https://www.blm.gov/sites/blm.gov/files/documents/files/NV_CopperBoulderTungsten.pdf"
+    ],
+    "validity_notes": "Historic tungsten production site with potential for new claims.\nOwner/source: BLM Case File NVN 083450",
+    "created_at": "2026-03-04 04:44:59.913811+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 39,
+    "name": "Red Rock Canyon",
+    "location_plss": "T20N R60E Sec 12",
+    "latitude": 39.5044,
+    "longitude": -116.1804,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10220248"
+    ],
+    "validity_notes": "Known for Scandium presence; potential for unpatented claims.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:45:35.322469+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 40,
+    "name": "Navajo Mine",
+    "location_plss": "T36S R10E Sec 5",
+    "latitude": 37.1933,
+    "longitude": -112.5361,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10007762",
+      "https://pubs.usgs.gov/bul/2130/report.pdf"
+    ],
+    "validity_notes": "Known producing mine for Beryllium with existing reports.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:46:30.380641+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 41,
+    "name": "Daneros Mine",
+    "location_plss": "T29S R16E Sec 24",
+    "latitude": 38.174,
+    "longitude": -110.36,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10008111",
+      "https://ngmdb.usgs.gov/Prodesc/proddesc_10423.htm"
+    ],
+    "validity_notes": "Known uranium production site with existing reports.\nOwner/source: Unknown",
+    "created_at": "2026-03-04 04:47:42.665950+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 42,
+    "name": "Fluorspar Mine",
+    "location_plss": "T10S R3W Sec 4",
+    "latitude": 39.5902,
+    "longitude": -111.9701,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Fluorspar"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://ngmdb.usgs.gov/Prodesc/prod/001/00153711.pdf"
+    ],
+    "validity_notes": "Known producing mine with historical fluorspar production.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:49:17.512221+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 43,
+    "name": "Boulder Tungsten Mine",
+    "location_plss": "T12S R10E Sec 36",
+    "latitude": 39.4406,
+    "longitude": -112.5774,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10007600",
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/BoulderTungstenRefs_11635.pdf"
+    ],
+    "validity_notes": "Known tungsten mine with historical production.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:49:54.925411+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 44,
+    "name": "Bingham Canyon Mine",
+    "location_plss": "T3S R1W Sec 19",
+    "latitude": 40.5833,
+    "longitude": -112.185,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Germanium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10010059",
+      "https://pubs.usgs.gov/periodicals/mcs2020/mcs2020-germanium.pdf"
+    ],
+    "validity_notes": "Known for copper and associated germanium production.\nOwner/source: Rio Tinto",
+    "created_at": "2026-03-04 04:50:01.941635+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 45,
+    "name": "King Solomon Mine",
+    "location_plss": "T10N R24E Sec 19",
+    "latitude": 44.5,
+    "longitude": -116.0833,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10007601",
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/KingSolomonRefs_11636.pdf"
+    ],
+    "validity_notes": "Historic tungsten producer, potential for unpatented claims.\nOwner/source: BLM",
+    "created_at": "2026-03-04 04:50:07.110681+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 46,
+    "name": "Tungsten Queen Mine",
+    "location_plss": "T12N R50E Sec 30",
+    "latitude": 39.5,
+    "longitude": -116.5,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10007602",
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/TungstenQueenRefs_11637.pdf"
+    ],
+    "validity_notes": "Historic tungsten mine, potential for acquisition of unpatented claims.\nOwner/source: BLM",
+    "created_at": "2026-03-04 04:50:53.396371+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 47,
+    "name": "Duchesne Tungsten District",
+    "location_plss": "T12S R5E Sec 15",
+    "latitude": 40.2,
+    "longitude": -110.5,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10007603",
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/DuchesneTungstenRefs_11638.pdf"
+    ],
+    "validity_notes": "Known tungsten district with potential for unpatented claims.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:51:09.514950+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 48,
+    "name": "Bingham Canyon Mine",
+    "location_plss": "T3S R1W Sec 21",
+    "latitude": 40.5833,
+    "longitude": -112.2014,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.usgs.gov/centers/nmic/scandium"
+    ],
+    "validity_notes": "Known for Scandium presence in copper ores.\nOwner/source: Rio Tinto",
+    "created_at": "2026-03-04 04:51:57.480665+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 49,
+    "name": "Mountain Pass Mine",
+    "location_plss": "T2N R12E Sec 26",
+    "latitude": 35.5,
+    "longitude": -116.1667,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.mountainpass.com/",
+      "https://www.usgs.gov/centers/nmic/scandium"
+    ],
+    "validity_notes": "Historical producer with potential Scandium recovery.\nOwner/source: MP Materials Corp.",
+    "created_at": "2026-03-04 04:52:08.776436+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 50,
+    "name": "Bear Lodge Project",
+    "location_plss": "T56N R73W Sec 5",
+    "latitude": 44.5,
+    "longitude": -105.5,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.usgs.gov/centers/nmic/scandium"
+    ],
+    "validity_notes": "Exploration project with Scandium potential.\nOwner/source: Rare Element Resources Ltd.",
+    "created_at": "2026-03-04 04:52:21.067171+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 51,
+    "name": "Lundberg Mine",
+    "location_plss": "T1N R1E Sec 10",
+    "latitude": 43.0,
+    "longitude": -116.0,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.usgs.gov/centers/nmic/scandium"
+    ],
+    "validity_notes": "Past producer with reported Scandium.\nOwner/source: Unknown",
+    "created_at": "2026-03-04 04:52:31.240362+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 52,
+    "name": "Navajo Mine",
+    "location_plss": "T36S R12E Sec 6",
+    "latitude": 37.1903,
+    "longitude": -113.5715,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10002294",
+      "https://pubs.usgs.gov/bul/2150/report.pdf"
+    ],
+    "validity_notes": "Known beryllium production site with historical data.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:53:05.447055+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 53,
+    "name": "Topaz-Smith Mine",
+    "location_plss": "T14S R17E Sec 31",
+    "latitude": 39.2405,
+    "longitude": -112.4201,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10002295",
+      "https://pubs.usgs.gov/bul/2150/report.pdf"
+    ],
+    "validity_notes": "Historic beryllium mine with potential for unpatented claims.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:53:16.081272+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 54,
+    "name": "Eureka Beryllium Mine",
+    "location_plss": "T11N R46E Sec 2",
+    "latitude": 39.5352,
+    "longitude": -116.0311,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10002296",
+      "https://pubs.usgs.gov/bul/2150/report.pdf"
+    ],
+    "validity_notes": "Formerly producing beryllium mine with existing infrastructure.\nOwner/source: Nevada Bureau of Mines and Geology",
+    "created_at": "2026-03-04 04:53:22.624698+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 55,
+    "name": "Beryllium Hill",
+    "location_plss": "T18N R88W Sec 10",
+    "latitude": 42.455,
+    "longitude": -106.22,
+    "state_abbr": "UT",
+    "meridian": "26",
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10002297",
+      "https://pubs.usgs.gov/bul/2150/report.pdf"
+    ],
+    "validity_notes": "Reported presence of beryllium with potential for new claims.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:53:52.834744+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 56,
+    "name": "Beryllium Mine District",
+    "location_plss": "T6N R1E Sec 4",
+    "latitude": 44.4,
+    "longitude": -116.2,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10002298",
+      "https://pubs.usgs.gov/bul/2150/report.pdf"
+    ],
+    "validity_notes": "Historical district known for beryllium presence.\nOwner/source: Idaho Geological Survey",
+    "created_at": "2026-03-04 04:54:06.518639+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 57,
+    "name": "La Sal Uranium District",
+    "location_plss": "T27S R22E Sec 12",
+    "latitude": 38.195,
+    "longitude": -109.278,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/LaSalRefs_11633.html",
+      "https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008151"
+    ],
+    "validity_notes": "Known uranium production area with historical significance.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:54:55.455924+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 58,
+    "name": "Green River Basin",
+    "location_plss": "T20N R108W Sec 4",
+    "latitude": 41.596,
+    "longitude": -109.325,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008150",
+      "https://www.wyomingmining.org/green-river-basin-uranium-mining/"
+    ],
+    "validity_notes": "Historical uranium mining area with potential for new claims.\nOwner/source: Wyoming Mining Association",
+    "created_at": "2026-03-04 04:56:06.523565+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 59,
+    "name": "Pine Valley Uranium District",
+    "location_plss": "T1N R68E Sec 5",
+    "latitude": 39.633,
+    "longitude": -116.095,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/PineValleyRefs_11634.html",
+      "https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008152"
+    ],
+    "validity_notes": "Past-producing district with existing infrastructure.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:56:07.596897+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 60,
+    "name": "Salt Lake City Uranium District",
+    "location_plss": "T1S R1E Sec 36",
+    "latitude": 40.7608,
+    "longitude": -111.891,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/SaltLakeCityRefs_11635.html",
+      "https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008153"
+    ],
+    "validity_notes": "Proximity to urban infrastructure may facilitate monetization.\nOwner/source: USGS",
+    "created_at": "2026-03-04 04:56:08.655614+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 61,
+    "name": "Moab Uranium Mill Tailings",
+    "location_plss": "T25S R21E Sec 24",
+    "latitude": 38.596,
+    "longitude": -109.55,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.epa.gov/cleanup/moab-uranium-mill-tailings-site",
+      "https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008154"
+    ],
+    "validity_notes": "Site of past uranium milling with potential for reclamation.\nOwner/source: EPA",
+    "created_at": "2026-03-04 04:56:09.684783+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 62,
+    "name": "Boulder Tungsten Mine",
+    "location_plss": "T12S R15E Sec 10",
+    "latitude": 39.5175,
+    "longitude": -112.5833,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10222509",
+      "https://ngmdb.usgs.gov/Prodesc/proddesc_10001371.htm"
+    ],
+    "validity_notes": "Known tungsten production site with historical significance.\nOwner/source: BLM Case File: UTU-079201",
+    "created_at": "2026-03-05 06:39:32.614593+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 63,
+    "name": "Red Canyon Mine",
+    "location_plss": "T21N R88W Sec 25",
+    "latitude": 42.5833,
+    "longitude": -106.4333,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://pubs.usgs.gov/periodicals/mcs2021/mcs2021.pdf",
+      "https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10007805"
+    ],
+    "validity_notes": "Known for Scandium production, with existing reports confirming its presence.\nOwner/source: Unknown",
+    "created_at": "2026-03-05 06:39:49.877801+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 65,
+    "name": "La Sal Uranium District",
+    "location_plss": "T24S R23E Sec 12",
+    "latitude": 38.265,
+    "longitude": -109.221,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-uranium.pdf",
+      "https://www.blm.gov/sites/blm.gov/files/documents/files/UT_Uranium.pdf"
+    ],
+    "validity_notes": "Known uranium mining district with historical production.\nOwner/source: USGS",
+    "created_at": "2026-03-05 06:40:32.411078+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 66,
+    "name": "Humboldt Fluorspar Mine",
+    "location_plss": "T27N R39E Sec 31",
+    "latitude": 40.7503,
+    "longitude": -116.9895,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Fluorspar"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10008180",
+      "https://pubs.usgs.gov/bul/2131/report.pdf"
+    ],
+    "validity_notes": "Known producing mine for Fluorspar, potential for unpatented claims.\nOwner/source: USGS",
+    "created_at": "2026-03-05 06:40:50.458758+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 67,
+    "name": "Bingham Canyon Mine",
+    "location_plss": "T3S R1W Sec 1",
+    "latitude": 40.5833,
+    "longitude": -112.2,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Germanium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10007986",
+      "https://www.usgs.gov/centers/nmic/germanium-statistics-and-information"
+    ],
+    "validity_notes": "Known for copper and associated germanium production.\nOwner/source: Rio Tinto",
+    "created_at": "2026-03-05 06:41:10.901589+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 68,
+    "name": "Boulder Tungsten Mine",
+    "location_plss": "T12S R14E Sec 23",
+    "latitude": 39.3845,
+    "longitude": -112.6632,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10010038",
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/BoulderTungstenRefs_12461.pdf"
+    ],
+    "validity_notes": "Known tungsten production site with historical significance.\nOwner/source: USGS",
+    "created_at": "2026-03-05 06:41:24.106450+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 69,
+    "name": "Mason Valley Tungsten Mine",
+    "location_plss": "T16N R25E Sec 14",
+    "latitude": 39.4915,
+    "longitude": -118.6404,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10010039",
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/MasonValleyTungstenRefs_12462.pdf"
+    ],
+    "validity_notes": "Historic tungsten producer with potential for new claims.\nOwner/source: USGS",
+    "created_at": "2026-03-05 06:41:30.557642+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 70,
+    "name": "Boulder District",
+    "location_plss": "T12S R14E",
+    "latitude": 39.3845,
+    "longitude": -112.6632,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.blm.gov/sites/blm.gov/files/documents/files/UT_Boulder_District.pdf"
+    ],
+    "validity_notes": "District known for tungsten deposits, potential for unpatented claims.\nOwner/source: BLM",
+    "created_at": "2026-03-05 06:41:37.138226+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 71,
+    "name": "Basin Tungsten Mine",
+    "location_plss": "T10N R23E Sec 4",
+    "latitude": 43.6884,
+    "longitude": -113.1414,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10010040",
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/BasinTungstenRefs_12463.pdf"
+    ],
+    "validity_notes": "Historic tungsten mine with potential for new exploration.\nOwner/source: USGS",
+    "created_at": "2026-03-05 06:41:43.665996+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 72,
+    "name": "Kingston Tungsten Mine",
+    "location_plss": "T14S R10E Sec 28",
+    "latitude": 39.4,
+    "longitude": -113.0,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10010041",
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/KingstonTungstenRefs_12464.pdf"
+    ],
+    "validity_notes": "Known tungsten deposits, potential for unpatented claims.\nOwner/source: USGS",
+    "created_at": "2026-03-05 06:41:50.223805+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 73,
+    "name": "Lundberg Mine",
+    "location_plss": "T12S R14E Sec 7",
+    "latitude": 39.4891,
+    "longitude": -112.3465,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10207177",
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/LundbergRefs_11336.pdf"
+    ],
+    "validity_notes": "Known for Scandium production; historical data available.\nOwner/source: USGS",
+    "created_at": "2026-03-05 06:42:07.056963+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 74,
+    "name": "Magma Mine",
+    "location_plss": "T21N R24E Sec 10",
+    "latitude": 39.5245,
+    "longitude": -116.0523,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10207178",
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/MagmaRefs_11337.pdf"
+    ],
+    "validity_notes": "Past production of Scandium; potential for new claims.\nOwner/source: BLM",
+    "created_at": "2026-03-05 06:42:13.807897+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 75,
+    "name": "Boulder Mining District",
+    "location_plss": "T12N R60E Sec 5",
+    "latitude": 39.5295,
+    "longitude": -116.1615,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.blm.gov/sites/blm.gov/files/documents/files/NV_BoulderMiningDistrict.pdf"
+    ],
+    "validity_notes": "District known for Scandium; unpatented claims may exist.\nOwner/source: BLM",
+    "created_at": "2026-03-05 06:42:20.358134+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 76,
+    "name": "Bear Lodge Project",
+    "location_plss": "T53N R79W Sec 3",
+    "latitude": 44.4992,
+    "longitude": -104.6772,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Scandium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.usgs.gov/centers/nmic/scandium"
+    ],
+    "validity_notes": "Significant Scandium resource; potential for development.\nOwner/source: Rare Element Resources",
+    "created_at": "2026-03-05 06:42:27.018894+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 77,
+    "name": "Nash Fork Beryllium Mine",
+    "location_plss": "T12S R14E Sec 22",
+    "latitude": 39.3703,
+    "longitude": -113.0702,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10008136",
+      "https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-beryllium.pdf"
+    ],
+    "validity_notes": "Known producing mine for beryllium with historical production data.\nOwner/source: Unknown",
+    "created_at": "2026-03-05 06:42:46.331073+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 78,
+    "name": "Lone Mountain Beryllium Mine",
+    "location_plss": "T22N R46E Sec 15",
+    "latitude": 39.25,
+    "longitude": -116.0,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10008134",
+      "https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-beryllium.pdf"
+    ],
+    "validity_notes": "Past-producing mine with known beryllium presence.\nOwner/source: Unknown",
+    "created_at": "2026-03-05 06:42:52.998739+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 79,
+    "name": "Topaz Mountain Beryllium District",
+    "location_plss": "T14S R14E Sec 10",
+    "latitude": 39.2231,
+    "longitude": -113.1702,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/TopazRefs_10866.html",
+      "https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-beryllium.pdf"
+    ],
+    "validity_notes": "District known for beryllium occurrences and potential for claims.\nOwner/source: USGS",
+    "created_at": "2026-03-05 06:43:00.066644+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 80,
+    "name": "Beryllium Hill",
+    "location_plss": "T4N R1E Sec 5",
+    "latitude": 44.0,
+    "longitude": -116.0,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10008135",
+      "https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-beryllium.pdf"
+    ],
+    "validity_notes": "Area with historical beryllium production, potential for unpatented claims.\nOwner/source: Unknown",
+    "created_at": "2026-03-05 06:43:07.010153+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 81,
+    "name": "La Sal Uranium District",
+    "location_plss": "T27S R21E Sec 10",
+    "latitude": 38.1525,
+    "longitude": -109.2503,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10008100",
+      "https://ngmdb.usgs.gov/Prodesc/prod/20280.htm"
+    ],
+    "validity_notes": "Known uranium district with historical production and existing reports.\nOwner/source: USGS",
+    "created_at": "2026-03-05 06:43:29.284270+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 82,
+    "name": "Green River Basin",
+    "location_plss": "T15N R108W Sec 24",
+    "latitude": 41.5992,
+    "longitude": -108.6973,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10008101",
+      "https://ngmdb.usgs.gov/Prodesc/prod/20281.htm"
+    ],
+    "validity_notes": "Area with known uranium occurrences and potential for unpatented claims.\nOwner/source: USGS",
+    "created_at": "2026-03-05 06:43:36.347294+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 83,
+    "name": "Salt Wash Uranium District",
+    "location_plss": "T18S R21E Sec 15",
+    "latitude": 38.1667,
+    "longitude": -109.4833,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10008102",
+      "https://ngmdb.usgs.gov/Prodesc/prod/20282.htm"
+    ],
+    "validity_notes": "Historical mining area with existing reports indicating uranium presence.\nOwner/source: USGS",
+    "created_at": "2026-03-05 07:02:55.261194+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 84,
+    "name": "Pine Valley Uranium District",
+    "location_plss": "T2S R69E Sec 5",
+    "latitude": 38.2683,
+    "longitude": -115.6417,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10008103",
+      "https://ngmdb.usgs.gov/Prodesc/prod/20283.htm"
+    ],
+    "validity_notes": "Known uranium district with potential for unpatented claims.\nOwner/source: USGS",
+    "created_at": "2026-03-05 07:02:59.520672+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 85,
+    "name": "Jackpot Uranium District",
+    "location_plss": "T42N R65E Sec 1",
+    "latitude": 41.9861,
+    "longitude": -114.7125,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "high",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10008104",
+      "https://ngmdb.usgs.gov/Prodesc/prod/20284.htm"
+    ],
+    "validity_notes": "Historical production and reports indicate uranium presence, potential for claims.\nOwner/source: USGS",
+    "created_at": "2026-03-05 07:03:07.187147+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 86,
+    "name": "Humboldt Fluorspar Mine",
+    "location_plss": "T25N R37E Sec 12",
+    "latitude": 40.5783,
+    "longitude": -116.1519,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Fluorspar"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10208017",
+      "https://www.blm.gov/",
+      "https://www.nv.blm.gov/"
+    ],
+    "validity_notes": "Known producing mine with historical production of fluorspar.\nOwner/source: USGS",
+    "created_at": "2026-03-05 15:43:49.210829+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 87,
+    "name": "Fluorspar District",
+    "location_plss": "T12S R5W Sec 36",
+    "latitude": 39.5111,
+    "longitude": -112.3281,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Fluorspar"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://ngmdb.usgs.gov/",
+      "https://www.usgs.gov/",
+      "https://www.utah.gov/"
+    ],
+    "validity_notes": "Historical mining district known for fluorspar production.\nOwner/source: State of Utah",
+    "created_at": "2026-03-05 15:43:50.520590+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 88,
+    "name": "Boulder Fluorspar Mine",
+    "location_plss": "T6N R1E Sec 30",
+    "latitude": 44.0556,
+    "longitude": -116.0103,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Fluorspar"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10208100",
+      "https://www.idl.idaho.gov/",
+      "https://www.usgs.gov/"
+    ],
+    "validity_notes": "Past-producing mine with documented fluorspar presence.\nOwner/source: Idaho Department of Lands",
+    "created_at": "2026-03-05 15:43:51.801700+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 89,
+    "name": "Wyo Fluorspar Mine",
+    "location_plss": "T22N R85W Sec 15",
+    "latitude": 42.2953,
+    "longitude": -106.3602,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Fluorspar"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10208101",
+      "https://www.usgs.gov/",
+      "https://www.wyoming.gov/"
+    ],
+    "validity_notes": "Known fluorspar mine with potential for new claims.\nOwner/source: Wyoming State Geological Survey",
+    "created_at": "2026-03-05 15:43:53.078516+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 90,
+    "name": "Bingham Canyon Mine",
+    "location_plss": "T3S R1W Sec 10",
+    "latitude": 40.5825,
+    "longitude": -112.1652,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Germanium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://mrdata.usgs.gov/mrds/show.php?dep_id=10078161",
+      "https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-germanium.pdf"
+    ],
+    "validity_notes": "Known for copper and associated germanium production.\nOwner/source: Rio Tinto",
+    "created_at": "2026-03-05 15:44:10.071105+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 91,
+    "name": "Baker Mine",
+    "location_plss": "T11N R43E Sec 30",
+    "latitude": 39.0083,
+    "longitude": -116.2292,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Germanium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://ngmdb.usgs.gov/Geolex/UnitRefs/BakerRefs_11253.html"
+    ],
+    "validity_notes": "Past producer of germanium; potential for unpatented claims.\nOwner/source: Unknown",
+    "created_at": "2026-03-05 15:44:16.971665+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 92,
+    "name": "Silver Peak Mine",
+    "location_plss": "T4S R41E Sec 5",
+    "latitude": 38.175,
+    "longitude": -116.1667,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Germanium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://www.blm.gov/sites/blm.gov/files/documents/files/NV_SilverPeakMine.pdf"
+    ],
+    "validity_notes": "Known for lithium but also contains germanium; potential for monetization.\nOwner/source: Albemarle Corporation",
+    "created_at": "2026-03-05 15:44:23.650226+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 93,
+    "name": "Green River District",
+    "location_plss": "T14N R115W Sec 1",
+    "latitude": 41.5861,
+    "longitude": -109.0333,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Germanium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "discovery_agent",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-germanium.pdf",
+      "https://www.wygs.state.wy.us/"
+    ],
+    "validity_notes": "Reports indicate germanium presence in the area; potential for claims.\nOwner/source: Unknown",
+    "created_at": "2026-03-05 15:44:30.565894+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 94,
+    "name": "Horn Silver Mine",
+    "location_plss": "Beaver",
+    "latitude": 38.5136,
+    "longitude": -113.2622,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Cobalt",
+      "Copper",
+      "Fluorspar",
+      "Lead-Zinc",
+      "Silver",
+      "Uranium",
+      "Zinc"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.809981+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 95,
+    "name": "None Identified (205)",
+    "location_plss": "Box Elder",
+    "latitude": 41.76,
+    "longitude": -113.52,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Gold",
+      "Iron",
+      "Lead-Zinc",
+      "Silver",
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.866319+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 96,
+    "name": "Helen Claims",
+    "location_plss": "Cache",
+    "latitude": 41.4297,
+    "longitude": -111.7867,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Manganese"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.890556+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 97,
+    "name": "Yellow Canary Lode",
+    "location_plss": "Daggett",
+    "latitude": 40.92,
+    "longitude": -109.58,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Manganese",
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.912400+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 98,
+    "name": "McClements Mine",
+    "location_plss": "Duchesne",
+    "latitude": 40.5053,
+    "longitude": -110.7769,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Copper",
+      "Lead-Zinc"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.914061+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 99,
+    "name": "Bow Knot Bend Area",
+    "location_plss": "Emery",
+    "latitude": 38.546,
+    "longitude": -110.155,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.915501+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 100,
+    "name": "Mine/Property Name",
+    "location_plss": "County",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Commodity"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.916891+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 101,
+    "name": "Red Butte Claims",
+    "location_plss": null,
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.918440+00:00",
+    "updated_at": "2026-03-06 05:21:43.918440+00:00"
+  },
+  {
+    "id": 102,
+    "name": "Dual / Harris Wash",
+    "location_plss": "Garfield",
+    "latitude": 37.666,
+    "longitude": -111.233,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Ag",
+      "Au",
+      "Cu",
+      "Hg",
+      "Manganese",
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 60,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.920105+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 103,
+    "name": "Mary Agnes / Morie R.",
+    "location_plss": "Grand",
+    "latitude": 38.651,
+    "longitude": -109.102,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Cobalt",
+      "Tungsten",
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.921469+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 104,
+    "name": "Sunken Basins",
+    "location_plss": "Iron",
+    "latitude": 37.768,
+    "longitude": -112.9841,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Au",
+      "Copper",
+      "Fe",
+      "Iron",
+      "Lead",
+      "Mercury",
+      "Mn",
+      "Mo",
+      "Silver",
+      "Uranium",
+      "Zinc"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 60,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.922823+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 105,
+    "name": "Chief Consolidated",
+    "location_plss": "Juab",
+    "latitude": 39.9508,
+    "longitude": -112.1181,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Ag",
+      "Au",
+      "Beryl",
+      "Beryllium",
+      "Copper",
+      "Cu",
+      "Fe",
+      "Lead",
+      "Lime",
+      "Manganese",
+      "Pb",
+      "Quartz",
+      "Rare Earths",
+      "S",
+      "Silver",
+      "Tungsten",
+      "Uranium",
+      "Zinc",
+      "Zn"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 80,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.924120+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 106,
+    "name": "Lynn Mining Claims",
+    "location_plss": "Kane",
+    "latitude": 37.155,
+    "longitude": -111.955,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.925587+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 107,
+    "name": "Cricket Lime and Dolomite",
+    "location_plss": "Millard",
+    "latitude": 38.985,
+    "longitude": -112.835,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Antimony",
+      "Ca",
+      "Cobalt",
+      "Copper",
+      "Limestone",
+      "Manganese",
+      "Mn",
+      "Silver",
+      "Tungsten"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.926825+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 108,
+    "name": "Arthur Fork Property",
+    "location_plss": "Morgan",
+    "latitude": 41.152,
+    "longitude": -111.655,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.928057+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 109,
+    "name": "Pine Canyon Mine",
+    "location_plss": "Piute",
+    "latitude": 38.485,
+    "longitude": -112.255,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Corundum",
+      "Iron",
+      "Kyanite",
+      "Mercury",
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.929472+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 110,
+    "name": "Lakeview Manganese Mine",
+    "location_plss": "Rich",
+    "latitude": 41.865,
+    "longitude": -111.385,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Manganese"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.930906+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 111,
+    "name": "Columbus Rexall Mine",
+    "location_plss": "Salt Lake",
+    "latitude": 40.59,
+    "longitude": -111.641,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Ag",
+      "Au",
+      "Copper",
+      "Cu",
+      "Lead-Zinc",
+      "Pb",
+      "Silver",
+      "W",
+      "Zn"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 70,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.932486+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 112,
+    "name": "Yellow Circle Claim",
+    "location_plss": "San Juan",
+    "latitude": 38.352,
+    "longitude": -109.385,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Copper",
+      "Silver",
+      "Uranium",
+      "Vanadium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.934203+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 113,
+    "name": "Hidden Treasure Claims",
+    "location_plss": "Sevier",
+    "latitude": 38.755,
+    "longitude": -111.955,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Gold",
+      "Manganese",
+      "Silver",
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.935594+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 114,
+    "name": "New Quincy Mine",
+    "location_plss": "Summit",
+    "latitude": 40.635,
+    "longitude": -111.485,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Ag",
+      "Au",
+      "Cu",
+      "Lead",
+      "Lead-Zinc",
+      "Mn",
+      "Pb",
+      "Pb-Zn",
+      "Silver",
+      "Zinc",
+      "Zn"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 60,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.937411+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 115,
+    "name": "New Stockton, Ben Harrison, etc.",
+    "location_plss": "Tooele",
+    "latitude": 40.455,
+    "longitude": -112.355,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Ag",
+      "Au",
+      "Beryl",
+      "Copper",
+      "Cu",
+      "Lead",
+      "Lead-Zinc",
+      "Pb",
+      "Pb-Zn",
+      "Silver",
+      "Tungsten",
+      "Zinc",
+      "Zn"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 60,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.938846+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 116,
+    "name": "Eureka Group",
+    "location_plss": "Uintah",
+    "latitude": 40.525,
+    "longitude": -109.215,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Ag",
+      "Au",
+      "Copper",
+      "Lead",
+      "Mn",
+      "Ni",
+      "Silver",
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 60,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.940197+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 117,
+    "name": "Bonnie Lou Mine",
+    "location_plss": "Unknown",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Ag",
+      "Au",
+      "Copper",
+      "None identified",
+      "Pb",
+      "Zn"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 60,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.941283+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 118,
+    "name": "Silver Star / New Deal",
+    "location_plss": "Utah",
+    "latitude": 39.952,
+    "longitude": -112.115,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "A",
+      "Ag",
+      "Au",
+      "Copper",
+      "Cu",
+      "Iron",
+      "Lead",
+      "Lead-Zinc",
+      "Manganese",
+      "N",
+      "None identified",
+      "Pb",
+      "Pb-Zn",
+      "Silver",
+      "Zn"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 60,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.942523+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 119,
+    "name": "Silver King Unit",
+    "location_plss": "Various",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Pb-Zn",
+      "Silver"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.943947+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 120,
+    "name": "Mayflower Mine",
+    "location_plss": "Wasatch",
+    "latitude": 40.602,
+    "longitude": -111.435,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Ag",
+      "Au",
+      "Copper",
+      "Cu",
+      "Lead-Zinc",
+      "Pb",
+      "Pb-Zn",
+      "Silver",
+      "Zn"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 60,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.945336+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 121,
+    "name": "Fross Rare Metals Prospect",
+    "location_plss": "Washington",
+    "latitude": 37.255,
+    "longitude": -113.315,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Ag",
+      "Copper",
+      "Cu",
+      "Mercury",
+      "Pb",
+      "Tungsten",
+      "U",
+      "Uranium",
+      "V",
+      "Zn"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 60,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.946697+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 122,
+    "name": "LA FLORECITA TRACT",
+    "location_plss": "Wayne",
+    "latitude": 38.285,
+    "longitude": -110.655,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.947852+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 123,
+    "name": "Baldy Mountain",
+    "location_plss": "Weber",
+    "latitude": 41.355,
+    "longitude": -111.955,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Cu",
+      "Fe",
+      "Graphite",
+      "Manganese"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 50,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.949203+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 124,
+    "name": "Spot Mountain - Lost Sheep",
+    "location_plss": null,
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Flourite",
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_perspective",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.950970+00:00",
+    "updated_at": "2026-03-06 05:21:43.950970+00:00"
+  },
+  {
+    "id": 125,
+    "name": "Graymont",
+    "location_plss": "22S 10W",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unpaid",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_bryson",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": null,
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.952342+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 126,
+    "name": "Crypto ZN (Think they are paid but... https://mlrs.blm.gov/s/blm-case/a02t00000058HHzAAM/c3938296)",
+    "location_plss": "UT 26 0110S 0140W 016 A SW",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": "UT",
+    "meridian": null,
+    "minerals": [],
+    "status": "unpaid",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_bryson",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": [
+      "https://mlrs.blm.gov/s/blm-case/a02t00000058HHzAAM/c3938296"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.953520+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 127,
+    "name": "Silver Dome (https://mlrs.blm.gov/s/blm-case/a02t00000058DmSAAU/c3924809)",
+    "location_plss": "11S 14W 30 NW",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unpaid",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_bryson",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": null,
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.954825+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 128,
+    "name": "South Fish Springs Wildlife Refuge",
+    "location_plss": "12S 13W (whole section)",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unpaid",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_bryson",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": null,
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.956040+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 129,
+    "name": "Jack Rabbit",
+    "location_plss": "21S 14E 23",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unpaid",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_bryson",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": null,
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.957461+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 130,
+    "name": "Coyote Mine - Juab County",
+    "location_plss": "11S 7W & 6W",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unpaid",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_bryson",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/publications/uranium_data/MD00615_2.pdf"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.958904+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 131,
+    "name": "Blawn Mtn - RUBESCENT BERYL",
+    "location_plss": "29S 14W 17&18",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unpaid",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_bryson",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": [
+      "https://mlrs.blm.gov/s/blm-case/a02t0000007lW7ZAAU/c7829656"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.960141+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 132,
+    "name": "Ochre Springs",
+    "location_plss": "UT 26 0080S 0180W 014 A NW",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": "UT",
+    "meridian": null,
+    "minerals": [],
+    "status": "unpaid",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_bryson",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": null,
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.961723+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 133,
+    "name": "Sullivan Shaft (not mining claim - Patented??)",
+    "location_plss": "12S 5W 33S",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unpaid",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_bryson",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/publications/uranium_data/MD00562_20.pdf"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.962952+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 134,
+    "name": "Thompson Creek Deposit - TUNGSTEN -- IDAHO",
+    "location_plss": "12N 16E S33 (IDAHO)",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unpaid",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_bryson",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": null,
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.964144+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 135,
+    "name": "Right by Tem Piute & south of Rachel -- Looks like there is a Patent Claim but then all the Lode Claims are UNPAID",
+    "location_plss": "4S 55E 12 (and areas south of that)",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unpaid",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_bryson",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 40,
+    "report_links": null,
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:43.965431+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 136,
+    "name": "Red Butte Claims",
+    "location_plss": null,
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:54.683520+00:00",
+    "updated_at": "2026-03-06 05:21:54.683520+00:00"
+  },
+  {
+    "id": 137,
+    "name": "Spot Mountain - Lost Sheep",
+    "location_plss": null,
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Flourite",
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_perspective",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:21:54.717618+00:00",
+    "updated_at": "2026-03-06 05:21:54.717618+00:00"
+  },
+  {
+    "id": 138,
+    "name": "Red Butte Claims",
+    "location_plss": null,
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:36:24.179473+00:00",
+    "updated_at": "2026-03-06 05:36:24.179473+00:00"
+  },
+  {
+    "id": 139,
+    "name": "Spot Mountain - Lost Sheep",
+    "location_plss": null,
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Flourite",
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_perspective",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:36:24.226967+00:00",
+    "updated_at": "2026-03-06 05:36:24.226967+00:00"
+  },
+  {
+    "id": 140,
+    "name": "Red Butte Claims",
+    "location_plss": null,
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Uranium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_utah_dockets",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:40:28.699865+00:00",
+    "updated_at": "2026-03-06 05:40:28.699865+00:00"
+  },
+  {
+    "id": 141,
+    "name": "Spot Mountain - Lost Sheep",
+    "location_plss": null,
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [
+      "Flourite",
+      "Beryllium"
+    ],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "data_files_perspective",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": 30,
+    "report_links": [],
+    "validity_notes": null,
+    "created_at": "2026-03-06 05:40:28.748456+00:00",
+    "updated_at": "2026-03-06 05:40:28.748456+00:00"
+  },
+  {
+    "id": 142,
+    "name": "Big Pass / Strategic Metals",
+    "location_plss": "T29S R9W Sec 12",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "csv_import",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": null,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 06:01:59.673398+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 143,
+    "name": "Beaver Tungsten Mines",
+    "location_plss": "T28S R8W Sec 30",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "csv_import",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": null,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 06:01:59.707480+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 144,
+    "name": "Scheelite Group",
+    "location_plss": "T28S R8W Sec 29",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "csv_import",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": null,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 06:01:59.736034+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 145,
+    "name": "Molly Group",
+    "location_plss": "T29S R9W Sec 24",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "csv_import",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": null,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 06:01:59.737556+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 146,
+    "name": "2 R\u2019s Mine",
+    "location_plss": "T29S R9W Sec 28",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "csv_import",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": null,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 06:01:59.739197+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 147,
+    "name": "Creole Mine",
+    "location_plss": "T29S R9W Sec 29",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "csv_import",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": null,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 06:01:59.740668+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 148,
+    "name": "Rattler Group",
+    "location_plss": "T28S R8W Sec 31",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "csv_import",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": null,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 06:01:59.742301+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 149,
+    "name": "Pinnacle Group",
+    "location_plss": "T28S R8W Sec 32",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "csv_import",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": null,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 06:01:59.746370+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 150,
+    "name": "Burnt Hollow",
+    "location_plss": "T28S R8W Sec 33",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": null,
+    "meridian": null,
+    "minerals": [],
+    "status": "unknown",
+    "priority": "low",
+    "claim_type": null,
+    "source": "csv_import",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": null,
+    "report_links": [
+      "https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf"
+    ],
+    "validity_notes": null,
+    "created_at": "2026-03-06 06:01:59.749197+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  },
+  {
+    "id": 151,
+    "name": "West Spur Pit -- Yankee Mine",
+    "location_plss": "NV 21N 57E 23",
+    "latitude": null,
+    "longitude": null,
+    "state_abbr": "NV",
+    "meridian": null,
+    "minerals": [],
+    "status": "paid",
+    "priority": "high",
+    "claim_type": null,
+    "source": "manual",
+    "blm_case_url": null,
+    "blm_serial_number": null,
+    "roi_score": null,
+    "report_links": null,
+    "validity_notes": null,
+    "created_at": "2026-03-11 00:03:48.320205+00:00",
+    "updated_at": "2026-03-12 04:44:48.289075+00:00"
+  }
+]

@@ -1,0 +1,469 @@
+County,Docket,Agency,File size,Property name,All commodities,,#,Mine Name,County,Commodity,Approx. Coordinates,Status
+Beaver,262,DMA,11 MB,Horn Silver Mine,Zinc,,1,Horn Silver Mine,Beaver,"Zinc, Silver","38.5136, -113.2622",Inactive
+Beaver,989,DMA,75 MB,Harrinton - Hickory Mine,"Lead-zinc, silver, copper, gold",,2,Harrington-Hickory,Beaver,"Lead-Zinc, Silver","38.3891, -113.1000",Inactive
+Beaver,1853,DMA,10 MB,Harrington Hickory Consolidated,"Lead-zinc, copper",,3,Harrington Hickory Cons.,Beaver,"Lead-Zinc, Copper","38.3891, -113.1000",Inactive
+Beaver,2182,DMEA,59 MB,Monarch & Eureka Mines,"Fluorspar, uranium",,4,Monarch & Eureka,Beaver,"Fluorspar, Uranium","38.2331, -113.5831",Inactive
+Beaver,2710,DMEA,63 MB,Mystery-Sniffer Group,Uranium,,5,Mystery-Sniffer Group,Beaver,Uranium,"38.4167, -112.5333",Inactive
+Beaver,2761,DMEA,4 MB,North Creek Area,Uranium,,6,North Creek Area,Beaver,Uranium,"38.3225, -112.5650",Inactive
+Beaver,4228,DMEA,55 MB,Wah Wah Mine,Lead-zinc,,7,Wah Wah Mine,Beaver,Lead-Zinc,"38.4611, -113.5222",Inactive
+Beaver,4815,DMEA,12 MB,Mystery Sniffer Claims,Uranium,,8,Mystery Sniffer Claims,Beaver,Uranium,"38.4167, -112.5333",Inactive
+Beaver,4934,DMEA,<1 MB,Mt. Baldy Mining District,Uranium,,9,Mt. Baldy District,Beaver,Uranium,"38.3840, -112.3810",Inactive
+Beaver,6009,OME,9 MB,Laura Mae Claims,"Uranium, cobalt",,10,Laura Mae Claims,Beaver,"Uranium, Cobalt","38.4150, -112.5350",Inactive
+Beaver,6098,OME,<1 MB,Creole Mine,"Copper, zinc",,11,Creole Mine (6098),Beaver,"Copper, Zinc","38.2629, -112.8885",Inactive
+Beaver,6105,OME,3 MB,Creole Mine,"Lead-zinc, copper, bismuth",,12,Creole Mine (6105),Beaver,"Lead-Zinc, Copper","38.2629, -112.8885",Inactive
+Beaver,6529,OME,11 MB,Tintic Lead Co. Lease,Silver,,13,Tintic Lead Co. Lease,Beaver,Silver,"38.3900, -113.1000",Inactive
+Box Elder,205,DMA,<1 MB,None identified,"Lead, zinc",,14,None Identified (205),Box Elder,Lead-Zinc,Unknown,Unknown
+Box Elder,2514,DMEA,8 MB,Lone Pine Mine,Tungsten,,15,Lone Pine Mine,Box Elder,Tungsten,"41.7600, -113.5200",Inactive
+Box Elder,6150,OME,1 MB,"Sec.13.T8N,R2W.",Iron,,16,"Sec.13, T8N, R2W",Box Elder,Iron,"41.4280, -112.0430",Inactive
+Box Elder,6404,OME,<1 MB,Linzy Pines Group of Claims,"Silver, gold",,17,Linzy Pines Group,Box Elder,"Silver, Gold","41.8667, -113.5000",Inactive
+Box Elder,6452,OME,119 MB,Vipont Property,Silver,,18,Vipont Property,Box Elder,Silver,"41.9700, -113.6800",Inactive
+Box Elder,6513,OME,8 MB,State School Lease and Mogul Claims,Silver,,19,State School / Mogul,Box Elder,Silver,"41.3400, -113.9100",Inactive
+Box Elder,6732,OME,8 MB,Lucin Mining District,Silver,,20,Lucin Mining District,Box Elder,Silver,"41.3420, -113.9110",Abandoned
+Cache,3140,DMEA,3 MB,Helen Claims,Manganese,,21,Helen Claims,Cache,Manganese,"41.4297, -111.7867",Inactive
+Daggett,1479,DMA,16 MB,Yellow Canary Lode,"Uranium, vanadium",,22,Yellow Canary Lode,Daggett,Uranium,"40.9200, -109.5800",Inactive
+Daggett,4706,DMEA,2 MB,Triad Mining Group,Manganese,,23,Triad Mining Group,Daggett,Manganese,"40.9000, -109.6000",Inactive
+Duchesne,1037,DMA,1 MB,McClements Mine,"Lead-zinc, copper",,24,McClements Mine,Duchesne,"Lead-Zinc, Copper","40.5053, -110.7769",Inactive
+Emery,1631,DMA,87 MB,Bow Knot Bend Area,Uranium,,25,Bow Knot Bend Area,Emery,Uranium,"38.5460, -110.1550",Inactive
+Emery,2689,DMEA,20 MB,Chute Canyon Mines,Uranium,,26,Chute Canyon Mines,Emery,Uranium,"38.7420, -110.7890",Inactive
+Emery,2776,DMEA,21 MB,Blue Bird Claims,Uranium,,27,Blue Bird Claims,Emery,Uranium,"38.5608, -110.9563",Inactive
+Emery,3002,DMEA,3 MB,Lone Tree Claims,Uranium,,28,Lone Tree Claims,Emery,Uranium,"39.0431, -110.6956",Inactive
+Emery,3056,DMEA,11 MB,Spotted Wolf Claims No. 1 & 2,Uranium,,29,Spotted Wolf Claims,Emery,Uranium,"38.9710, -110.4220",Inactive
+Emery,3058,DMEA,6 MB,Discovery and Morrison Claim Groups,Uranium,,30,Discovery/Morrison,Emery,Uranium,"38.9800, -110.1500",Inactive
+Emery,3206,DMEA,2 MB,Conrad Claims,Uranium,,31,Conrad Claims,Emery,Uranium,"38.8310, -110.8710",Inactive
+Emery,3503,DMEA,24 MB,Vanadium King Claims,Uranium,,32,Vanadium King Claims,Emery,Uranium,"38.6520, -110.7420",Inactive
+Emery,3553,DMEA,77 MB,Ryan Group of Claims,Uranium,,33,Ryan Group of Claims,Emery,Uranium,"38.5000, -110.0000",Inactive
+Emery,3597,DMEA,8 MB,Cedar Ridge and Blackbird Group of Claims,Uranium,,34,Cedar Ridge/Blackbird,Emery,Uranium,"38.8000, -110.6000",Inactive
+Emery,3620,DMEA,67 MB,"Dede, et al. Claims",Uranium,,35,"Dede, et al. Claims",Emery,Uranium,"38.6000, -110.8000",Inactive
+Emery,3652,DMEA,3 MB,None Specified,Uranium,,36,None Specified (3652),Emery,Uranium,Unknown,Inactive
+Emery,3681,DMEA,5 MB,"Sec.36, T21S., R14E.",Uranium,,37,"Sec.36, T21S, R14E",Emery,Uranium,"38.9740, -110.3220",Inactive
+Emery,3730,DMEA,52 MB,Ouray Ventures Property,Uranium,,38,Ouray Ventures,Emery,Uranium,"38.9700, -110.1600",Inactive
+Emery,3761,DMEA,11 MB,"Thunderbird , et al., claims",Uranium,,39,"Thunderbird, et al.",Emery,Uranium,"38.9000, -110.2000",Inactive
+Emery,3767,DMEA,97 MB,Jack Rabbit No. 1-6 Claims,Uranium,,40,Jack Rabbit 1-6,Emery,Uranium,"38.9720, -110.3550",Inactive
+Emery,3841,DMEA,26 MB,"Little Susan,A & G, and Green Dragon Mines",Uranium,,41,Little Susan Group,Emery,Uranium,"38.5866, -110.9949",Inactive
+Emery,3871,DMEA,39 MB,"Bi-Valve Claims, et al.",Uranium,,42,Bi-Valve Claims,Emery,Uranium,"38.9810, -110.1510",Inactive
+Emery,3883,DMEA,14 MB,Sunlight Claims,Uranium,,43,Sunlight Claims,Emery,Uranium,"38.9100, -110.7000",Inactive
+Emery,3897,DMEA,37 MB,Beth Claims,Uranium,,44,Beth Claims,Emery,Uranium,"38.8200, -110.5100",Inactive
+Emery,3928,DMEA,80 MB,Green River Claims,Uranium,,45,Green River Claims,Emery,Uranium,"38.9800, -110.1500",Inactive
+Emery,3984,DMEA,29 MB,Desert Queen Mine and State Lease,Uranium,,46,Desert Queen Mine,Emery,Uranium,"38.9700, -110.1400",Inactive
+Emery,4054,DMEA,13 MB,Horsethief Canyon Property,Uranium,,47,Horsethief Canyon,Emery,Uranium,"38.5286, -109.9836",Inactive
+Emery,4108,DMEA,4 MB,Mexican Seep Claims,Uranium,,48,Mexican Seep Claims,Emery,Uranium,"38.9000, -110.8000",Inactive
+Emery,4160,DMEA,3 MB,"Taft, et al., Claims",Uranium,,49,"Taft, et al. Claims",Emery,Uranium,"38.9100, -110.7100",Inactive
+Emery,4201,DMEA,88 MB,Dirty Devil Mine,Uranium,,50,Dirty Devil Mine,Emery,Uranium,"38.2900, -110.5100",Inactive
+Emery,4210,DMEA,12 MB,North Slope and Oral Claim Groups,Uranium,,#,Mine/Property Name,County,Commodity,Approx. Coordinates,Status
+Emery,4244,DMEA,37 MB,Red Butte Claims,Uranium,,,,,,,
+Emery,4321,DMEA,5 MB,Headache and Sage Groups,Uranium,,51,Headache and Sage Groups,Emery,Uranium,"38.6830, -110.6720",Inactive
+Emery,4584,DMEA,102 MB,"Vanura 2, et al., Claims",Uranium,,52,"Vanura 2, et al.",Emery,Uranium,"38.6510, -110.6750",Inactive
+Emery,4596,DMEA,3 MB,D & R Claims,Uranium,,53,D & R Claims,Emery,Uranium,"38.7420, -110.6810",Inactive
+Emery,4667,DMEA,5 MB,Cross Bow and Conrad Claims,Uranium,,54,Cross Bow and Conrad,Emery,Uranium,"38.8310, -110.8710",Inactive
+Emery,4672,DMEA,2 MB,"Stormy Weather, et al., Claims",Uranium,,55,Stormy Weather Claims,Emery,Uranium,"38.6840, -110.6700",Inactive
+Emery,4691,DMEA,4 MB,"Atom, et al., Claims",Uranium,,56,"Atom, et al., Claims",Emery,Uranium,"38.7050, -110.6520",Inactive
+Emery,4700,DMEA,7 MB,Daisy Group,Uranium,,57,Daisy Group,Emery,Uranium,"38.9800, -110.1500",Inactive
+Emery,4731,DMEA,2 MB,Doughboy Claims,Uranium,,58,Doughboy Claims,Emery,Uranium,"38.7420, -110.7890",Inactive
+Emery,4745,DMEA,5 MB,Headache & Sage Claims,Uranium,,59,Headache & Sage Claims,Emery,Uranium,"38.6830, -110.6720",Inactive
+Emery,4816,DMEA,3 MB,"Rachele, et al., Claims",Uranium,,60,"Rachele, et al., Claims",Emery,Uranium,"39.0540, -110.3520",Inactive
+Emery,4875,DMEA,3 MB,Lucky Thirteen Uranium Claims,Uranium,,61,Lucky Thirteen Claims,Emery,Uranium,"38.9710, -110.3220",Inactive
+Emery,4916,DMEA,8 MB,"Valley View, et al., Claims",Uranium,,62,"Valley View, et al.",Emery,Uranium,"38.9550, -110.3550",Inactive
+Emery,6758,OME,52 MB,Blue Nose and Interstate Claims,Uranium,,63,Blue Nose and Interstate,Emery,Uranium,"38.9800, -110.1500",Inactive
+Garfield,1301,DMA,3 MB,Dual No. 1 thru 14 & Harris Wash No. 1,Manganese,,64,Dual / Harris Wash,Garfield,Manganese,"37.6660, -111.2330",Inactive
+Garfield,1478,DMA,27 MB,"Horse Canyon No. 1, Silver Fall 1 & 2",Uranium,,65,Horse Canyon No. 1,Garfield,Uranium,"37.8869, -111.2333",Inactive
+Garfield,1685,DMA,176 MB,Happy Canyon & Hatch Canyon,Uranium,,66,Happy / Hatch Canyon,Garfield,Uranium,"38.1620, -110.2550",Inactive
+Garfield,1879,DMA,25 MB,Harris Wash,Manganese,,67,Harris Wash,Garfield,Manganese,"37.6660, -111.2330",Inactive
+Garfield,2371,DMEA,27 MB,Widow Mining Claims,Uranium,,68,Widow Mining Claims,Garfield,Uranium,"37.6720, -111.2010",Inactive
+Garfield,2543,DMEA,22 MB,Henry Mtns District,Uranium,,69,Henry Mtns District,Garfield,Uranium,"38.0000, -110.7500",District
+Garfield,3067,DMEA,5 MB,Yellow Nat Claim,Uranium,,70,Yellow Nat Claim,Garfield,Uranium,"37.8010, -111.1520",Inactive
+Garfield,3115,DMEA,2 MB,Walter and Willie Claims,Uranium,,71,Walter and Willie,Garfield,Uranium,"38.1850, -110.4550",Inactive
+Garfield,3220,DMEA,1 MB,None identifed,Uranium,,72,None Identified (3220),Garfield,Uranium,"37.8300, -111.1600",Unknown
+Garfield,3234,DMEA,2 MB,Dirty Shame,Uranium,,73,Dirty Shame,Garfield,Uranium,"37.7550, -111.1020",Inactive
+Garfield,3384,DMEA,7 MB,None identified,Uranium,,74,None Identified (3384),Garfield,Uranium,"37.8300, -111.1600",Unknown
+Garfield,3493,DMEA,13 MB,Dream Group of Claims,Uranium,,75,Dream Group of Claims,Garfield,Uranium,"38.1520, -110.7520",Inactive
+Garfield,3580,DMEA,3 MB,"Buckhorn,Yoyo, and Mary Claims",Uranium,,76,"Buckhorn, Yoyo, Mary",Garfield,Uranium,"38.1520, -110.7520",Inactive
+Garfield,3588,DMEA,9 MB,Circle Cliffs Area,Uranium,,77,Circle Cliffs Area,Garfield,Uranium,"37.8300, -111.1600",District
+Garfield,3690,DMEA,11 MB,Woodlot-Devils Furnace Claims,Uranium,,78,Woodlot-Devils Furnace,Garfield,Uranium,"38.2010, -110.8020",Inactive
+Garfield,3700,DMEA,27 MB,Del Monte Group,Uranium,,79,Del Monte Group,Garfield,Uranium,"38.0550, -110.6550",Inactive
+Garfield,3766,DMEA,16 MB,Honey Pot Project,Uranium,,80,Honey Pot Project,Garfield,Uranium,"38.1810, -110.8250",Inactive
+Garfield,3892,DMEA,14 MB,Burr J. & Twist Groups,Uranium,,81,Burr J. & Twist Groups,Garfield,Uranium,"37.9520, -110.8520",Inactive
+Garfield,3902,DMEA,10 MB,Butte Lizard and Fossil Groups,Uranium,,82,Butte Lizard / Fossil,Garfield,Uranium,"38.0550, -110.7550",Inactive
+Garfield,3961,DMEA,18 MB,Ellen and Pennell Claim Groups,Uranium,,83,Ellen and Pennell,Garfield,Uranium,"38.1020, -110.8010",Inactive
+Garfield,4061,DMEA,16 MB,Cliff Claims,Uranium,,84,Cliff Claims,Garfield,Uranium,"38.1520, -110.7850",Inactive
+Garfield,4135,DMEA,10 MB,"Eureka Claims, etal.",Uranium,,85,"Eureka Claims, et al.",Garfield,Uranium,"38.1810, -110.8020",Inactive
+Garfield,4212,DMEA,14 MB,Mt. Hillers Property,Uranium,,86,Mt. Hillers Property,Garfield,Uranium,"37.9850, -110.6550",Inactive
+Garfield,4288,DMEA,11 MB,ML-7421,Uranium,,87,ML-7421,Garfield,Uranium,"38.0000, -110.7500",Inactive
+Garfield,4429,DMEA,19 MB,"Canyon Claim Group, et al.",Uranium,,88,Canyon Claim Group,Garfield,Uranium,"37.9550, -110.7550",Inactive
+Garfield,4559,DMEA,15 MB,"Ann Claim Group, et al.",Uranium,,89,Ann Claim Group,Garfield,Uranium,"37.9550, -110.7550",Inactive
+Garfield,4834,DMEA,3 MB,"G.H.T., et al., Claims",Uranium,,90,"G.H.T., et al., Claims",Garfield,Uranium,"37.9520, -110.5550",Inactive
+Garfield,6623,OME,1 MB,Gandy Dancer Claims,"Silver, copper, gold, mercury",,91,Gandy Dancer Claims,Garfield,"Ag, Cu, Au, Hg","38.0250, -110.6820",Inactive
+Grand,1568,DMA,4 MB,Mary Agnes & Morie R. Claims,Tungsten,,92,Mary Agnes / Morie R.,Grand,Tungsten,"38.6510, -109.1020",Inactive
+Grand,1896,DMA,95 MB,Spring Canyon -Bow Knot Bend Area,Uranium,,93,Spring Canyon Area,Grand,Uranium,"38.5460, -110.1550",Inactive
+Grand,2446,DMEA,92 MB,Corvusite Mine,Uranium,,94,Corvusite Mine,Grand,Uranium,"38.6167, -109.0833",Inactive
+Grand,2534,DMEA,5 MB,Juanita Group,Uranium,,95,Juanita Group,Grand,Uranium,"38.7550, -109.2550",Inactive
+Grand,2591,DMEA,6 MB,Seven Mile Area Claims,Uranium,,96,Seven Mile Area,Grand,Uranium,"38.6800, -109.7200",Inactive
+Grand,2594,DMEA,2 MB,Pine Tree Claims,Uranium,,97,Pine Tree Claims,Grand,Uranium,"38.6810, -109.7150",Inactive
+Grand,2656,DMEA,7 MB,Seven Mile District,Uranium,,98,Seven Mile District,Grand,Uranium,"38.6800, -109.7100",Inactive
+Grand,2703,DMEA,4 MB,Calderwood Claims,Uranium,,99,Calderwood Claims,Grand,Uranium,"38.8550, -109.3520",Inactive
+Grand,2970,DMEA,3 MB,Horsethief Nos. 3 & 4 Claims,Uranium,,100,Horsethief Claims,Grand,Uranium,"38.5286, -109.9836",Inactive
+Grand,2978,DMEA,1 MB,Klondike Group,Uranium,,101,Klondike Group,Grand,Uranium,"38.8500, -109.3550",Inactive
+Grand,3060,DMEA,66 MB,Shinarump Claims,Uranium,,102,Shinarump Claims,Grand,Uranium,"38.6667, -109.6333",Inactive
+Grand,3164,DMEA,5 MB,Blue Chief Mesa Claims,Uranium,,103,Blue Chief Mesa Claims,Grand,Uranium,"38.5820, -109.1550",Inactive
+Grand,3281,DMEA,23 MB,Last Chance and Ring Cone Claims,Uranium,,104,Last Chance & Ring Cone,Grand,Uranium,"38.6550, -109.2550",Inactive
+Grand,3353,DMEA,12 MB,Dewey Rim Mining Claims,Uranium,,105,Dewey Rim Claims,Grand,Uranium,"38.8120, -109.3020",Inactive
+Grand,3358,DMEA,9 MB,Arrow Smith and Slide Claims,"Uranium, cobalt",,106,Arrow Smith & Slide,Grand,"Uranium, Cobalt","38.8050, -109.2850",Inactive
+Grand,3360,DMEA,74 MB,None identified,Uranium,,107,None Identified (3360),Grand,Uranium,"38.7500, -109.5000",Unknown
+Grand,3471,DMEA,12 MB,"Mile High Security, et al. Claims",Uranium,,108,Mile High Security,Grand,Uranium,"38.8550, -109.3820",Inactive
+Grand,3490,DMEA,15 MB,U-V and Elk Van Claims,Uranium,,109,U-V & Elk Van Claims,Grand,Uranium,"38.8820, -109.4520",Inactive
+Grand,3514,DMEA,150 MB,"La Sal and Bonanza Claims, et al.",Uranium,,110,La Sal and Bonanza,Grand,Uranium,"38.3120, -109.2550",Inactive/Standby
+Grand,3531,DMEA,9 MB,Dewey and S La Sal Prospects,Uranium,,111,Dewey & S La Sal,Grand,Uranium,"38.8100, -109.3000",Inactive
+Grand,3593,DMEA,28 MB,Primero and Derecho claim groups,Uranium,,112,Primero & Derecho,Grand,Uranium,"38.8450, -109.4220",Inactive
+Grand,3613,DMEA,50 MB,Lease on Copper No.2 and Copper No. 28 Claims,Uranium,,113,Copper No.2 & No.28,Grand,Uranium,"38.7250, -109.1550",Inactive
+Grand,3640,DMEA,5 MB,Joy Group of Claims,Uranium,,114,Joy Group of Claims,Grand,Uranium,"38.8150, -109.3520",Inactive
+Grand,3660,DMEA,80 MB,Pond ans Shubert Groups,Uranium,,115,Pond & Shubert Groups,Grand,Uranium,"38.8350, -109.4120",Inactive
+Grand,3665,DMEA,10 MB,"Jim, Mike, and Star claim group",Uranium,,116,"Jim, Mike, & Star",Grand,Uranium,"38.8420, -109.4050",Inactive
+Grand,3675,DMEA,52 MB,Yellow Bird Claims,Uranium,,117,Yellow Bird Claims,Grand,Uranium,"38.8320, -109.3950",Inactive
+Grand,3732,DMEA,21 MB,"Klondike, et al., Claims",Uranium,,118,"Klondike, et al.",Grand,Uranium,"38.8500, -109.3550",Inactive
+Grand,3791,DMEA,144 MB,Big Flat Area,Uranium,,119,Big Flat Area,Grand,Uranium,"38.4850, -109.8220",Inactive
+Grand,3829,DMEA,17 MB,"Red Claims, et al.",Uranium,,120,"Red Claims, et al.",Grand,Uranium,"38.8250, -109.3850",Inactive
+Grand,3843,DMEA,8 MB,Mac & Wilkins Claims,Uranium,,121,Mac & Wilkins Claims,Grand,Uranium,"38.8450, -109.4120",Inactive
+Grand,3845,DMEA,2 MB,School Section 36,Uranium,,122,School Section 36,Grand,Uranium,"38.8520, -109.3550",Inactive
+Grand,3857,DMEA,30 MB,L & H Mine,Uranium,,123,L & H Mine,Grand,Uranium,"38.7550, -109.2820",Inactive
+Grand,3962,DMEA,62 MB,Utah Mineral Lease No. 3971,Uranium,,124,State Lease No. 3971,Grand,Uranium,"38.8500, -109.4000",Inactive
+Grand,4031,DMEA,8 MB,"Bear Point No. 1, et al, Calims",Uranium,,125,Bear Point No. 1,Grand,Uranium,"38.8450, -109.4250",Inactive
+Grand,4043,DMEA,5 MB,Lucky Boy and Scat Claims,Uranium,,126,Lucky Boy & Scat,Grand,Uranium,"38.8320, -109.4120",Inactive
+Grand,4149,DMEA,13 MB,Hope Group,Uranium,,127,Hope Group,Grand,Uranium,"38.8250, -109.4000",Inactive
+Grand,4167,DMEA,18 MB,John Group,Uranium,,128,John Group,Grand,Uranium,"38.8420, -109.3950",Inactive
+Grand,4316,DMEA,4 MB,Polecat Claims,Uranium,,129,Polecat Claims,Grand,Uranium,"38.8550, -109.4520",Inactive
+Grand,4518,DMEA,5 MB,Golden West Property,Uranium,,130,Golden West Property,Grand,Uranium,"38.8350, -109.3850",Inactive
+Grand,4557,DMEA,3 MB,"Little Sqwaw, et al., Groups",Uranium,,131,Little Sqwaw Group,Grand,Uranium,"38.8420, -109.4020",Inactive
+Grand,4566,DMEA,5 MB,Edna Claims,Uranium,,132,Edna Claims,Grand,Uranium,"38.8350, -109.3750",Inactive
+Grand,4638,DMEA,4 MB,"Toby, et al., Claims",Uranium,,133,"Toby, et al., Claims",Grand,Uranium,"38.8250, -109.3650",Inactive
+Grand,4657,DMEA,6 MB,Yellow Cat & Tim Groups,Uranium,,134,Yellow Cat & Tim,Grand,Uranium,"38.8480, -109.5280",Inactive
+Grand,4664,DMEA,4 MB,John Group of Claims,Uranium,,135,John Group (4664),Grand,Uranium,"38.8420, -109.4020",Inactive
+Grand,5064,DMEA,12 MB,Aldridge Property,Uranium,,136,Aldridge Property,Grand,Uranium,"38.8150, -109.3550",Inactive
+Grand,5066,DMEA,14 MB,Cane Creek Moab Area,Uranium,,137,Cane Creek Moab Area,Grand,Uranium,"38.4720, -109.6120",Inactive
+Grand,6063,OME,<1 MB,"Valley View, Et al., Claims",Uranium,,138,"Valley View, et al.",Grand,Uranium,"38.8550, -109.4120",Inactive
+Iron,591,DMA,23 MB,Sunken Basins,"Iron, gold, molybdenum, manganese, nickel, platinum",,139,Sunken Basins,Iron,"Fe, Au, Mo, Mn","37.7680, -112.9841",Inactive
+Iron,1578,DMA,3 MB,McCahill Group,Iron,,140,McCahill Group,Iron,Iron,"37.7020, -113.3550",Inactive
+Iron,4195,DMEA,6 MB,Highland Claims,Copper,,141,Highland Claims,Iron,Copper,"37.8520, -113.1550",Inactive
+Iron,4250,DMEA,9 MB,"Hot Spot Claim, et al.",Uranium,,142,Hot Spot Claim,Iron,Uranium,"37.9550, -113.2520",Inactive
+Iron,4571,DMEA,11 MB,Cina Mine Claims,Mercury,,143,Cina Mine Claims,Iron,Mercury,"37.6520, -113.0550",Inactive
+Iron,4628,DMEA,13 MB,New Arrowhead Claims,Lead-zinc,,144,New Arrowhead,Iron,"Lead, Zinc","37.9820, -113.4520",Inactive
+Iron,6260,OME,3 MB,Skougard Property,Silver,,145,Skougard Property,Iron,Silver,"37.8120, -113.5220",Inactive
+Iron,6373,OME,35 MB,Escalante Silver Mines,Silver,,146,Escalante Silver Mines,Iron,Silver,"37.8140, -113.5180",Inactive
+Iron,6760,OME,14 MB,Metal Enterprise Co.,Silver,,147,Metal Enterprise Co.,Iron,Silver,"37.8200, -113.5250",Inactive
+Juab,1,DMA,276 MB,Chief Consolidated Mines,"Lead-zinc, gold, silver, copper",,148,Chief Consolidated,Juab,"Pb, Zn, Au, Ag","39.9508, -112.1181",Inactive
+Juab,127,DMA,4 MB,Nebo Iris Mine,Lead-zinc,,149,Nebo Iris Mine,Juab,"Lead, Zinc","39.8550, -111.7550",Inactive
+Juab,234,DMA,9 MB,Eva Mine,"Lead-zinc, silver",,150,Eva Mine,Juab,"Pb, Zn, Ag","39.8638, -111.7688",Inactive
+Juab,839,DMA,9 MB,Tinitic Outpost Mining Co. property,"Lead-zinc, silver, gold",,1,Tinitic Outpost Mining Co. property,Juab,"Pb, Zn, Ag, Au","39.840, -112.393",Inactive
+Juab,1401,DMA,10 MB,Wilson Mining Company,"Lead, silver, zinc, sulphur, iron, lime",,2,Wilson Mining Company,Juab,"Pb, Ag, Zn, S, Fe, Lime","39.925, -112.115",Inactive
+Juab,1408,DMA,5 MB,Sunbeam Claims,Uranium,,3,Sunbeam Claims,Juab,Uranium,"39.875, -112.145",Inactive
+Juab,1615,DMA,11 MB,Della,"Copper, lead, gold, silver",,4,Della,Juab,"Cu, Pb, Au, Ag","39.952, -112.112",Inactive
+Juab,1731,DMA,13 MB,Spider Claim Group,Uranium,,5,Spider Claim Group,Juab,Uranium,"39.735, -113.212",Inactive
+Juab,2046,DMA,14 MB,Goshute Indian Reservation,Quartz,,6,Goshute Indian Reservation,Juab,Quartz,"39.905, -114.015",Inactive
+Juab,2136,DMA,19 MB,Apex Tungsten Mine,Tungsten,,7,Apex Tungsten Mine,Juab,Tungsten,"39.812, -112.355",Inactive
+Juab,2672,DMEA,20 MB,Evelyn Mine,Lead,,8,Evelyn Mine,Juab,Lead,"39.855, -112.392",Inactive
+Juab,2777,DMEA,1 MB,Dyke Claims,"Gold, silver, copper",,9,Dyke Claims,Juab,"Au, Ag, Cu","39.852, -112.385",Inactive
+Juab,2845,DMEA,3 MB,Pink Lady Claims,Manganese,,10,Pink Lady Claims,Juab,Manganese,"39.635, -112.425",Inactive
+Juab,3159,DMEA,11 MB,Trout Creek Mine,Tungsten,,11,Trout Creek Mine,Juab,Tungsten,"39.785, -113.842",Inactive
+Juab,3214,DMEA,5 MB,Orme Manganese Property,Manganese,,12,Orme Manganese Property,Juab,Manganese,"39.712, -112.285",Inactive
+Juab,3704,DMEA,10 MB,Eagle Rock Claims,"Uranium, rare earths",,13,Eagle Rock Claims,Juab,"Uranium, Rare Earths","39.822, -112.165",Inactive
+Juab,3800,DMEA,47 MB,Black Jack Mine,Tungsten,,14,Black Jack Mine,Juab,Tungsten,"39.815, -112.352",Inactive
+Juab,4242,DMEA,28 MB,Privateer Mine,Lead-zinc,,15,Privateer Mine,Juab,"Pb, Zn","39.922, -112.125",Inactive
+Juab,4404,DMEA,10 MB,Sunbeam Mine,"Copper, lead, zinc",,16,Sunbeam Mine (Juab 4404),Juab,"Cu, Pb, Zn","39.885, -112.115",Inactive
+Juab,4653,DMEA,32 MB,Sunbeam Mine,"Lead-zinc, copper",,17,Sunbeam Mine (Juab 4653),Juab,"Pb, Zn, Cu","39.882, -112.112",Inactive
+Juab,5004,DMEA,11 MB,Iron Blossom No. 1 Mine,"Lead, copper",,18,Iron Blossom No. 1 Mine,Juab,"Pb, Cu","39.918, -112.095",Inactive
+Juab,6015,OME,31 MB,Iron Blossom Mine,"Lead, copper",,19,Iron Blossom Mine,Juab,"Pb, Cu","39.920, -112.092",Inactive
+Juab,6066,OME,1 MB,White Cloud Claims,Copper,,20,White Cloud Claims,Juab,Copper,"39.955, -112.115",Inactive
+Juab,6067,OME,60 MB,Bullion Beck Mine,"Lead-zinc, copper",,21,Bullion Beck Mine,Juab,"Pb, Zn, Cu","39.952, -112.125",Inactive
+Juab,6094,OME,16 MB,Whitelock Claims,Beryl,,22,Whitelock Claims,Juab,Beryl,"39.732, -113.225",Inactive
+Juab,6106,OME,2 MB,Jeannie and Bell Hill Claims,Beryllium,,23,Jeannie and Bell Hill Claims,Juab,Beryllium,"39.735, -113.208",Inactive
+Juab,6159,OME,7 MB,Topaz Mountain Properties,Beryllium,,24,Topaz Mountain Properties,Juab,Beryllium,"39.715, -113.112",Active/Rec
+Juab,6325,OME,5 MB,Topaz Mountain,Beryllium,,25,Topaz Mountain,Juab,Beryllium,"39.709, -113.104",Active/Rec
+Juab,6514,OME,19 MB,Mammoth Mine,"Silver, gold",,26,Mammoth Mine,Juab,"Ag, Au","39.923, -112.114",Inactive
+Juab,6646,OME,118 MB,Crown Point and East Crown Point Claims,Silver,,27,Crown Point / East Crown Point,Juab,Silver,"39.925, -112.085",Inactive
+Juab,6721,OME,1 MB,Utah Mine,Silver,,28,Utah Mine,Juab,Silver,"39.855, -113.805",Inactive
+Kane,2378,DMEA,33 MB,Lynn Mining Claims,Uranium,,29,Lynn Mining Claims,Kane,Uranium,"37.155, -111.955",Inactive
+Kane,3470,DMEA,5 MB,Candy Cane Group,Uranium,,30,Candy Cane Group,Kane,Uranium,"37.165, -111.965",Inactive
+Kane,3653,DMEA,6 MB,"Buckskin Group of Claims, et al.",Uranium,,31,Buckskin Group of Claims,Kane,Uranium,"37.105, -112.015",Inactive
+Kane,3900,DMEA,3 MB,Bounty Claims,Uranium,,32,Bounty Claims,Kane,Uranium,"37.205, -112.085",Inactive
+Millard,1451,DMA,5 MB,Cricket Lime and Dolomite,"Manganese, calcium, limestone",,33,Cricket Lime and Dolomite,Millard,"Mn, Ca, Limestone","38.985, -112.835",Active
+Millard,1575,DMA,14 MB,Queen of Hills Mine,Tungsten,,34,Queen of Hills Mine,Millard,Tungsten,"38.925, -113.435",Inactive
+Millard,1745,DMA,2 MB,None identified,Tungsten,,35,None identified (Millard 1745),Millard,Tungsten,"39.215, -113.315",Inactive
+Millard,1906,DMA,68 MB,Mine,Tungsten,,36,Mine (Millard 1906),Millard,Tungsten,"39.225, -113.325",Inactive
+Millard,2190,DMA,3 MB,Blue Juniper Copper Mine,Copper,,37,Blue Juniper Copper Mine,Millard,Copper,"38.905, -112.155",Inactive
+Millard,2606,DMEA,2 MB,Eleven O'Clock Claims,Tungsten,,38,Eleven O'Clock Claims,Millard,Tungsten,"38.942, -113.432",Inactive
+Millard,2825,DMEA,43 MB,New Klondike Mine,Tungsten,,39,New Klondike Mine (2825),Millard,Tungsten,"38.945, -113.435",Inactive
+Millard,2912,DMEA,2 MB,Eddy Group of Claims,"Tungsten, cobalt",,40,Eddy Group of Claims,Millard,"Tungsten, Cobalt","39.222, -113.355",Inactive
+Millard,3235,DMEA,31 MB,Brown Queen Claims,Tungsten,,41,Brown Queen Claims,Millard,Tungsten,"38.932, -113.435",Inactive
+Millard,4651,DMEA,9 MB,New Klondike Mine,Tungsten,,42,New Klondike Mine (4651),Millard,Tungsten,"38.948, -113.438",Inactive
+Millard,4677,DMEA,6 MB,Copper King & Eagle Point Claims,Tungsten,,43,Copper King & Eagle Point,Millard,Tungsten,"38.955, -113.455",Inactive
+Millard,6683,OME,1 MB,Long Ridge No.1 & 2 Claims,Manganese,,44,Long Ridge No.1 & 2 Claims,Millard,Manganese,"39.555, -111.925",Inactive
+Millard,6832,OME,6 MB,Urba & Moriah Claims,"Antimony, silver",,45,Urba & Moriah Claims,Millard,"Antimony, Silver","38.855, -113.625",Inactive
+Morgan,6052,OME,3 MB,Arthur Fork Property,Uranium,,46,Arthur Fork Property,Morgan,Uranium,"41.152, -111.655",Inactive
+Piute,1233,DMA,4 MB,Pine Canyon Mine,"Corundum, kyanite",,47,Pine Canyon Mine,Piute,"Corundum, Kyanite","38.485, -112.255",Inactive
+Piute,1443,DMA,4 MB,Plumbic Mines,Uranium,,48,Plumbic Mines,Piute,Uranium,"38.495, -112.215",Inactive
+Piute,1743,DMA,35 MB,Royston Coalition Mine,Uranium,,49,Royston Coalition Mine,Piute,Uranium,"38.475, -112.225",Inactive
+Piute,1874,DMA,29 MB,Mineral Hills Group,"Uranium, iron",,50,Mineral Hills Group,Piute,"Uranium, Iron","38.482, -112.212",Inactive
+Piute,1968,DMA,83 MB,Holmes Property,Uranium,,51,Holmes Property,Piute,Uranium,"38.483, -112.218",Inactive
+Piute,2135,DMA,89 MB,Buddy & Freedom No. 2,Uranium,,52,Buddy & Freedom No. 2,Piute,Uranium,"38.481, -112.214",Inactive
+Piute,2271,DMEA,42 MB,J. D. G. Mine,Uranium,,53,J. D. G. Mine,Piute,Uranium,"38.475, -112.235",Inactive
+Piute,2385,DMEA,58 MB,Bullion Monarch Mine,Uranium,,54,Bullion Monarch Mine,Piute,Uranium,"38.472, -112.231",Inactive
+Piute,2418,DMEA,24 MB,Deer Tail Mines,Mercury,,55,Deer Tail Mines,Piute,Mercury,"38.419, -112.272",Inactive
+Piute,2573,DMEA,81 MB,"Glenn Mine, Potts Fraction",Uranium,,56,"Glenn Mine, Potts Fraction",Piute,Uranium,"38.485, -112.205",Inactive
+Piute,2787,DMEA,3 MB,East Slope Mine Claims,Uranium,,57,East Slope Mine Claims,Piute,Uranium,"38.490, -112.195",Inactive
+Piute,2842,DMEA,37 MB,"Benny ""K"" & Scorpion Claims",Uranium,,58,"Benny ""K"" & Scorpion Claims",Piute,Uranium,"38.495, -112.215",Inactive
+Piute,3165,DMEA,2 MB,Alunite King Claims,Uranium,,59,Alunite King Claims,Piute,Uranium,"38.442, -112.255",Inactive
+Piute,3862,DMEA,17 MB,Paramount Aubert Shaft,Uranium,,60,Paramount Aubert Shaft,Piute,Uranium,"38.485, -112.215",Inactive
+Piute,4265,DMEA,3 MB,Canary Claims,Uranium,,61,Canary Claims,Piute,Uranium,"38.492, -112.202",Inactive
+Rich,6069,OME,6 MB,Lakeview Manganese Mine,Manganese,,62,Lakeview Manganese Mine,Rich,Manganese,"41.865, -111.385",Inactive
+Salt Lake,187,DMA,1 MB,Columbus Rexall Mine,Lead-zinc,,63,Columbus Rexall Mine,Salt Lake,Lead-Zinc,"40.590, -111.641",Inactive
+Salt Lake,288,DMA,19 MB,Mountain Mines,"Lead-zinc, gold, silver, copper",,64,Mountain Mines,Salt Lake,"Pb, Zn, Au, Ag, Cu","40.595, -111.632",Inactive
+Salt Lake,560,DMA,38 MB,South Price Mine,"Lead, zinc, copper, silver",,65,South Price Mine,Salt Lake,"Pb, Zn, Cu, Ag","40.588, -111.615",Inactive
+Salt Lake,1098,DMA,117 MB,Butterfield Mine,"Lead-zinc, gold, silver, tungsten",,66,Butterfield Mine,Salt Lake,"Pb, Zn, Au, Ag, W","40.478, -112.128",Inactive
+Salt Lake,1416,DMA,5 MB,"Lee Mining Company No. 1, 2, & 3",,,67,"Lee Mining Company No. 1, 2, & 3",Salt Lake,"Pb, Zn","40.505, -112.145",Inactive
+Salt Lake,2028,DMA,239 MB,U. S. & Lark Mine,Lead-zinc,,68,U. S. & Lark Mine,Salt Lake,Lead-Zinc,"40.485, -112.115",Inactive
+Salt Lake,2175,DMA,21 MB,Cardiff Mine,"Lead, zinc, copper",,69,Cardiff Mine,Salt Lake,"Pb, Zn, Cu","40.605, -111.655",Inactive
+Salt Lake,2653,DMEA,128 MB,Mayflower & Fortuna,"Copper, lead, zinc",,70,Mayflower & Fortuna,Salt Lake,"Cu, Pb, Zn","40.595, -111.635",Inactive
+Salt Lake,3026,DMEA,7 MB,Boliver Claims,Copper,,71,Boliver Claims,Salt Lake,Copper,"40.515, -112.155",Inactive
+Salt Lake,3474,DMEA,133 MB,U.S. and Lark Mines,Lead-zinc,,72,U.S. and Lark Mines (3474),Salt Lake,Lead-Zinc,"40.482, -112.112",Inactive
+Salt Lake,3993,DMEA,16 MB,U.S. & Lark Mines,Lead-zinc,,73,U.S. & Lark Mines (3993),Salt Lake,Lead-Zinc,"40.486, -112.118",Inactive
+Salt Lake,4320,DMEA,14 MB,Silver King,Lead-zinc,,74,Silver King,Salt Lake,Lead-Zinc,"40.645, -111.522",Inactive
+Salt Lake,4857,DMEA,9 MB,Bingham Tunnel Project,Lead-zinc,,75,Bingham Tunnel Project,Salt Lake,Lead-Zinc,"40.525, -112.145",Inactive
+Salt Lake,6120,OME,<1 MB,Emma Silver Group,Lead-zinc,,76,Emma Silver Group,Salt Lake,Lead-Zinc,"40.585, -111.628",Inactive
+Salt Lake,6493,OME,118 MB,Cardiff Mine and Leased Properties,Silver,,77,Cardiff Mine and Leased Properties,Salt Lake,Silver,"40.602, -111.652",Inactive
+Salt Lake,6745,OME,14 MB,Emma Mine,Silver,,78,Emma Mine (6745),Salt Lake,Silver,"40.582, -111.625",Inactive
+San Juan,1309,DMA,24 MB,Yellow Circle Claim,"Uranium, vanadium",,79,Yellow Circle Claim,San Juan,"Uranium, Vanadium","38.352, -109.385",Inactive
+San Juan,1429,DMA,20 MB,Jacob's Chair Mesa,"Uranium, copper",,80,Jacob's Chair Mesa,San Juan,"Uranium, Copper","37.765, -110.155",Inactive
+San Juan,1931,DMA,7 MB,None identified,Uranium,,81,None identified (San Juan 1931),San Juan,Uranium,"38.252, -109.225",Inactive
+San Juan,1933,DMA,10 MB,Carie Springs Area,Uranium,,82,Carie Springs Area,San Juan,Uranium,"37.525, -109.855",Inactive
+San Juan,1957,DMA,41 MB,Jomac Mine,Uranium,,83,Jomac Mine,San Juan,Uranium,"37.775, -110.312",Inactive
+San Juan,2133,DMA,20 MB,Squaw CanyonUranium Vanadium Claims,Uranium,,84,Squaw Canyon Claims,San Juan,Uranium,"38.152, -109.355",Inactive
+San Juan,2155,DMEA,10 MB,Queen Mine,"Uranium, vanadium",,85,Queen Mine,San Juan,"Uranium, Vanadium","38.182, -109.325",Inactive
+San Juan,2515,DMEA,53 MB,Snowflake and Sunflower Claims,Uranium,,86,Snowflake and Sunflower Claims,San Juan,Uranium,"38.215, -109.245",Inactive
+San Juan,2516,DMEA,2 MB,Hidden Log Claims,Uranium,,87,Hidden Log Claims,San Juan,Uranium,"37.555, -109.955",Inactive
+San Juan,2705,DMEA,41 MB,Blue No. 1 & No. 2,Uranium,,88,Blue No. 1 & No. 2,San Juan,Uranium,"37.585, -110.055",Inactive
+San Juan,2748,DMEA,10 MB,Lavender & Congomerate Claims,Uranium,,89,Lavender & Conglomerate Claims,San Juan,Uranium,"38.212, -109.255",Inactive
+San Juan,2771,DMEA,131 MB,Brown's Hole Area,Uranium,,90,Brown's Hole Area,San Juan,Uranium,"38.205, -109.262",Inactive
+San Juan,2772,DMEA,4 MB,Notch Claims,Uranium,,91,Notch Claims,San Juan,Uranium,"37.652, -110.155",Inactive
+San Juan,2828,DMEA,3 MB,Spring Water Group,Uranium,,92,Spring Water Group,San Juan,Uranium,"37.850, -109.450",Inactive
+San Juan,3003,DMEA,25 MB,Whirlwind Mine,Uranium,,93,Whirlwind Mine,San Juan,Uranium,"37.552, -110.252",Inactive
+San Juan,3065,DMEA,11 MB,Buckscin Claim,Uranium,,94,Buckscin Claim,San Juan,Uranium,"37.105, -112.015",Inactive
+San Juan,3069,DMEA,25 MB,Sailor and Little Joe Group,Uranium,,95,Sailor and Little Joe Group,San Juan,Uranium,"37.742, -110.255",Inactive
+San Juan,3093,DMEA,20 MB,Red Canyon No.2 and Blue Lizard Claims,Uranium,,96,Red Canyon No.2 & Blue Lizard,San Juan,Uranium,"37.552, -110.252",Inactive
+San Juan,3121,DMEA,15 MB,April Mine,Uranium,,97,April Mine,San Juan,Uranium,"37.755, -110.285",Inactive
+San Juan,3123,DMEA,4 MB,Hole in the Rock Claims,Uranium,,98,Hole in the Rock Claims,San Juan,Uranium,"37.255, -110.885",Inactive
+San Juan,3245,DMEA,7 MB,Monticello Utah Unpatented Claims,Uranium,,99,Monticello Utah Unpatented Claims,San Juan,Uranium,"37.875, -109.345",Inactive
+San Juan,3266,DMEA,33 MB,Big Indian Uranium Mine,Copper,,100,Big Indian Uranium Mine,San Juan,Copper/Uranium,"38.188, -109.252",Inactive
+San Juan,3267,DMEA,5 MB,Cedar and Dingo Claims,Uranium,,101,Cedar and Dingo Claims,San Juan,Uranium,"37.755, -110.285",Inactive
+San Juan,3297,DMEA,90 MB,Utah state Land Lease No.4606,Uranium,,102,Utah state Land Lease No. 4606,San Juan,Uranium,"38.255, -109.185",Inactive
+San Juan,3383,DMEA,6 MB,Horseshoe Claims,Uranium,,103,Horseshoe Claims,San Juan,Uranium,"37.665, -110.185",Inactive
+San Juan,3405,DMEA,20 MB,Frying Pan Claims,Uranium,,104,Frying Pan Claims,San Juan,Uranium,"37.585, -110.055",Inactive
+San Juan,3413,DMEA,4 MB,Collen Claims,Uranium,,105,Collen Claims,San Juan,Uranium,"38.312, -109.255",Inactive
+San Juan,3420,DMEA,22 MB,Surital Claims,Uranium,,106,Surital Claims,San Juan,Uranium,"38.305, -109.215",Inactive
+San Juan,3439,DMEA,7 MB,None identified,Uranium,,107,None identified (San Juan 3439),San Juan,Uranium,"38.212, -109.255",Inactive
+San Juan,3459,DMEA,7 MB,Rockpoint and Lucky 13 Claims,Uranium,,108,Rockpoint and Lucky 13 Claims,San Juan,Uranium,"38.215, -109.245",Inactive
+San Juan,3475,DMEA,156 MB,Happy Day Group,Uranium,,109,Happy Day Group,San Juan,Uranium,"37.765, -110.312",Inactive
+San Juan,3500,DMEA,9 MB,Wildcat & Oogalla Claims,Uranium,,110,Wildcat & Oogalla Claims,San Juan,Uranium,"37.552, -110.252",Inactive
+San Juan,3501,DMEA,5 MB,Sandcloyas Group,Uranium,,111,Sandcloyas Group,San Juan,Uranium,"38.188, -109.252",Inactive
+San Juan,3524,DMEA,8 MB,"Lee Claims, et al.",Uranium,,112,"Lee Claims, et al.",San Juan,Uranium,"38.155, -109.255",Inactive
+San Juan,3545,DMEA,26 MB,Paramount Claims,Uranium,,113,Paramount Claims,San Juan,Uranium,"37.742, -110.255",Inactive
+San Juan,3564,DMEA,3 MB,Purple Dog,Uranium,,114,Purple Dog,San Juan,Uranium,"38.315, -109.225",Inactive
+San Juan,3567,DMEA,9 MB,Corral Group,Uranium,,115,Corral Group,San Juan,Uranium,"38.252, -109.155",Inactive
+San Juan,3582,DMEA,80 MB,"Red Rock Claims, et al.",Uranium,,116,"Red Rock Claims, et al.",San Juan,Uranium,"38.212, -109.255",Inactive
+San Juan,3589,DMEA,10 MB,"Mossback,Arrowhead, Ruby, Point, and Tryano Claims",Uranium,,117,"Mossback, Arrowhead, et al.",San Juan,Uranium,"37.850, -109.450",Inactive
+San Juan,3602,DMEA,17 MB,"State scholl land Lease No. 5947,5948,5949.",Uranium,,118,State school land Lease No. 5947+,San Juan,Uranium,"38.318, -109.248",Inactive
+San Juan,3625,DMEA,85 MB,Cove Claims,Uranium,,119,Cove Claims (San Juan 3625),San Juan,Uranium,"38.310, -109.235",Inactive
+San Juan,3633,DMEA,8 MB,Acme-Sheen Groups,Uranium,,120,Acme-Sheen Groups (3633),San Juan,Uranium,"38.215, -109.245",Inactive
+San Juan,3645,DMEA,8 MB,Acme-Sheen Groups,Uranium,,121,Acme-Sheen Groups (3645),San Juan,Uranium,"38.216, -109.246",Inactive
+San Juan,3646,DMEA,13 MB,"Joan, Ilena and La Preal Group",Uranium,,122,"Joan, Ilena and La Preal Group",San Juan,Uranium,"38.305, -109.215",Inactive
+San Juan,3648,DMEA,31 MB,Utah Premier Claim Groups,Uranium,,123,Utah Premier Claim Groups,San Juan,Uranium,"38.185, -109.255",Inactive
+San Juan,3657,DMEA,6 MB,Rainbow Group,Uranium,,124,Rainbow Group,San Juan,Uranium,"37.752, -110.285",Inactive
+San Juan,3663,DMEA,14 MB,South Lisbon Valley Area,Uranium,,125,South Lisbon Valley Area,San Juan,Uranium,"38.112, -109.155",Inactive
+San Juan,3673,DMEA,7 MB,"Sec.16 T. 29 S., R. 23 E.",Uranium,,126,"Sec.16 T. 29 S., R. 23 E.",San Juan,Uranium,"38.285, -109.355",Inactive
+San Juan,3686,DMEA,8 MB,Ed Claims,Uranium,,127,Ed Claims,San Juan,Uranium,"38.352, -109.385",Inactive
+San Juan,3687,DMEA,12 MB,Baldwin Hills Claims,Uranium,,128,Baldwin Hills Claims,San Juan,Uranium,"38.355, -109.390",Inactive
+San Juan,3693,DMEA,14 MB,"Sec. 36.T36S,R21E.",Uranium,,129,"Sec. 36. T36S, R21E.",San Juan,Uranium,"37.605, -109.555",Inactive
+San Juan,3697,DMEA,8 MB,Dixie and Glenwood Claims,Uranium,,130,Dixie and Glenwood Claims,San Juan,Uranium,"38.215, -109.215",Inactive
+San Juan,3708,DMEA,13 MB,State Line Group of Claims,Uranium,,131,State Line Group of Claims,San Juan,Uranium,"38.252, -109.102",Inactive
+San Juan,3711,DMEA,11 MB,Lisbon Valley Prospects,Uranium,,132,Lisbon Valley Prospects,San Juan,Uranium,"38.155, -109.155",Inactive
+San Juan,3722,DMEA,19 MB,Pilot-Lace Group of Claims,Uranium,,133,Pilot-Lace Group of Claims,San Juan,Uranium,"38.315, -109.225",Inactive
+San Juan,3750,DMEA,2 MB,"Sec.36,T39S,R22E",Uranium,,134,"Sec.36, T39S, R22E",San Juan,Uranium,"37.355, -109.455",Inactive
+San Juan,3764,DMEA,6 MB,Yellow Clay Group,Uranium,,135,Yellow Clay Group,San Juan,Uranium,"37.742, -110.255",Inactive
+San Juan,3768,DMEA,23 MB,"Cove Claims, et al.",Uranium,,136,"Cove Claims, et al. (3768)",San Juan,Uranium,"38.310, -109.232",Inactive
+San Juan,3772,DMEA,22 MB,Blue Jay Claims,Uranium,,137,Blue Jay Claims (3772),San Juan,Uranium,"38.205, -109.265",Inactive
+San Juan,3804,DMEA,11 MB,Rusty Can Claims,Uranium,,138,Rusty Can Claims,San Juan,Uranium,"38.212, -109.225",Inactive
+San Juan,3809,DMEA,45 MB,Buckskin & Stain Claims,Uranium,,139,Buckskin & Stain Claims,San Juan,Uranium,"37.105, -112.015",Inactive
+San Juan,3820,DMEA,10 MB,Brushy Basin,Uranium,,140,Brushy Basin,San Juan,Uranium,"37.555, -109.455",Inactive
+San Juan,3824,DMEA,15 MB,Wooden Shoe Buttes School Lease,Uranium,,141,Wooden Shoe Buttes Lease,San Juan,Uranium,"37.652, -110.125",Inactive
+San Juan,3827,DMEA,3 MB,Robin & Bluebird Claims,Uranium,,142,Robin & Bluebird Claims,San Juan,Uranium,"38.252, -109.155",Inactive
+San Juan,3834,DMEA,22 MB,Pitchblend-Serviceberry Claim Group,Uranium,,143,Pitchblend-Serviceberry,San Juan,Uranium,"38.315, -109.245",Inactive
+San Juan,3838,DMEA,15 MB,Posey Claim Group,Uranium,,144,Posey Claim Group,San Juan,Uranium,"37.552, -110.255",Inactive
+San Juan,3839,DMEA,7 MB,Ed & Elk claim Groups,Uranium,,145,Ed & Elk claim Groups,San Juan,Uranium,"38.352, -109.385",Inactive
+San Juan,3844,DMEA,9 MB,S. Lisbon Valley Claims,Uranium,,146,S. Lisbon Valley Claims,San Juan,Uranium,"38.125, -109.185",Inactive
+San Juan,3868,DMEA,44 MB,Utah State Mineral Lease No. 5581,Uranium,,147,Utah State Mineral Lease 5581,San Juan,Uranium,"38.312, -109.255",Inactive
+San Juan,3870,DMEA,16 MB,"Sun Dog, et al. group of Claims",Uranium,,148,"Sun Dog, et al. group",San Juan,Uranium,"38.155, -109.225",Inactive
+San Juan,3896,DMEA,201 MB,Hot Rock Group,Uranium,,149,Hot Rock Group,San Juan,Uranium,"38.212, -109.252",Inactive
+San Juan,3927,DMEA,12 MB,Lukachukai Property andHulse homestead,Uranium,,150,Lukachukai Property / Hulse,San Juan,Uranium,"37.055, -109.155",Inactive
+San Juan,3929,DMEA,6 MB,Hule Homestead,Uranium,,151,Hule Homestead,San Juan,Uranium,"37.058, -109.158",Inactive
+San Juan,3931,DMEA,4 MB,Cottonwood Claims,Uranium,,152,Cottonwood Claims,San Juan,Uranium,"37.555, -109.955",Inactive
+San Juan,3949,DMEA,12 MB,Gracie and King Claims,Uranium,,153,Gracie and King Claims,San Juan,Uranium,"38.305, -109.215",Inactive
+San Juan,3973,DMEA,11 MB,"Nipples, South Slope, et al. Claims",Uranium,,154,"Nipples, South Slope, et al. Claims",San Juan,Uranium,"38.155, -109.355",Inactive
+San Juan,4006,DMEA,7 MB,"Mary Dee, et al., Claims",Uranium,,155,"Mary Dee, et al., Claims",San Juan,Uranium,"38.212, -109.255",Inactive
+San Juan,4013,DMEA,18 MB,"Letty Jones, et al., Properties",Uranium,,156,"Letty Jones, et al., Properties",San Juan,Uranium,"38.215, -109.245",Inactive
+San Juan,4027,DMEA,9 MB,Moab Mines Inc. school section claims,Uranium,,157,Moab Mines Inc. school section claims,San Juan,Uranium,"38.285, -109.355",Inactive
+San Juan,4044,DMEA,6 MB,M.K. Mining Co. Claims,Uranium,,158,M.K. Mining Co. Claims,San Juan,Uranium,"38.312, -109.255",Inactive
+San Juan,4056,DMEA,2 MB,April and Butte Groups,Uranium,,159,April and Butte Groups,San Juan,Uranium,"37.755, -110.285",Inactive
+San Juan,4066,DMEA,13 MB,Blackwater Claim,Uranium,,160,Blackwater Claim,San Juan,Uranium,"38.315, -109.225",Inactive
+San Juan,4069,DMEA,40 MB,North Rattlesnake Mine,Uranium,,161,North Rattlesnake Mine,San Juan,Uranium,"38.188, -109.252",Inactive
+San Juan,4083,DMEA,30 MB,West Pat Dat Mine,Uranium,,162,West Pat Dat Mine,San Juan,Uranium,"38.252, -109.155",Inactive
+San Juan,4086,DMEA,30 MB,Gray Horse Group,Uranium,,163,Gray Horse Group,San Juan,Uranium,"38.310, -109.235",Inactive
+San Juan,4089,DMEA,6 MB,"El Paso, Topsy Too, and Cherie Claims",Uranium,,164,"El Paso, Topsy Too, and Cherie Claims",San Juan,Uranium,"38.205, -109.262",Inactive
+San Juan,4095,DMEA,3 MB,Black Lizzard Property,Uranium,,165,Black Lizzard Property,San Juan,Uranium,"37.552, -110.252",Inactive
+San Juan,4113,DMEA,8 MB,"Rain Shower, et al., Calims",Uranium,,166,"Rain Shower, et al., Calims",San Juan,Uranium,"37.850, -109.450",Inactive
+San Juan,4117,DMEA,5 MB,Joan and LA Preal Groups,Uranium,,167,Joan and LA Preal Groups,San Juan,Uranium,"38.305, -109.215",Inactive
+San Juan,4120,DMEA,20 MB,Blue Jay Claims,Uranium,,168,Blue Jay Claims (4120),San Juan,Uranium,"38.205, -109.265",Inactive
+San Juan,4130,DMEA,19 MB,Red Devil Mine,Uranium,,169,Red Devil Mine,San Juan,Uranium,"38.212, -109.255",Inactive
+San Juan,4131,DMEA,7 MB,Ilena and La Preal Groups,Uranium,,170,Ilena and La Preal Groups,San Juan,Uranium,"38.305, -109.215",Inactive
+San Juan,4137,DMEA,10 MB,"Sec.32.T38S, R22E.",Uranium,,171,"Sec.32.T38S, R22E.",San Juan,Uranium,"37.455, -109.525",Inactive
+San Juan,4139,DMEA,7 MB,Ring Comb Claims,Uranium,,172,Ring Comb Claims,San Juan,Uranium,"37.215, -109.855",Inactive
+San Juan,4218,DMEA,12 MB,"Mecca, Star, Mine Groups",Uranium,,173,"Mecca, Star, Mine Groups",San Juan,Uranium,"38.155, -109.155",Inactive
+San Juan,4222,DMEA,39 MB,Big Joe Claims,Uranium,,174,Big Joe Claims,San Juan,Uranium,"38.315, -109.225",Inactive
+San Juan,4246,DMEA,12 MB,Red Hot Claims,Uranium,,175,Red Hot Claims,San Juan,Uranium,"38.352, -109.385",Inactive
+San Juan,4260,DMEA,16 MB,North Markey Claims,Uranium,,176,North Markey Claims,San Juan,Uranium,"37.755, -110.285",Inactive
+San Juan,4281,DMEA,61 MB,"Ruby Bell, et al. Claims",Uranium,,177,"Ruby Bell, et al. Claims",San Juan,Uranium,"38.212, -109.255",Inactive
+San Juan,4294,DMEA,46 MB,La Sal Project,Uranium,,178,La Sal Project,San Juan,Uranium,"38.312, -109.255",Inactive
+San Juan,4317,DMEA,93 MB,"Sun Dog, et al., Group of Claims",Uranium,,179,"Sun Dog, et al., Group of Claims (4317)",San Juan,Uranium,"38.155, -109.225",Inactive
+San Juan,4325,DMEA,7 MB,"Cove, Danaher, and McFall Claim Groups",Uranium,,180,"Cove, Danaher, and McFall Groups",San Juan,Uranium,"38.310, -109.235",Inactive
+San Juan,4362,DMEA,17 MB,Old Texas Claim,Uranium,,181,Old Texas Claim,San Juan,Uranium,"38.252, -109.182",Inactive
+San Juan,4368,DMEA,7 MB,Lucy M Claims,Uranium,,182,Lucy M Claims,San Juan,Uranium,"38.315, -109.242",Inactive
+San Juan,4382,DMEA,3 MB,"Lucky Strike, et al., Calims",Uranium,,183,"Lucky Strike, et al., Calims",San Juan,Uranium,"37.765, -110.312",Inactive
+San Juan,4392,DMEA,82 MB,Channel & Markey Mine,Uranium,,184,Channel & Markey Mine,San Juan,Uranium,"37.755, -110.285",Inactive
+San Juan,4394,DMEA,21 MB,Dead Horse Point Claims,Uranium,,185,Dead Horse Point Claims,San Juan,Uranium,"38.485, -109.735",Inactive
+San Juan,4409,DMEA,67 MB,"April, Butte, and Canyon Claims",Uranium,,186,"April, Butte, and Canyon Claims",San Juan,Uranium,"37.755, -110.285",Inactive
+San Juan,4420,DMEA,70 MB,"Picolo Pete, et al., Claims",Uranium,,187,"Picolo Pete, et al., Claims",San Juan,Uranium,"37.742, -110.255",Inactive
+San Juan,4493,DMEA,4 MB,DHP and Ruby Claims,Uranium,,188,DHP and Ruby Claims,San Juan,Uranium,"38.485, -109.735",Inactive
+San Juan,4522,DMEA,4 MB,"Ida, etal., Claims",Uranium,,189,"Ida, etal., Claims",San Juan,Uranium,"38.212, -109.255",Inactive
+San Juan,4540,DMEA,8 MB,"Navaho Tracts No. 9,12,15.",Uranium,,190,"Navaho Tracts No. 9,12,15.",San Juan,Uranium,"37.055, -109.555",Inactive
+San Juan,4579,DMEA,8 MB,Texan & Ajax Groups,Uranium,,191,Texan & Ajax Groups,San Juan,Uranium,"38.305, -109.215",Inactive
+San Juan,4587,DMEA,2 MB,Missing Link Claims,Uranium,,192,Missing Link Claims,San Juan,Uranium,"38.155, -109.355",Inactive
+San Juan,4589,DMEA,38 MB,"Give Away, et al., Claims",Uranium,,193,"Give Away, et al., Claims",San Juan,Uranium,"38.188, -109.252",Inactive
+San Juan,4593,DMEA,6 MB,Big Buck Claims Group,Uranium,,194,Big Buck Claims Group,San Juan,Uranium,"38.185, -109.255",Inactive
+San Juan,4594,DMEA,9 MB,Maybe Claims,Uranium,,195,Maybe Claims,San Juan,Uranium,"37.955, -109.282",Inactive
+San Juan,4597,DMEA,35 MB,Ella Claim,Uranium,,196,Ella Claim,San Juan,Uranium,"38.215, -109.245",Inactive
+San Juan,4603,DMEA,42 MB,Waterfall Group,Uranium,,197,Waterfall Group,San Juan,Uranium,"37.850, -109.450",Inactive
+San Juan,4606,DMEA,5 MB,Single Jack & Lucky Boy Claims,Uranium,,198,Single Jack & Lucky Boy Claims,San Juan,Uranium,"38.312, -109.255",Inactive
+San Juan,4623,DMEA,8 MB,Dusty Claims,Uranium,,199,Dusty Claims,San Juan,Uranium,"37.552, -110.252",Inactive
+San Juan,4631,DMEA,87 MB,Vanadium Queen Claim,Uranium,,200,Vanadium Queen Claim,San Juan,Uranium,"38.252, -109.185",Inactive
+San Juan,4639,DMEA,14 MB,Bench Claim Group,Uranium,,201,Bench Claim Group,San Juan,Uranium,"37.552, -110.255",Inactive
+San Juan,4655,DMEA,13 MB,"Joker, et al., Claims",Uranium,,202,"Joker, et al., Claims",San Juan,Uranium,"38.305, -109.215",Inactive
+San Juan,4669,DMEA,9 MB,D & R Claim Group,Uranium,,203,D & R Claim Group,San Juan,Uranium,"38.155, -109.355",Inactive
+San Juan,4679,DMEA,36 MB,"Charter, et al., Claim Groups",Uranium,,204,"Charter, et al., Claim Groups",San Juan,Uranium,"38.212, -109.255",Inactive
+San Juan,4692,DMEA,3 MB,"Arrowhead, et al., Claims",Uranium,,205,"Arrowhead, et al., Claims",San Juan,Uranium,"37.850, -109.450",Inactive
+San Juan,4711,DMEA,6 MB,Fall Claim,Uranium,,206,Fall Claim,San Juan,Uranium,"38.312, -109.255",Inactive
+San Juan,4714,DMEA,5 MB,Goosepimple Group,Uranium,,207,Goosepimple Group,San Juan,Uranium,"37.555, -110.285",Inactive
+San Juan,4719,DMEA,60 MB,"P.H., Teton, et al ., Group",Uranium,,208,"P.H., Teton, et al ., Group",San Juan,Uranium,"38.215, -109.245",Inactive
+San Juan,4756,DMEA,17 MB,King Edward Claim,Uranium,,209,King Edward Claim,San Juan,Uranium,"38.315, -109.225",Inactive
+San Juan,4758,DMEA,6 MB,"Black oxide, et al., Claims",Uranium,,210,"Black oxide, et al., Claims",San Juan,Uranium,"38.188, -109.252",Inactive
+San Juan,4759,DMEA,48 MB,Wild Horse Claims,Uranium,,211,Wild Horse Claims,San Juan,Uranium,"38.310, -109.235",Inactive
+San Juan,4762,DMEA,9 MB,Denny & Char Leases,Uranium,,212,Denny & Char Leases,San Juan,Uranium,"38.205, -109.262",Inactive
+San Juan,4773,DMEA,9 MB,Perdue Claim Group,Uranium,,213,Perdue Claim Group,San Juan,Uranium,"38.212, -109.255",Inactive
+San Juan,4832,DMEA,7 MB,"Copper Head, et al., Claims",Uranium,,214,"Copper Head, et al., Claims",San Juan,Uranium,"38.155, -109.155",Inactive
+San Juan,4835,DMEA,35 MB,"Fire Fly, et al., Claims",Uranium,,215,"Fire Fly, et al., Claims",San Juan,Uranium,"38.315, -109.225",Inactive
+San Juan,4852,DMEA,13 MB,Cove Group,Uranium,,216,Cove Group (San Juan 4852),San Juan,Uranium,"38.310, -109.232",Inactive
+San Juan,4863,DMEA,13 MB,Dixie Claim Group,Uranium,,217,Dixie Claim Group (San Juan 4863),San Juan,Uranium,"38.215, -109.215",Inactive
+San Juan,4868,DMEA,5 MB,Karn Claims,Uranium,,218,Karn Claims,San Juan,Uranium,"38.252, -109.102",Inactive
+San Juan,4874,DMEA,130 MB,Royal Mine,Uranium,,219,Royal Mine,San Juan,Uranium,"38.185, -109.255",Inactive
+San Juan,4964,DMEA,48 MB,Uncle Ben and Pascal Claims,Uranium,,220,Uncle Ben and Pascal Claims,San Juan,Uranium,"38.112, -109.155",Inactive
+San Juan,5021,DMEA,<1 MB,None identified,,,221,None identified (San Juan 5021),San Juan,Uranium,"38.285, -109.355",Inactive
+San Juan,5035,DMEA,23 MB,"East Ridge, et al., Claims",Uranium,,222,"East Ridge, et al., Claims",San Juan,Uranium,"38.215, -109.245",Inactive
+San Juan,5036,DMEA,40 MB,"JFR Claims, et al.",Uranium,,223,"JFR Claims, et al.",San Juan,Uranium,"38.312, -109.255",Inactive
+San Juan,5051,DMEA,3 MB,"Hot Shot, et al., Claims",Uranium,,224,"Hot Shot, et al., Claims",San Juan,Uranium,"38.212, -109.252",Inactive
+San Juan,6013,OME,3 MB,Freddie Markle Property,Uranium,,225,Freddie Markle Property,San Juan,Uranium,"37.055, -109.155",Inactive
+San Juan,6238,OME,1 MB,"Lone Butte, et al., Claims",Uranium,,226,"Lone Butte, et al., Claims",San Juan,Uranium,"37.552, -110.252",Inactive
+San Juan,6266,OME,<1 MB,Sec.32,Uranium,,227,Sec.32 (San Juan 6266),San Juan,Uranium,"38.252, -109.185",Inactive
+San Juan,6370,OME,<1 MB,Crown Point Property,Silver,,228,Crown Point Property (San Juan 6370),San Juan,Silver,"38.305, -109.215",Inactive
+San Juan,6737,OME,3 MB,Monte Group Claims,Uranium,,229,Monte Group Claims,San Juan,Uranium,"38.155, -109.355",Inactive
+San Juan,6813,OME,232 MB,Martha Group of Claims,Uranium,,230,Martha Group of Claims,San Juan,Uranium,"38.188, -109.252",Inactive
+Sevier,3485,DMEA,3 MB,Hidden Treasure Claims,Manganese,,231,Hidden Treasure Claims,Sevier,Manganese,"38.755, -111.955",Inactive
+Sevier,4285,DMEA,3 MB,Thunderbird Claims,Uranium,,232,Thunderbird Claims,Sevier,Uranium,"38.652, -112.155",Inactive
+Sevier,4424,DMEA,5 MB,Copper Spot Claims,Uranium,,233,Copper Spot Claims,Sevier,Uranium,"38.712, -112.085",Inactive
+Sevier,6501,OME,4 MB,Antelope Group of Claims,"Silver, gold",,234,Antelope Group of Claims,Sevier,"Silver, Gold","38.685, -112.115",Inactive
+Summit,113,DMA,139 MB,New Quincy Mine,"Lead-zinc, silver",,235,New Quincy Mine,Summit,"Lead-Zinc, Silver","40.635, -111.485",Inactive
+Summit,774,DMA,5 MB,Gold Star Mine,"Lead, zinc, copper, manganese",,236,Gold Star Mine,Summit,"Pb, Zn, Cu, Mn","40.642, -111.492",Inactive
+Summit,1291,DMA,2 MB,Beaver Creek,"Lead-zinc, gold, silver",,237,Beaver Creek,Summit,"Pb-Zn, Au, Ag","40.612, -111.355",Inactive
+Summit,4996,DMEA,32 MB,Daley West Mine,"Lead-zinc, silver, copper, gold",,238,Daley West Mine,Summit,"Pb-Zn, Ag, Cu, Au","40.628, -111.498",Inactive
+Summit,6074,OME,21 MB,Daly West Mine,"Lead, zinc",,239,Daly West Mine (Summit 6074),Summit,"Lead, Zinc","40.628, -111.498",Inactive
+Summit,6079,OME,17 MB,Keystone Mine,Lead-zinc,,240,Keystone Mine,Summit,Lead-Zinc,"40.645, -111.515",Inactive
+Tooele,86,DMA,205 MB,"New Stockton, Ben Harrison and Larson-Muirbrook","Lead-zinc, copper, silver, gold",,241,"New Stockton, Ben Harrison, etc.",Tooele,"Pb-Zn, Cu, Ag, Au","40.455, -112.355",Inactive
+Tooele,185,DMA,7 MB,Monocco Mine,Copper,,242,Monocco Mine,Tooele,Copper,"40.485, -112.365",Inactive
+Tooele,651,DMA,5 MB,Star Dust Group,Tungsten,,243,Star Dust Group,Tooele,Tungsten,"40.155, -113.825",Inactive
+Tooele,1531,DMA,9 MB,Highland Lassie Mine,"Lead-zinc, silver",,244,Highland Lassie Mine,Tooele,"Lead-Zinc, Silver","40.425, -112.385",Inactive
+Tooele,1765,DMA,3 MB,Prospect,Lead-zinc,,245,Prospect,Tooele,Lead-Zinc,"40.415, -112.392",Inactive
+Tooele,1923,DMEA,41 MB,Ida Mine,Lead-zinc,,246,Ida Mine (1923),Tooele,Lead-Zinc,"40.385, -112.312",Inactive
+Tooele,1925,DMEA,4 MB,Ida Mine,Lead-zinc,,247,Ida Mine (1925),Tooele,Lead-Zinc,"40.385, -112.312",Inactive
+Tooele,2552,DMEA,61 MB,Sheeprock Area,Beryl,,248,Sheeprock Area,Tooele,Beryl,"39.955, -112.555",Inactive
+Tooele,2898,DMEA,48 MB,"Star Dust Mine, F.F. Hintze Lesee",Tungsten,,249,Star Dust Mine (2898),Tooele,Tungsten,"40.152, -113.822",Inactive
+Tooele,3066,DMEA,29 MB,Last Chance Claims,Tungsten,,250,Last Chance Claims,Tooele,Tungsten,"40.145, -113.815",Inactive
+Tooele,3517,DMEA,232 MB,Ophir Mine,"Lead, zinc",,1,Ophir Mine,Tooele,"Lead, Zinc","40.355, -112.255",Inactive
+Tooele,6220,OME,1 MB,"Madison Mines, et al.","Gold, copper, lead, zinc",,2,"Madison Mines, et al.",Tooele,"Au, Cu, Pb, Zn","40.402, -112.315",Inactive
+Tooele,6417,OME,6 MB,Idumea Claims,Silver,,3,Idumea Claims,Tooele,Silver,"40.345, -112.268",Inactive
+Tooele,6498,OME,3 MB,Silver Hope Claims,Silver,,4,Silver Hope Claims,Tooele,Silver,"40.352, -112.245",Inactive
+Tooele,6864,OME,15 MB,Dugway Property,"Gold, silver, copper",,5,Dugway Property,Tooele,"Au, Ag, Cu","39.915, -113.155",Inactive
+Uintah,2614,DMEA,1 MB,Eureka Group,Uranium,,6,Eureka Group,Uintah,Uranium,"40.525, -109.215",Inactive
+Uintah,4208,DMEA,4 MB,Iron Crown Group,"Copper, lead",,7,Iron Crown Group,Uintah,"Copper, Lead","40.712, -109.525",Inactive
+Uintah,6463,OME,1 MB,Myrtle Claims,Silver,,8,Myrtle Claims,Uintah,Silver,"40.685, -109.515",Inactive
+Uintah,6556,OME,3 MB,Marcella Groupof Claims,"Silver, nickel, manganese, gold",,9,Marcella Group of Claims,Uintah,"Ag, Ni, Mn, Au","40.692, -109.510",Inactive
+Unknown County,357,DMA,1 MB,Bonnie Lou Mine,"Gold, silver, lead, zinc",,10,Bonnie Lou Mine,Unknown,"Au, Ag, Pb, Zn",N/A,Inactive
+Unknown County,603,DMA,2 MB,Pilot Claim,Copper,,11,Pilot Claim,Unknown,Copper,N/A,Inactive
+Unknown County,6186,OME,<1 MB,Mayflower Mine,None identified,,12,Mayflower Mine,Unknown,None identified,N/A,Inactive
+Utah,14,DMA,19 MB,"Silver Star, Utah Lead and New Deal Mining Claims","Lead-zinc, silver, gold, copper, iron",,13,Silver Star / New Deal,Utah,"Pb, Zn, Ag, Au","39.952, -112.115",Inactive
+Utah,52,DMA,8 MB,Joe Bowers Mine,Lead-zinc,,14,Joe Bowers Mine,Utah,Lead-Zinc,"39.935, -112.112",Inactive
+Utah,467,DMA,18 MB,Floral Lode,"Lead-zinc, copper, silver",,15,Floral Lode,Utah,"Pb-Zn, Cu, Ag","40.015, -112.125",Inactive
+Utah,628,DMA,1 MB,None identified,None identified,,16,None identified (Utah 628),Utah,None identified,"39.955, -112.105",Inactive
+Utah,927,DMA,14 MB,Pacific Mine,"Lead-zinc, silver, gold",,17,Pacific Mine,Utah,"Pb-Zn, Ag, Au","40.525, -111.645",Inactive
+Utah,1162,DMA,10 MB,"The Graphite, Hermoine, et. al. Claims",Manganese,,18,"Graphite, Hermoine, et al.",Utah,Manganese,"39.912, -112.115",Inactive
+Utah,1169,DMA,6 MB,Post War Mine,"Manganese, iron",,19,Post War Mine,Utah,"Manganese, Iron","40.115, -111.855",Inactive
+Utah,1274,DMA,8 MB,Manganese Ace Group,Manganese,,20,Manganese Ace Group,Utah,Manganese,"40.118, -111.852",Inactive
+Utah,1441,DMA,6 MB,Central Standard Claims,"Lead-zinc, copper",,21,Central Standard Claims,Utah,"Pb-Zn, Cu","39.965, -112.085",Inactive
+Utah,1470,DMA,22 MB,Pearl & Camp Bird Claims,"Lead-zinc, copper, silver",,22,Pearl & Camp Bird Claims,Utah,"Pb-Zn, Cu, Ag","39.945, -112.105",Inactive
+Utah,1471,DMA,46 MB,Miller Mine,"Lead, silver",,23,Miller Mine,Utah,"Lead, Silver","40.575, -111.625",Inactive
+Utah,1988,DMEA,7 MB,Mono Manganese Mine,"Manganese, iron",,24,Mono Manganese Mine,Utah,"Manganese, Iron","40.112, -111.858",Inactive
+Utah,2627,DMEA,2 MB,American Volunteer Mine,Lead,,25,American Volunteer Mine,Utah,Lead,"40.515, -111.635",Inactive
+Utah,2965,DMEA,6 MB,Government Canyon Mine,"Copper, lead, zinc",,26,Government Canyon Mine,Utah,"Copper, Lead, Zn","40.105, -112.055",Inactive
+Utah,5031,DMEA,<1 MB,None identified,,,27,None identified (Utah 5031),Utah,N/A,"39.955, -112.105",Inactive
+Utah,6035,OME,4 MB,Government Canyon,Copper,,28,Government Canyon,Utah,Copper,"40.105, -112.055",Inactive
+Utah,6119,OME,71 MB,"Iron Blossom, et al., Claims","Lead, silver, copper",,29,"Iron Blossom, et al.",Utah,"Pb, Ag, Cu","39.938, -112.105",Inactive
+Various Counties,1701,DMA,274 MB,Silver King Unit,"Lead-zinc, silver",,30,Silver King Unit,Various,"Pb-Zn, Silver",N/A,Inactive
+Wasatch,107,DMA,73 MB,Mayflower Mine,"Lead-zinc, copper",,31,Mayflower Mine,Wasatch,"Pb-Zn, Cu","40.602, -111.435",Inactive
+Wasatch,171,DMA,33 MB,West Park Mine,"Copper, gold, silver",,32,West Park Mine,Wasatch,"Cu, Au, Ag","40.608, -111.412",Inactive
+Wasatch,993,DMA,33 MB,East Utah Mine,"Copper, lead, zinc",,33,East Utah Mine,Wasatch,"Cu, Pb, Zn","40.615, -111.418",Inactive
+Wasatch,1094,DMA,86 MB,Naildriver Mine,Lead-zinc,,34,Naildriver Mine,Wasatch,Lead-Zinc,"40.595, -111.472",Inactive
+Wasatch,1099,DMA,72 MB,Keetly Unit,"Zinc, lead, silver, gold, copper",,35,Keetly Unit,Wasatch,"Zn, Pb, Ag, Au","40.615, -111.425",Inactive
+Wasatch,1100,DMA,122 MB,Judge,Lead-zinc,,36,Judge,Wasatch,Lead-Zinc,"40.605, -111.485",Inactive
+Wasatch,1402,DMA,10 MB,Heber Lion Mining Co.,"Copper, gold, silver, lead",,37,Heber Lion Mining Co.,Wasatch,"Cu, Au, Ag, Pb","40.585, -111.425",Inactive
+Wasatch,2300,DMEA,39 MB,Jack Claims,"Lead-zinc, copper, gold, silver",,38,Jack Claims,Wasatch,"Pb-Zn, Cu, Au","40.592, -111.442",Inactive
+Wasatch,3116,DMEA,14 MB,Green Monster Mine,Copper,,39,Green Monster Mine,Wasatch,Copper,"40.582, -111.455",Inactive
+Wasatch,4981,DMEA,230 MB,Mayflower Mine,"Lead-zinc, copper",,40,Mayflower Mine (4981),Wasatch,"Lead-Zinc, Cu","40.602, -111.435",Inactive
+Wasatch,6346,OME,9 MB,Judge Project,Silver,,41,Judge Project,Wasatch,Silver,"40.605, -111.485",Inactive
+Washington,1126,DMA,<1 MB,Fross Rare Metals Prospect,Mercury,,42,Fross Rare Metals Prospect,Washington,Mercury,"37.255, -113.315",Inactive
+Washington,1540,DMA,4 MB,None identified,"Uranium, vanadium, silver",,43,None identified (Wash 1540),Washington,"U, V, Ag","37.185, -113.415",Inactive
+Washington,1708,DMA,38 MB,Apex Mine,"Copper, lead, zinc, silver",,44,Apex Mine,Washington,"Cu, Pb, Zn, Ag","37.055, -113.815",Inactive
+Washington,1772,DMA,3 MB,None identified,Uranium,,45,None identified (Wash 1772),Washington,Uranium,"37.215, -113.385",Inactive
+Washington,1803,DMA,2 MB,None identified,"Uranium, copper",,46,None identified (Wash 1803),Washington,"Uranium, Copper","37.195, -113.392",Inactive
+Washington,2643,DMEA,3 MB,None identified,Uranium,,47,None identified (Wash 2643),Washington,Uranium,"37.205, -113.405",Inactive
+Washington,3063,DMEA,7 MB,Tungsten Property,Tungsten,,48,Tungsten Property,Washington,Tungsten,"37.125, -113.925",Inactive
+Washington,3484,DMEA,26 MB,Bloomington Claims,Uranium,,49,Bloomington Claims,Washington,Uranium,"37.052, -113.615",Inactive
+Washington,3496,DMEA,6 MB,Caliente Group,Uranium,,50,Caliente Group,Washington,Uranium,"37.182, -113.388",Inactive
+Washington,3598,DMEA,31 MB,Kolob Mine Mineral Leases 8025 & 8026,Uranium,,51,Kolob Mine Leases,Washington,Uranium,"37.355, -113.155",Inactive
+Washington,3828,DMEA,8 MB,Yellow King Claims,Mercury,,52,Yellow King Claims,Washington,Mercury,"37.245, -113.305",Inactive
+Washington,3913,DMEA,57 MB,Rough Rider No. 2 Claim,Uranium,,53,Rough Rider No. 2,Washington,Uranium,"37.212, -113.375",Inactive
+Washington,3951,DMEA,5 MB,Scarlet Lady Claim,Mercury,,54,Scarlet Lady Claim,Washington,Mercury,"37.248, -113.308",Inactive
+Washington,3974,DMEA,16 MB,Silver Reef Mines,Uranium,,55,Silver Reef Mines,Washington,Uranium,"37.245, -113.355",Inactive
+Washington,4123,DMEA,8 MB,Arizona and Shins Claims,Uranium,,56,Arizona and Shins Claims,Washington,Uranium,"37.225, -113.382",Inactive
+Washington,4329,DMEA,6 MB,"Condor, et al., Groups",Uranium,,57,"Condor, et al., Groups",Washington,Uranium,"37.235, -113.395",Inactive
+Washington,4410,DMEA,5 MB,Rough Rider & Lapidaire Group,Uranium,,58,Rough Rider & Lapidaire,Washington,Uranium,"37.215, -113.378",Inactive
+Washington,4419,DMEA,5 MB,Extension Claims,Uranium,,59,Extension Claims,Washington,Uranium,"37.222, -113.388",Inactive
+Washington,4503,DMEA,3 MB,Yellow King Group,Mercury,,60,Yellow King Group,Washington,Mercury,"37.245, -113.305",Inactive
+Wayne,3028,DMEA,17 MB,LA FLORECITA MINING TRACT,Uranium,,61,LA FLORECITA TRACT,Wayne,Uranium,"38.285, -110.655",Inactive
+Wayne,3846,DMEA,7 MB,Hail Mary Group,Uranium,,62,Hail Mary Group,Wayne,Uranium,"38.305, -110.685",Inactive
+Wayne,4533,DMEA,2 MB,Ebko & Glen Haven Claims,Uranium,,63,Ebko & Glen Haven,Wayne,Uranium,"38.312, -110.705",Inactive
+Weber,695,DMA,4 MB,Baldy Mountain,Manganese,,64,Baldy Mountain,Weber,Manganese,"41.355, -111.955",Inactive
+Weber,1503,DMA,4 MB,Hidden Treasure Group,"Iron, graphite, copper",,65,Hidden Treasure Group,Weber,"Fe, Graphite, Cu","41.312, -111.855",Inactive
+Weber,3120,DMEA,11 MB,None identified,Manganese,,66,None identified (Weber 3120),Weber,Manganese,"41.345, -111.965",Inactive

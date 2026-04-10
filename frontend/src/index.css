@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+  body {
+    @apply bg-surface-100 text-slate-800;
+  }
+}
+
+/* Leaflet default needs a height */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0.5rem;
+}
+
+/* Map page popup link */
+.map-popup-container a:hover {
+  text-decoration: underline;
+}
+
+/* Cluster marker styling */
+.marker-cluster {
+  border-radius: 50%;
+}
+.marker-cluster-small {
+  background-color: rgba(100, 116, 139, 0.25);
+}
+.marker-cluster-small .cluster-inner {
+  background-color: rgba(100, 116, 139, 0.8);
+}
+.marker-cluster-medium {
+  background-color: rgba(217, 119, 6, 0.25);
+}
+.marker-cluster-medium .cluster-inner {
+  background-color: rgba(217, 119, 6, 0.8);
+}
+.marker-cluster-large {
+  background-color: rgba(220, 38, 38, 0.25);
+}
+.marker-cluster-large .cluster-inner {
+  background-color: rgba(220, 38, 38, 0.8);
+}
+.cluster-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* MRDS Known Mines — blue pick divIcon */
+.mrds-mine-pick-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* MRDS cluster circles (blue theme) */
+.mine-marker-cluster {
+  border-radius: 50%;
+}
+.mine-marker-cluster-small {
+  background-color: rgba(29, 78, 216, 0.22);
+}
+.mine-marker-cluster-small .mine-cluster-inner {
+  background-color: rgba(29, 78, 216, 0.88);
+}
+.mine-marker-cluster-medium {
+  background-color: rgba(37, 99, 235, 0.28);
+}
+.mine-marker-cluster-medium .mine-cluster-inner {
+  background-color: rgba(37, 99, 235, 0.9);
+}
+.mine-marker-cluster-large {
+  background-color: rgba(30, 64, 175, 0.32);
+}
+.mine-marker-cluster-large .mine-cluster-inner {
+  background-color: rgba(30, 64, 175, 0.95);
+}
+.mine-cluster-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.leaflet-tooltip.mrds-mine-tooltip {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+/* Selected target pulse */
+@keyframes target-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+.selected-target-pulse {
+  animation: target-pulse 2s ease-in-out infinite;
+}
+
+/* Toast slide-in from top-right */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(1rem) translateY(-0.5rem); }
+  to   { opacity: 1; transform: translateX(0) translateY(0); }
+}

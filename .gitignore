@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual env
+.venv/
+venv/
+
+# Environment
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data artifacts
+data/docs/
+
+# API request/application logs (keep logs/README.md)
+logs/*.log
+
+# Docker volumes (local)
+db_data/
+
+target_pipeline/data/mlrs/mlrs_open_claims.csv
+target_pipeline/data/usgs/mrds.csv

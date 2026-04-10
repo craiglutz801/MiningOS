@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mining-os"
+version = "0.1.0"
+description = "Mining Deal OS MVP: claims + PLSS + MRDS ingestion, scoring, and dashboard"
+requires-python = ">=3.11"
+dependencies = [
+  "python-dotenv>=1.0.1",
+  "pydantic>=2.7.0",
+  "pydantic-settings>=2.3.0",
+  "requests>=2.32.0",
+  "pandas>=2.2.2",
+  "geopandas>=0.14.4",
+  "shapely>=2.0.4",
+  "pyproj>=3.6.1",
+  "SQLAlchemy>=2.0.30",
+  "psycopg[binary]>=3.1.19",
+  "geoalchemy2>=0.15.1",
+  "fastapi>=0.111.0",
+  "uvicorn>=0.30.0",
+  "python-multipart>=0.0.9",
+  "streamlit>=1.36.0",
+  "pydeck>=0.9.1",
+  "openai>=1.0.0",
+  "duckduckgo-search>=4.0.0",
+  "pymupdf>=1.24.0",
+  "pypdf>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.5.0",
+  "pytest>=8.2.0",
+]
+# Optional: OCR for scanned USGS PDFs (also install system Tesseract)
+pdf-ocr = [
+  "pytesseract>=0.3.10",
+  "Pillow>=10.0.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mining_os*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120

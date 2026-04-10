@@ -1,0 +1,241 @@
+id,name,location_plss,latitude,longitude,state_abbr,meridian,minerals,status,priority,claim_type,source,blm_case_url,blm_serial_number,roi_score,report_links,validity_notes,created_at,updated_at
+1,Boulder Tungsten Mine,T12S R18E Sec 21,39.5506,-112.4161,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10154736"", ""https://ngmdb.usgs.gov/Prodesc/prod001/00100118.htm""]","Known tungsten producer with historical significance.
+Owner/source: BLM Case File: UTU-079539",2026-03-04 04:12:56.551198+00:00,2026-03-12 04:44:48.289075+00:00
+2,Baker Tungsten Mine,T7N R23E Sec 35,44.7663,-116.2671,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10154732"", ""https://ngmdb.usgs.gov/Prodesc/prod001/00100117.htm""]","Past-producing mine with potential for new claims.
+Owner/source: BLM Case File: IDI-036007",2026-03-04 04:13:03.962447+00:00,2026-03-12 04:44:48.289075+00:00
+3,Carson City Tungsten District,T15N R20E Sec 30,39.1648,-119.7674,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10095389"", ""https://ngmdb.usgs.gov/Prodesc/prod001/00100119.htm""]","Historical tungsten mining area with existing infrastructure.
+Owner/source: USGS Report",2026-03-04 04:13:10.521925+00:00,2026-03-12 04:44:48.289075+00:00
+4,Lone Mountain Tungsten Mine,T12N R34E Sec 10,39.5381,-116.0933,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10095390"", ""https://ngmdb.usgs.gov/Prodesc/prod001/00100120.htm""]","Known tungsten deposits with potential for new claims.
+Owner/source: BLM Case File: NMC-100000",2026-03-04 04:13:49.257361+00:00,2026-03-12 04:44:48.289075+00:00
+5,Lundberg Mine,T14S R16E Sec 10,39.6106,-113.4676,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10078861"", ""https://pubs.usgs.gov/periodicals/mcs2020/mcs2020-scandium.pdf""]","Known producing mine with reported Scandium presence.
+Owner/source: USGS",2026-03-04 04:14:32.824960+00:00,2026-03-12 04:44:48.289075+00:00
+6,Bingham Canyon Mine,T2S R1W Sec 1,40.5833,-112.2,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10078860"", ""https://www.miningweekly.com/article/scandium-2020-09-18""]","Large copper mine with known Scandium occurrences.
+Owner/source: Rio Tinto",2026-03-04 04:14:45.170192+00:00,2026-03-12 04:44:48.289075+00:00
+7,Wheeler Peak,T12N R67E Sec 5,39.0031,-115.0933,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://pubs.usgs.gov/periodicals/mcs2020/mcs2020-scandium.pdf"", ""https://www.blm.gov/programs/mining-and-minerals/faq""]","Historical mining area with potential Scandium resources.
+Owner/source: BLM",2026-03-04 04:15:22.171630+00:00,2026-03-12 04:44:48.289075+00:00
+8,Magma Mine,T10N R64E Sec 3,39.4175,-116.0583,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10078862"", ""https://pubs.usgs.gov/periodicals/mcs2020/mcs2020-scandium.pdf""]","Reported Scandium presence in historical mining reports.
+Owner/source: USGS",2026-03-04 04:15:55.523626+00:00,2026-03-12 04:44:48.289075+00:00
+9,Boulder Mountain,T5N R1E Sec 12,43.7975,-113.1925,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10078863"", ""https://pubs.usgs.gov/periodicals/mcs2020/mcs2020-scandium.pdf""]","Known area with Scandium potential and past exploration.
+Owner/source: USGS",2026-03-04 04:16:02.234119+00:00,2026-03-12 04:44:48.289075+00:00
+10,Navajo Mine,T36S R14E Sec 25,37.025,-112.072,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10210336"", ""https://mrdata.usgs.gov/mrds/show.php?dep_id=10007729"", ""https://pubs.usgs.gov/bul/2130/report.pdf"", ""https://pubs.usgs.gov/bul/2151/report.pdf""]","Known beryllium production site with historical data.
+Owner/source: USGS",2026-03-04 04:16:39.936571+00:00,2026-03-12 04:44:48.289075+00:00
+11,Topaz-Snowflake District,T14S R15E Sec 12,39.2,-112.5,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10210337"", ""https://ngmdb.usgs.gov/Prodesc/proddesc_10461.htm""]","Historical mining district known for beryllium deposits.
+Owner/source: BLM",2026-03-04 04:16:53.797601+00:00,2026-03-12 04:44:48.289075+00:00
+12,Beryllium Mine (Beryllium Hill),T12N R62E Sec 30,39.5,-116.5,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10210338"", ""https://pubs.usgs.gov/bul/2151/report.pdf""]","Past producing mine with known beryllium presence.
+Owner/source: BLM",2026-03-04 04:17:05.113062+00:00,2026-03-12 04:44:48.289075+00:00
+13,Beryllium Ridge,T10N R25E Sec 5,44.5,-116.5,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10210339"", ""https://ngmdb.usgs.gov/Prodesc/proddesc_10462.htm""]","Historical site with beryllium occurrences.
+Owner/source: USGS",2026-03-04 04:17:17.302174+00:00,2026-03-12 04:44:48.289075+00:00
+14,Daneros Mine,T24S R16E Sec 20,38.2675,-113.4897,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008137"", ""https://www.uraniumwatch.org/uranium-mining-in-utah/""]","Known uranium mine with historical production, potential for unpatented claims.
+Owner/source: Unknown",2026-03-04 04:17:57.927488+00:00,2026-03-12 04:44:48.289075+00:00
+15,La Sal Uranium District,T25S R23E,38.305,-109.221,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://www.usgs.gov/centers/nmic/uranium-mineral-resources-uranium-mining-la-sal-district-utah""]","Historic uranium district with multiple unpatented claims available.
+Owner/source: USGS",2026-03-04 04:18:05.317747+00:00,2026-03-12 04:44:48.289075+00:00
+16,Rochelle Mine,T22N R92W Sec 4,42.5175,-106.435,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008138""]","Former uranium mine with potential for new claims.
+Owner/source: Unknown",2026-03-04 04:22:29.349605+00:00,2026-03-12 04:44:48.289075+00:00
+17,Green River Basin,T15N R108W Sec 10,41.586,-109.451,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://www.wyomingmining.org/green-river-basin-uranium/""]","Known uranium presence with historical reports, potential for unpatented claims.
+Owner/source: Wyoming Mining Association",2026-03-04 04:23:07.833201+00:00,2026-03-12 04:44:48.289075+00:00
+18,Jackpot Uranium Project,T36N R54E Sec 12,41.983,-114.254,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008139""]","Active exploration project with potential for monetization.
+Owner/source: Unknown",2026-03-04 04:23:15.566289+00:00,2026-03-12 04:44:48.289075+00:00
+19,Shirley Basin,T24N R78W Sec 1,41.582,-106.327,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://www.usgs.gov/centers/nmic/uranium-mineral-resources-shirley-basin-wyoming""]","Historic uranium mining area with potential for new claims.
+Owner/source: USGS",2026-03-04 04:23:26.874454+00:00,2026-03-12 04:44:48.289075+00:00
+20,Humboldt Fluorspar Mine,T22N R33E Sec 30,40.5783,-116.9734,,,"[""Fluorspar""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10135137"", ""https://www.blm.gov/sites/blm.gov/files/documents/files/NV_Fluorspar_Mines.pdf""]","Known producing mine with historical data supporting fluorspar presence.
+Owner/source: BLM Case File NVN 084892",2026-03-04 04:25:16.717188+00:00,2026-03-12 04:44:48.289075+00:00
+21,Mason Valley Fluorspar District,T15N R21E Sec 10,39.4693,-119.2064,,,"[""Fluorspar""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10135136"", ""https://www.blm.gov/sites/blm.gov/files/documents/files/NV_Fluorspar_Mines.pdf""]","Historic district with multiple claims and evidence of fluorspar.
+Owner/source: BLM Case File NVN 084893",2026-03-04 04:25:17.766067+00:00,2026-03-12 04:44:48.289075+00:00
+22,Fluorspar Mine (Old),T17N R88W Sec 1,42.5011,-106.2583,,,"[""Fluorspar""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10016871"", ""https://www.wsgs.wyo.gov/PDF/Publications/Report_of_Investigation/RI-56.pdf""]","Historic mine with documented fluorspar production; potential for new claims.
+Owner/source: Wyoming State Geological Survey",2026-03-04 04:25:18.793519+00:00,2026-03-12 04:44:48.289075+00:00
+23,Bingham Canyon Fluorspar,T3S R1W Sec 25,40.5833,-112.0667,,,"[""Fluorspar"", ""Germanium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10008137"", ""https://mrdata.usgs.gov/mrds/show.php?dep_id=10016870"", ""https://ngmdb.usgs.gov/Prodesc/proddesc_10055884.htm"", ""https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-germanium.pdf""]","Known fluorspar presence with potential for unpatented claims.
+Owner/source: USGS",2026-03-04 04:25:19.818013+00:00,2026-03-12 04:44:48.289075+00:00
+24,Boulder Tungsten Mine,T10S R12E Sec 20,39.1925,-112.5503,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10019712"", ""https://www.mindat.org/loc-2053.html""]","Known tungsten mine with historical production.
+Owner/source: USGS",2026-03-04 04:31:49.224005+00:00,2026-03-12 04:44:48.289075+00:00
+25,Pine Grove Mine,T18N R30E Sec 5,39.2845,-116.4082,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10007982"", ""https://www.sciencedirect.com/science/article/pii/S0959652617301133""]","Known for Scandium production; potential for unpatented claims.
+Owner/source: Unknown",2026-03-04 04:33:16.460070+00:00,2026-03-12 04:44:48.289075+00:00
+26,Navajo Beryllium Mine,T36S R16E Sec 30,37.0,-112.5,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-beryllium.pdf"", ""https://www.mindat.org/loc-1286.html""]","Known beryllium production site with historical significance.
+Owner/source: USGS",2026-03-04 04:33:42.268027+00:00,2026-03-12 04:44:48.289075+00:00
+27,Boulder Tungsten Mine,T14S R10W Sec 1,39.534,-112.538,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10007814"", ""https://ngmdb.usgs.gov/Prodesc/prod/020/20200.pdf""]","Known tungsten producer with historical significance.
+Owner/source: BLM Case File UTU-080633",2026-03-04 04:34:37.494027+00:00,2026-03-12 04:44:48.289075+00:00
+28,La Sal Uranium District,T25S R23E Sec 10,38.1933,-109.2203,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://pubs.usgs.gov/bul/2172/report.pdf"", ""https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008187""]","Known uranium district with historical production.
+Owner/source: USGS",2026-03-04 04:34:47.600415+00:00,2026-03-12 04:44:48.289075+00:00
+29,Baker Tungsten Mine,T11N R25E Sec 5,44.578,-116.153,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10007815"", ""https://ngmdb.usgs.gov/Prodesc/prod/020/20201.pdf""]","Past-producing tungsten mine with potential for new claims.
+Owner/source: BLM Case File IDI-038321",2026-03-04 04:36:05.126192+00:00,2026-03-12 04:44:48.289075+00:00
+30,Humboldt Fluorspar Mine,T21N R32E Sec 12,40.1842,-116.9645,,,"[""Fluorspar""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10007759""]","Known producing mine with historical fluorspar production.
+Owner/source: USGS",2026-03-04 04:36:31.257627+00:00,2026-03-12 04:44:48.289075+00:00
+31,Mount Hope Tungsten Mine,T15N R41E Sec 12,39.951,-116.034,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10007816"", ""https://ngmdb.usgs.gov/Prodesc/prod/020/20202.pdf""]","Current tungsten project with existing infrastructure.
+Owner/source: General Moly, Inc.",2026-03-04 04:36:46.382350+00:00,2026-03-12 04:44:48.289075+00:00
+32,Tungsten Queen Mine,T25N R88W Sec 7,42.517,-106.207,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10007817"", ""https://ngmdb.usgs.gov/Prodesc/prod/020/20203.pdf""]","Historic tungsten mine with potential for new exploration.
+Owner/source: BLM Case File WYO-123456",2026-03-04 04:37:28.649655+00:00,2026-03-12 04:44:48.289075+00:00
+34,Dugway Proving Ground,T10S R14W Sec 12,40.2,-113.2,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://pubs.usgs.gov/periodicals/mcs2022/mcs2022-scandium.pdf"", ""https://www.mindat.org/loc-1980.html""]","Known to contain Scandium from past military and research activities.
+Owner/source: US Army",2026-03-04 04:38:00.494049+00:00,2026-03-12 04:44:48.289075+00:00
+35,Bear Lodge Project,T53N R70W Sec 29,44.5,-104.5,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://www.mindat.org/loc-1980.html"", ""https://www.scandiuminternational.com/""]","Contains Scandium with existing reports indicating potential for mining.
+Owner/source: Scandium International Mining Corp.",2026-03-04 04:38:01.526296+00:00,2026-03-12 04:44:48.289075+00:00
+36,Magma Mine,T1S R43E Sec 5,39.5,-116.5,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://www.mindat.org/loc-1980.html"", ""https://www.usgs.gov/centers/nmic/scandium-statistics-and-information""]","Past producing mine with Scandium presence reported.
+Owner/source: Unknown",2026-03-04 04:38:02.549413+00:00,2026-03-12 04:44:48.289075+00:00
+37,Lundberg Mine,T11N R1E Sec 36,43.5,-116.5,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://www.mindat.org/loc-1980.html"", ""https://www.usgs.gov/centers/nmic/scandium-statistics-and-information""]","Historical mine with Scandium reports; potential for acquisition.
+Owner/source: Unknown",2026-03-04 04:38:03.575598+00:00,2026-03-12 04:44:48.289075+00:00
+38,Boulder Tungsten Mine,T12N R49E Sec 25,39.5,-116.0,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10182616"", ""https://www.blm.gov/sites/blm.gov/files/documents/files/NV_CopperBoulderTungsten.pdf""]","Historic tungsten production site with potential for new claims.
+Owner/source: BLM Case File NVN 083450",2026-03-04 04:44:59.913811+00:00,2026-03-12 04:44:48.289075+00:00
+39,Red Rock Canyon,T20N R60E Sec 12,39.5044,-116.1804,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10220248""]","Known for Scandium presence; potential for unpatented claims.
+Owner/source: USGS",2026-03-04 04:45:35.322469+00:00,2026-03-12 04:44:48.289075+00:00
+40,Navajo Mine,T36S R10E Sec 5,37.1933,-112.5361,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10007762"", ""https://pubs.usgs.gov/bul/2130/report.pdf""]","Known producing mine for Beryllium with existing reports.
+Owner/source: USGS",2026-03-04 04:46:30.380641+00:00,2026-03-12 04:44:48.289075+00:00
+41,Daneros Mine,T29S R16E Sec 24,38.174,-110.36,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10008111"", ""https://ngmdb.usgs.gov/Prodesc/proddesc_10423.htm""]","Known uranium production site with existing reports.
+Owner/source: Unknown",2026-03-04 04:47:42.665950+00:00,2026-03-12 04:44:48.289075+00:00
+42,Fluorspar Mine,T10S R3W Sec 4,39.5902,-111.9701,,,"[""Fluorspar""]",unknown,low,,discovery_agent,,,50,"[""https://ngmdb.usgs.gov/Prodesc/prod/001/00153711.pdf""]","Known producing mine with historical fluorspar production.
+Owner/source: USGS",2026-03-04 04:49:17.512221+00:00,2026-03-12 04:44:48.289075+00:00
+43,Boulder Tungsten Mine,T12S R10E Sec 36,39.4406,-112.5774,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10007600"", ""https://ngmdb.usgs.gov/Geolex/UnitRefs/BoulderTungstenRefs_11635.pdf""]","Known tungsten mine with historical production.
+Owner/source: USGS",2026-03-04 04:49:54.925411+00:00,2026-03-12 04:44:48.289075+00:00
+44,Bingham Canyon Mine,T3S R1W Sec 19,40.5833,-112.185,,,"[""Germanium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10010059"", ""https://pubs.usgs.gov/periodicals/mcs2020/mcs2020-germanium.pdf""]","Known for copper and associated germanium production.
+Owner/source: Rio Tinto",2026-03-04 04:50:01.941635+00:00,2026-03-12 04:44:48.289075+00:00
+45,King Solomon Mine,T10N R24E Sec 19,44.5,-116.0833,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10007601"", ""https://ngmdb.usgs.gov/Geolex/UnitRefs/KingSolomonRefs_11636.pdf""]","Historic tungsten producer, potential for unpatented claims.
+Owner/source: BLM",2026-03-04 04:50:07.110681+00:00,2026-03-12 04:44:48.289075+00:00
+46,Tungsten Queen Mine,T12N R50E Sec 30,39.5,-116.5,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10007602"", ""https://ngmdb.usgs.gov/Geolex/UnitRefs/TungstenQueenRefs_11637.pdf""]","Historic tungsten mine, potential for acquisition of unpatented claims.
+Owner/source: BLM",2026-03-04 04:50:53.396371+00:00,2026-03-12 04:44:48.289075+00:00
+47,Duchesne Tungsten District,T12S R5E Sec 15,40.2,-110.5,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10007603"", ""https://ngmdb.usgs.gov/Geolex/UnitRefs/DuchesneTungstenRefs_11638.pdf""]","Known tungsten district with potential for unpatented claims.
+Owner/source: USGS",2026-03-04 04:51:09.514950+00:00,2026-03-12 04:44:48.289075+00:00
+48,Bingham Canyon Mine,T3S R1W Sec 21,40.5833,-112.2014,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://www.usgs.gov/centers/nmic/scandium""]","Known for Scandium presence in copper ores.
+Owner/source: Rio Tinto",2026-03-04 04:51:57.480665+00:00,2026-03-12 04:44:48.289075+00:00
+49,Mountain Pass Mine,T2N R12E Sec 26,35.5,-116.1667,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://www.mountainpass.com/"", ""https://www.usgs.gov/centers/nmic/scandium""]","Historical producer with potential Scandium recovery.
+Owner/source: MP Materials Corp.",2026-03-04 04:52:08.776436+00:00,2026-03-12 04:44:48.289075+00:00
+50,Bear Lodge Project,T56N R73W Sec 5,44.5,-105.5,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://www.usgs.gov/centers/nmic/scandium""]","Exploration project with Scandium potential.
+Owner/source: Rare Element Resources Ltd.",2026-03-04 04:52:21.067171+00:00,2026-03-12 04:44:48.289075+00:00
+51,Lundberg Mine,T1N R1E Sec 10,43.0,-116.0,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://www.usgs.gov/centers/nmic/scandium""]","Past producer with reported Scandium.
+Owner/source: Unknown",2026-03-04 04:52:31.240362+00:00,2026-03-12 04:44:48.289075+00:00
+52,Navajo Mine,T36S R12E Sec 6,37.1903,-113.5715,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10002294"", ""https://pubs.usgs.gov/bul/2150/report.pdf""]","Known beryllium production site with historical data.
+Owner/source: USGS",2026-03-04 04:53:05.447055+00:00,2026-03-12 04:44:48.289075+00:00
+53,Topaz-Smith Mine,T14S R17E Sec 31,39.2405,-112.4201,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10002295"", ""https://pubs.usgs.gov/bul/2150/report.pdf""]","Historic beryllium mine with potential for unpatented claims.
+Owner/source: USGS",2026-03-04 04:53:16.081272+00:00,2026-03-12 04:44:48.289075+00:00
+54,Eureka Beryllium Mine,T11N R46E Sec 2,39.5352,-116.0311,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10002296"", ""https://pubs.usgs.gov/bul/2150/report.pdf""]","Formerly producing beryllium mine with existing infrastructure.
+Owner/source: Nevada Bureau of Mines and Geology",2026-03-04 04:53:22.624698+00:00,2026-03-12 04:44:48.289075+00:00
+55,Beryllium Hill,T18N R88W Sec 10,42.455,-106.22,UT,26,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10002297"", ""https://pubs.usgs.gov/bul/2150/report.pdf""]","Reported presence of beryllium with potential for new claims.
+Owner/source: USGS",2026-03-04 04:53:52.834744+00:00,2026-03-12 04:44:48.289075+00:00
+56,Beryllium Mine District,T6N R1E Sec 4,44.4,-116.2,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10002298"", ""https://pubs.usgs.gov/bul/2150/report.pdf""]","Historical district known for beryllium presence.
+Owner/source: Idaho Geological Survey",2026-03-04 04:54:06.518639+00:00,2026-03-12 04:44:48.289075+00:00
+57,La Sal Uranium District,T27S R22E Sec 12,38.195,-109.278,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://ngmdb.usgs.gov/Geolex/UnitRefs/LaSalRefs_11633.html"", ""https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008151""]","Known uranium production area with historical significance.
+Owner/source: USGS",2026-03-04 04:54:55.455924+00:00,2026-03-12 04:44:48.289075+00:00
+58,Green River Basin,T20N R108W Sec 4,41.596,-109.325,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008150"", ""https://www.wyomingmining.org/green-river-basin-uranium-mining/""]","Historical uranium mining area with potential for new claims.
+Owner/source: Wyoming Mining Association",2026-03-04 04:56:06.523565+00:00,2026-03-12 04:44:48.289075+00:00
+59,Pine Valley Uranium District,T1N R68E Sec 5,39.633,-116.095,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://ngmdb.usgs.gov/Geolex/UnitRefs/PineValleyRefs_11634.html"", ""https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008152""]","Past-producing district with existing infrastructure.
+Owner/source: USGS",2026-03-04 04:56:07.596897+00:00,2026-03-12 04:44:48.289075+00:00
+60,Salt Lake City Uranium District,T1S R1E Sec 36,40.7608,-111.891,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://ngmdb.usgs.gov/Geolex/UnitRefs/SaltLakeCityRefs_11635.html"", ""https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008153""]","Proximity to urban infrastructure may facilitate monetization.
+Owner/source: USGS",2026-03-04 04:56:08.655614+00:00,2026-03-12 04:44:48.289075+00:00
+61,Moab Uranium Mill Tailings,T25S R21E Sec 24,38.596,-109.55,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://www.epa.gov/cleanup/moab-uranium-mill-tailings-site"", ""https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10008154""]","Site of past uranium milling with potential for reclamation.
+Owner/source: EPA",2026-03-04 04:56:09.684783+00:00,2026-03-12 04:44:48.289075+00:00
+62,Boulder Tungsten Mine,T12S R15E Sec 10,39.5175,-112.5833,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10222509"", ""https://ngmdb.usgs.gov/Prodesc/proddesc_10001371.htm""]","Known tungsten production site with historical significance.
+Owner/source: BLM Case File: UTU-079201",2026-03-05 06:39:32.614593+00:00,2026-03-12 04:44:48.289075+00:00
+63,Red Canyon Mine,T21N R88W Sec 25,42.5833,-106.4333,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://pubs.usgs.gov/periodicals/mcs2021/mcs2021.pdf"", ""https://www.mrdata.usgs.gov/mrds/show.php?dep_id=10007805""]","Known for Scandium production, with existing reports confirming its presence.
+Owner/source: Unknown",2026-03-05 06:39:49.877801+00:00,2026-03-12 04:44:48.289075+00:00
+65,La Sal Uranium District,T24S R23E Sec 12,38.265,-109.221,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-uranium.pdf"", ""https://www.blm.gov/sites/blm.gov/files/documents/files/UT_Uranium.pdf""]","Known uranium mining district with historical production.
+Owner/source: USGS",2026-03-05 06:40:32.411078+00:00,2026-03-12 04:44:48.289075+00:00
+66,Humboldt Fluorspar Mine,T27N R39E Sec 31,40.7503,-116.9895,,,"[""Fluorspar""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10008180"", ""https://pubs.usgs.gov/bul/2131/report.pdf""]","Known producing mine for Fluorspar, potential for unpatented claims.
+Owner/source: USGS",2026-03-05 06:40:50.458758+00:00,2026-03-12 04:44:48.289075+00:00
+67,Bingham Canyon Mine,T3S R1W Sec 1,40.5833,-112.2,,,"[""Germanium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10007986"", ""https://www.usgs.gov/centers/nmic/germanium-statistics-and-information""]","Known for copper and associated germanium production.
+Owner/source: Rio Tinto",2026-03-05 06:41:10.901589+00:00,2026-03-12 04:44:48.289075+00:00
+68,Boulder Tungsten Mine,T12S R14E Sec 23,39.3845,-112.6632,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10010038"", ""https://ngmdb.usgs.gov/Geolex/UnitRefs/BoulderTungstenRefs_12461.pdf""]","Known tungsten production site with historical significance.
+Owner/source: USGS",2026-03-05 06:41:24.106450+00:00,2026-03-12 04:44:48.289075+00:00
+69,Mason Valley Tungsten Mine,T16N R25E Sec 14,39.4915,-118.6404,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10010039"", ""https://ngmdb.usgs.gov/Geolex/UnitRefs/MasonValleyTungstenRefs_12462.pdf""]","Historic tungsten producer with potential for new claims.
+Owner/source: USGS",2026-03-05 06:41:30.557642+00:00,2026-03-12 04:44:48.289075+00:00
+70,Boulder District,T12S R14E,39.3845,-112.6632,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://www.blm.gov/sites/blm.gov/files/documents/files/UT_Boulder_District.pdf""]","District known for tungsten deposits, potential for unpatented claims.
+Owner/source: BLM",2026-03-05 06:41:37.138226+00:00,2026-03-12 04:44:48.289075+00:00
+71,Basin Tungsten Mine,T10N R23E Sec 4,43.6884,-113.1414,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10010040"", ""https://ngmdb.usgs.gov/Geolex/UnitRefs/BasinTungstenRefs_12463.pdf""]","Historic tungsten mine with potential for new exploration.
+Owner/source: USGS",2026-03-05 06:41:43.665996+00:00,2026-03-12 04:44:48.289075+00:00
+72,Kingston Tungsten Mine,T14S R10E Sec 28,39.4,-113.0,,,"[""Tungsten""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show-mrds.php?dep_id=10010041"", ""https://ngmdb.usgs.gov/Geolex/UnitRefs/KingstonTungstenRefs_12464.pdf""]","Known tungsten deposits, potential for unpatented claims.
+Owner/source: USGS",2026-03-05 06:41:50.223805+00:00,2026-03-12 04:44:48.289075+00:00
+73,Lundberg Mine,T12S R14E Sec 7,39.4891,-112.3465,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10207177"", ""https://ngmdb.usgs.gov/Geolex/UnitRefs/LundbergRefs_11336.pdf""]","Known for Scandium production; historical data available.
+Owner/source: USGS",2026-03-05 06:42:07.056963+00:00,2026-03-12 04:44:48.289075+00:00
+74,Magma Mine,T21N R24E Sec 10,39.5245,-116.0523,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10207178"", ""https://ngmdb.usgs.gov/Geolex/UnitRefs/MagmaRefs_11337.pdf""]","Past production of Scandium; potential for new claims.
+Owner/source: BLM",2026-03-05 06:42:13.807897+00:00,2026-03-12 04:44:48.289075+00:00
+75,Boulder Mining District,T12N R60E Sec 5,39.5295,-116.1615,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://www.blm.gov/sites/blm.gov/files/documents/files/NV_BoulderMiningDistrict.pdf""]","District known for Scandium; unpatented claims may exist.
+Owner/source: BLM",2026-03-05 06:42:20.358134+00:00,2026-03-12 04:44:48.289075+00:00
+76,Bear Lodge Project,T53N R79W Sec 3,44.4992,-104.6772,,,"[""Scandium""]",unknown,low,,discovery_agent,,,50,"[""https://www.usgs.gov/centers/nmic/scandium""]","Significant Scandium resource; potential for development.
+Owner/source: Rare Element Resources",2026-03-05 06:42:27.018894+00:00,2026-03-12 04:44:48.289075+00:00
+77,Nash Fork Beryllium Mine,T12S R14E Sec 22,39.3703,-113.0702,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10008136"", ""https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-beryllium.pdf""]","Known producing mine for beryllium with historical production data.
+Owner/source: Unknown",2026-03-05 06:42:46.331073+00:00,2026-03-12 04:44:48.289075+00:00
+78,Lone Mountain Beryllium Mine,T22N R46E Sec 15,39.25,-116.0,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10008134"", ""https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-beryllium.pdf""]","Past-producing mine with known beryllium presence.
+Owner/source: Unknown",2026-03-05 06:42:52.998739+00:00,2026-03-12 04:44:48.289075+00:00
+79,Topaz Mountain Beryllium District,T14S R14E Sec 10,39.2231,-113.1702,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://ngmdb.usgs.gov/Geolex/UnitRefs/TopazRefs_10866.html"", ""https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-beryllium.pdf""]","District known for beryllium occurrences and potential for claims.
+Owner/source: USGS",2026-03-05 06:43:00.066644+00:00,2026-03-12 04:44:48.289075+00:00
+80,Beryllium Hill,T4N R1E Sec 5,44.0,-116.0,,,"[""Beryllium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10008135"", ""https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-beryllium.pdf""]","Area with historical beryllium production, potential for unpatented claims.
+Owner/source: Unknown",2026-03-05 06:43:07.010153+00:00,2026-03-12 04:44:48.289075+00:00
+81,La Sal Uranium District,T27S R21E Sec 10,38.1525,-109.2503,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10008100"", ""https://ngmdb.usgs.gov/Prodesc/prod/20280.htm""]","Known uranium district with historical production and existing reports.
+Owner/source: USGS",2026-03-05 06:43:29.284270+00:00,2026-03-12 04:44:48.289075+00:00
+82,Green River Basin,T15N R108W Sec 24,41.5992,-108.6973,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10008101"", ""https://ngmdb.usgs.gov/Prodesc/prod/20281.htm""]","Area with known uranium occurrences and potential for unpatented claims.
+Owner/source: USGS",2026-03-05 06:43:36.347294+00:00,2026-03-12 04:44:48.289075+00:00
+83,Salt Wash Uranium District,T18S R21E Sec 15,38.1667,-109.4833,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10008102"", ""https://ngmdb.usgs.gov/Prodesc/prod/20282.htm""]","Historical mining area with existing reports indicating uranium presence.
+Owner/source: USGS",2026-03-05 07:02:55.261194+00:00,2026-03-12 04:44:48.289075+00:00
+84,Pine Valley Uranium District,T2S R69E Sec 5,38.2683,-115.6417,,,"[""Uranium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10008103"", ""https://ngmdb.usgs.gov/Prodesc/prod/20283.htm""]","Known uranium district with potential for unpatented claims.
+Owner/source: USGS",2026-03-05 07:02:59.520672+00:00,2026-03-12 04:44:48.289075+00:00
+85,Jackpot Uranium District,T42N R65E Sec 1,41.9861,-114.7125,,,"[""Uranium""]",unknown,high,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10008104"", ""https://ngmdb.usgs.gov/Prodesc/prod/20284.htm""]","Historical production and reports indicate uranium presence, potential for claims.
+Owner/source: USGS",2026-03-05 07:03:07.187147+00:00,2026-03-12 04:44:48.289075+00:00
+86,Humboldt Fluorspar Mine,T25N R37E Sec 12,40.5783,-116.1519,,,"[""Fluorspar""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10208017"", ""https://www.blm.gov/"", ""https://www.nv.blm.gov/""]","Known producing mine with historical production of fluorspar.
+Owner/source: USGS",2026-03-05 15:43:49.210829+00:00,2026-03-12 04:44:48.289075+00:00
+87,Fluorspar District,T12S R5W Sec 36,39.5111,-112.3281,,,"[""Fluorspar""]",unknown,low,,discovery_agent,,,50,"[""https://ngmdb.usgs.gov/"", ""https://www.usgs.gov/"", ""https://www.utah.gov/""]","Historical mining district known for fluorspar production.
+Owner/source: State of Utah",2026-03-05 15:43:50.520590+00:00,2026-03-12 04:44:48.289075+00:00
+88,Boulder Fluorspar Mine,T6N R1E Sec 30,44.0556,-116.0103,,,"[""Fluorspar""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10208100"", ""https://www.idl.idaho.gov/"", ""https://www.usgs.gov/""]","Past-producing mine with documented fluorspar presence.
+Owner/source: Idaho Department of Lands",2026-03-05 15:43:51.801700+00:00,2026-03-12 04:44:48.289075+00:00
+89,Wyo Fluorspar Mine,T22N R85W Sec 15,42.2953,-106.3602,,,"[""Fluorspar""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10208101"", ""https://www.usgs.gov/"", ""https://www.wyoming.gov/""]","Known fluorspar mine with potential for new claims.
+Owner/source: Wyoming State Geological Survey",2026-03-05 15:43:53.078516+00:00,2026-03-12 04:44:48.289075+00:00
+90,Bingham Canyon Mine,T3S R1W Sec 10,40.5825,-112.1652,,,"[""Germanium""]",unknown,low,,discovery_agent,,,50,"[""https://mrdata.usgs.gov/mrds/show.php?dep_id=10078161"", ""https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-germanium.pdf""]","Known for copper and associated germanium production.
+Owner/source: Rio Tinto",2026-03-05 15:44:10.071105+00:00,2026-03-12 04:44:48.289075+00:00
+91,Baker Mine,T11N R43E Sec 30,39.0083,-116.2292,,,"[""Germanium""]",unknown,low,,discovery_agent,,,50,"[""https://ngmdb.usgs.gov/Geolex/UnitRefs/BakerRefs_11253.html""]","Past producer of germanium; potential for unpatented claims.
+Owner/source: Unknown",2026-03-05 15:44:16.971665+00:00,2026-03-12 04:44:48.289075+00:00
+92,Silver Peak Mine,T4S R41E Sec 5,38.175,-116.1667,,,"[""Germanium""]",unknown,low,,discovery_agent,,,50,"[""https://www.blm.gov/sites/blm.gov/files/documents/files/NV_SilverPeakMine.pdf""]","Known for lithium but also contains germanium; potential for monetization.
+Owner/source: Albemarle Corporation",2026-03-05 15:44:23.650226+00:00,2026-03-12 04:44:48.289075+00:00
+93,Green River District,T14N R115W Sec 1,41.5861,-109.0333,,,"[""Germanium""]",unknown,low,,discovery_agent,,,50,"[""https://pubs.usgs.gov/periodicals/mcs2021/mcs2021-germanium.pdf"", ""https://www.wygs.state.wy.us/""]","Reports indicate germanium presence in the area; potential for claims.
+Owner/source: Unknown",2026-03-05 15:44:30.565894+00:00,2026-03-12 04:44:48.289075+00:00
+94,Horn Silver Mine,Beaver,38.5136,-113.2622,,,"[""Cobalt"", ""Copper"", ""Fluorspar"", ""Lead-Zinc"", ""Silver"", ""Uranium"", ""Zinc""]",unknown,low,,data_files_utah_dockets,,,40,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.809981+00:00,2026-03-12 04:44:48.289075+00:00
+95,None Identified (205),Box Elder,41.76,-113.52,,,"[""Gold"", ""Iron"", ""Lead-Zinc"", ""Silver"", ""Tungsten""]",unknown,low,,data_files_utah_dockets,,,40,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.866319+00:00,2026-03-12 04:44:48.289075+00:00
+96,Helen Claims,Cache,41.4297,-111.7867,,,"[""Manganese""]",unknown,low,,data_files_utah_dockets,,,30,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.890556+00:00,2026-03-12 04:44:48.289075+00:00
+97,Yellow Canary Lode,Daggett,40.92,-109.58,,,"[""Manganese"", ""Uranium""]",unknown,low,,data_files_utah_dockets,,,30,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.912400+00:00,2026-03-12 04:44:48.289075+00:00
+98,McClements Mine,Duchesne,40.5053,-110.7769,,,"[""Copper"", ""Lead-Zinc""]",unknown,low,,data_files_utah_dockets,,,40,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.914061+00:00,2026-03-12 04:44:48.289075+00:00
+99,Bow Knot Bend Area,Emery,38.546,-110.155,,,"[""Uranium""]",unknown,low,,data_files_utah_dockets,,,30,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.915501+00:00,2026-03-12 04:44:48.289075+00:00
+100,Mine/Property Name,County,,,,,"[""Commodity""]",unknown,low,,data_files_utah_dockets,,,30,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.916891+00:00,2026-03-12 04:44:48.289075+00:00
+101,Red Butte Claims,,,,,,"[""Uranium""]",unknown,low,,data_files_utah_dockets,,,30,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.918440+00:00,2026-03-06 05:21:43.918440+00:00
+102,Dual / Harris Wash,Garfield,37.666,-111.233,,,"[""Ag"", ""Au"", ""Cu"", ""Hg"", ""Manganese"", ""Uranium""]",unknown,low,,data_files_utah_dockets,,,60,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.920105+00:00,2026-03-12 04:44:48.289075+00:00
+103,Mary Agnes / Morie R.,Grand,38.651,-109.102,,,"[""Cobalt"", ""Tungsten"", ""Uranium""]",unknown,low,,data_files_utah_dockets,,,40,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.921469+00:00,2026-03-12 04:44:48.289075+00:00
+104,Sunken Basins,Iron,37.768,-112.9841,,,"[""Au"", ""Copper"", ""Fe"", ""Iron"", ""Lead"", ""Mercury"", ""Mn"", ""Mo"", ""Silver"", ""Uranium"", ""Zinc""]",unknown,low,,data_files_utah_dockets,,,60,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.922823+00:00,2026-03-12 04:44:48.289075+00:00
+105,Chief Consolidated,Juab,39.9508,-112.1181,,,"[""Ag"", ""Au"", ""Beryl"", ""Beryllium"", ""Copper"", ""Cu"", ""Fe"", ""Lead"", ""Lime"", ""Manganese"", ""Pb"", ""Quartz"", ""Rare Earths"", ""S"", ""Silver"", ""Tungsten"", ""Uranium"", ""Zinc"", ""Zn""]",unknown,low,,data_files_utah_dockets,,,80,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.924120+00:00,2026-03-12 04:44:48.289075+00:00
+106,Lynn Mining Claims,Kane,37.155,-111.955,,,"[""Uranium""]",unknown,low,,data_files_utah_dockets,,,30,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.925587+00:00,2026-03-12 04:44:48.289075+00:00
+107,Cricket Lime and Dolomite,Millard,38.985,-112.835,,,"[""Antimony"", ""Ca"", ""Cobalt"", ""Copper"", ""Limestone"", ""Manganese"", ""Mn"", ""Silver"", ""Tungsten""]",unknown,low,,data_files_utah_dockets,,,50,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.926825+00:00,2026-03-12 04:44:48.289075+00:00
+108,Arthur Fork Property,Morgan,41.152,-111.655,,,"[""Uranium""]",unknown,low,,data_files_utah_dockets,,,30,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.928057+00:00,2026-03-12 04:44:48.289075+00:00
+109,Pine Canyon Mine,Piute,38.485,-112.255,,,"[""Corundum"", ""Iron"", ""Kyanite"", ""Mercury"", ""Uranium""]",unknown,low,,data_files_utah_dockets,,,40,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.929472+00:00,2026-03-12 04:44:48.289075+00:00
+110,Lakeview Manganese Mine,Rich,41.865,-111.385,,,"[""Manganese""]",unknown,low,,data_files_utah_dockets,,,30,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.930906+00:00,2026-03-12 04:44:48.289075+00:00
+111,Columbus Rexall Mine,Salt Lake,40.59,-111.641,,,"[""Ag"", ""Au"", ""Copper"", ""Cu"", ""Lead-Zinc"", ""Pb"", ""Silver"", ""W"", ""Zn""]",unknown,low,,data_files_utah_dockets,,,70,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.932486+00:00,2026-03-12 04:44:48.289075+00:00
+112,Yellow Circle Claim,San Juan,38.352,-109.385,,,"[""Copper"", ""Silver"", ""Uranium"", ""Vanadium""]",unknown,low,,data_files_utah_dockets,,,40,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.934203+00:00,2026-03-12 04:44:48.289075+00:00
+113,Hidden Treasure Claims,Sevier,38.755,-111.955,,,"[""Gold"", ""Manganese"", ""Silver"", ""Uranium""]",unknown,low,,data_files_utah_dockets,,,40,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.935594+00:00,2026-03-12 04:44:48.289075+00:00
+114,New Quincy Mine,Summit,40.635,-111.485,,,"[""Ag"", ""Au"", ""Cu"", ""Lead"", ""Lead-Zinc"", ""Mn"", ""Pb"", ""Pb-Zn"", ""Silver"", ""Zinc"", ""Zn""]",unknown,low,,data_files_utah_dockets,,,60,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.937411+00:00,2026-03-12 04:44:48.289075+00:00
+115,"New Stockton, Ben Harrison, etc.",Tooele,40.455,-112.355,,,"[""Ag"", ""Au"", ""Beryl"", ""Copper"", ""Cu"", ""Lead"", ""Lead-Zinc"", ""Pb"", ""Pb-Zn"", ""Silver"", ""Tungsten"", ""Zinc"", ""Zn""]",unknown,low,,data_files_utah_dockets,,,60,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.938846+00:00,2026-03-12 04:44:48.289075+00:00
+116,Eureka Group,Uintah,40.525,-109.215,,,"[""Ag"", ""Au"", ""Copper"", ""Lead"", ""Mn"", ""Ni"", ""Silver"", ""Uranium""]",unknown,low,,data_files_utah_dockets,,,60,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.940197+00:00,2026-03-12 04:44:48.289075+00:00
+117,Bonnie Lou Mine,Unknown,,,,,"[""Ag"", ""Au"", ""Copper"", ""None identified"", ""Pb"", ""Zn""]",unknown,low,,data_files_utah_dockets,,,60,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.941283+00:00,2026-03-12 04:44:48.289075+00:00
+118,Silver Star / New Deal,Utah,39.952,-112.115,,,"[""A"", ""Ag"", ""Au"", ""Copper"", ""Cu"", ""Iron"", ""Lead"", ""Lead-Zinc"", ""Manganese"", ""N"", ""None identified"", ""Pb"", ""Pb-Zn"", ""Silver"", ""Zn""]",unknown,low,,data_files_utah_dockets,,,60,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.942523+00:00,2026-03-12 04:44:48.289075+00:00
+119,Silver King Unit,Various,,,,,"[""Pb-Zn"", ""Silver""]",unknown,low,,data_files_utah_dockets,,,40,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.943947+00:00,2026-03-12 04:44:48.289075+00:00
+120,Mayflower Mine,Wasatch,40.602,-111.435,,,"[""Ag"", ""Au"", ""Copper"", ""Cu"", ""Lead-Zinc"", ""Pb"", ""Pb-Zn"", ""Silver"", ""Zn""]",unknown,low,,data_files_utah_dockets,,,60,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.945336+00:00,2026-03-12 04:44:48.289075+00:00
+121,Fross Rare Metals Prospect,Washington,37.255,-113.315,,,"[""Ag"", ""Copper"", ""Cu"", ""Mercury"", ""Pb"", ""Tungsten"", ""U"", ""Uranium"", ""V"", ""Zn""]",unknown,low,,data_files_utah_dockets,,,60,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.946697+00:00,2026-03-12 04:44:48.289075+00:00
+122,LA FLORECITA TRACT,Wayne,38.285,-110.655,,,"[""Uranium""]",unknown,low,,data_files_utah_dockets,,,30,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.947852+00:00,2026-03-12 04:44:48.289075+00:00
+123,Baldy Mountain,Weber,41.355,-111.955,,,"[""Cu"", ""Fe"", ""Graphite"", ""Manganese""]",unknown,low,,data_files_utah_dockets,,,50,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:43.949203+00:00,2026-03-12 04:44:48.289075+00:00
+124,Spot Mountain - Lost Sheep,,,,,,"[""Flourite"", ""Beryllium""]",unknown,low,,data_files_perspective,,,30,[],,2026-03-06 05:21:43.950970+00:00,2026-03-06 05:21:43.950970+00:00
+125,Graymont,22S 10W,,,,,[],unpaid,low,,data_files_bryson,,,40,,,2026-03-06 05:21:43.952342+00:00,2026-03-12 04:44:48.289075+00:00
+126,Crypto ZN (Think they are paid but... https://mlrs.blm.gov/s/blm-case/a02t00000058HHzAAM/c3938296),UT 26 0110S 0140W 016 A SW,,,UT,,[],unpaid,low,,data_files_bryson,,,40,"[""https://mlrs.blm.gov/s/blm-case/a02t00000058HHzAAM/c3938296""]",,2026-03-06 05:21:43.953520+00:00,2026-03-12 04:44:48.289075+00:00
+127,Silver Dome (https://mlrs.blm.gov/s/blm-case/a02t00000058DmSAAU/c3924809),11S 14W 30 NW,,,,,[],unpaid,low,,data_files_bryson,,,40,,,2026-03-06 05:21:43.954825+00:00,2026-03-12 04:44:48.289075+00:00
+128,South Fish Springs Wildlife Refuge,12S 13W (whole section),,,,,[],unpaid,low,,data_files_bryson,,,40,,,2026-03-06 05:21:43.956040+00:00,2026-03-12 04:44:48.289075+00:00
+129,Jack Rabbit,21S 14E 23,,,,,[],unpaid,low,,data_files_bryson,,,40,,,2026-03-06 05:21:43.957461+00:00,2026-03-12 04:44:48.289075+00:00
+130,Coyote Mine - Juab County,11S 7W & 6W,,,,,[],unpaid,low,,data_files_bryson,,,40,"[""https://ugspub.nr.utah.gov/publications/uranium_data/MD00615_2.pdf""]",,2026-03-06 05:21:43.958904+00:00,2026-03-12 04:44:48.289075+00:00
+131,Blawn Mtn - RUBESCENT BERYL,29S 14W 17&18,,,,,[],unpaid,low,,data_files_bryson,,,40,"[""https://mlrs.blm.gov/s/blm-case/a02t0000007lW7ZAAU/c7829656""]",,2026-03-06 05:21:43.960141+00:00,2026-03-12 04:44:48.289075+00:00
+132,Ochre Springs,UT 26 0080S 0180W 014 A NW,,,UT,,[],unpaid,low,,data_files_bryson,,,40,,,2026-03-06 05:21:43.961723+00:00,2026-03-12 04:44:48.289075+00:00
+133,Sullivan Shaft (not mining claim - Patented??),12S 5W 33S,,,,,[],unpaid,low,,data_files_bryson,,,40,"[""https://ugspub.nr.utah.gov/publications/uranium_data/MD00562_20.pdf""]",,2026-03-06 05:21:43.962952+00:00,2026-03-12 04:44:48.289075+00:00
+134,Thompson Creek Deposit - TUNGSTEN -- IDAHO,12N 16E S33 (IDAHO),,,,,[],unpaid,low,,data_files_bryson,,,40,,,2026-03-06 05:21:43.964144+00:00,2026-03-12 04:44:48.289075+00:00
+135,Right by Tem Piute & south of Rachel -- Looks like there is a Patent Claim but then all the Lode Claims are UNPAID,4S 55E 12 (and areas south of that),,,,,[],unpaid,low,,data_files_bryson,,,40,,,2026-03-06 05:21:43.965431+00:00,2026-03-12 04:44:48.289075+00:00
+136,Red Butte Claims,,,,,,"[""Uranium""]",unknown,low,,data_files_utah_dockets,,,30,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:21:54.683520+00:00,2026-03-06 05:21:54.683520+00:00
+137,Spot Mountain - Lost Sheep,,,,,,"[""Flourite"", ""Beryllium""]",unknown,low,,data_files_perspective,,,30,[],,2026-03-06 05:21:54.717618+00:00,2026-03-06 05:21:54.717618+00:00
+138,Red Butte Claims,,,,,,"[""Uranium""]",unknown,low,,data_files_utah_dockets,,,30,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:36:24.179473+00:00,2026-03-06 05:36:24.179473+00:00
+139,Spot Mountain - Lost Sheep,,,,,,"[""Flourite"", ""Beryllium""]",unknown,low,,data_files_perspective,,,30,[],,2026-03-06 05:36:24.226967+00:00,2026-03-06 05:36:24.226967+00:00
+140,Red Butte Claims,,,,,,"[""Uranium""]",unknown,low,,data_files_utah_dockets,,,30,"[""https://ugspub.nr.utah.gov/""]",,2026-03-06 05:40:28.699865+00:00,2026-03-06 05:40:28.699865+00:00
+141,Spot Mountain - Lost Sheep,,,,,,"[""Flourite"", ""Beryllium""]",unknown,low,,data_files_perspective,,,30,[],,2026-03-06 05:40:28.748456+00:00,2026-03-06 05:40:28.748456+00:00
+142,Big Pass / Strategic Metals,T29S R9W Sec 12,,,,,[],unknown,low,,csv_import,,,,"[""https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf""]",,2026-03-06 06:01:59.673398+00:00,2026-03-12 04:44:48.289075+00:00
+143,Beaver Tungsten Mines,T28S R8W Sec 30,,,,,[],unknown,low,,csv_import,,,,"[""https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf""]",,2026-03-06 06:01:59.707480+00:00,2026-03-12 04:44:48.289075+00:00
+144,Scheelite Group,T28S R8W Sec 29,,,,,[],unknown,low,,csv_import,,,,"[""https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf""]",,2026-03-06 06:01:59.736034+00:00,2026-03-12 04:44:48.289075+00:00
+145,Molly Group,T29S R9W Sec 24,,,,,[],unknown,low,,csv_import,,,,"[""https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf""]",,2026-03-06 06:01:59.737556+00:00,2026-03-12 04:44:48.289075+00:00
+146,2 R’s Mine,T29S R9W Sec 28,,,,,[],unknown,low,,csv_import,,,,"[""https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf""]",,2026-03-06 06:01:59.739197+00:00,2026-03-12 04:44:48.289075+00:00
+147,Creole Mine,T29S R9W Sec 29,,,,,[],unknown,low,,csv_import,,,,"[""https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf""]",,2026-03-06 06:01:59.740668+00:00,2026-03-12 04:44:48.289075+00:00
+148,Rattler Group,T28S R8W Sec 31,,,,,[],unknown,low,,csv_import,,,,"[""https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf""]",,2026-03-06 06:01:59.742301+00:00,2026-03-12 04:44:48.289075+00:00
+149,Pinnacle Group,T28S R8W Sec 32,,,,,[],unknown,low,,csv_import,,,,"[""https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf""]",,2026-03-06 06:01:59.746370+00:00,2026-03-12 04:44:48.289075+00:00
+150,Burnt Hollow,T28S R8W Sec 33,,,,,[],unknown,low,,csv_import,,,,"[""https://ugspub.nr.utah.gov/publications/bulletins/B-25.pdf""]",,2026-03-06 06:01:59.749197+00:00,2026-03-12 04:44:48.289075+00:00
+151,West Spur Pit -- Yankee Mine,NV 21N 57E 23,,,NV,,[],paid,high,,manual,,,,,,2026-03-11 00:03:48.320205+00:00,2026-03-12 04:44:48.289075+00:00
