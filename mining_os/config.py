@@ -7,10 +7,13 @@ pydantic-settings handles reading the .env file automatically via
 
 from __future__ import annotations
 
+import logging
 from typing import List
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+log = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -74,14 +77,37 @@ class Settings(BaseSettings):
 
     @property
     def db_url(self) -> str:
-        if self.DATABASE_URL:
-            return self.DATABASE_URL.replace(
-                "postgresql+psycopg2://", "postgresql+psycopg://", 1
+        raw = self.DATABASE_URL
+        if not raw:
+            log.warning(
+                "[config] DATABASE_URL is empty — falling back to individual "
+                "POSTGRES_* variables (host=%s port=%s db=%s user=%s)",
+                self.POSTGRES_HOST,
+                self.POSTGRES_PORT,
+                self.POSTGRES_DB,
+                self.POSTGRES_USER,
             )
-        return (
-            f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-        )
+            url = (
+                f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+                f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+            )
+            log.info("[config] db_url (fallback): %s", url)
+            return url
+
+        log.info("[config] DATABASE_URL raw value: %r", raw)
+        converted = raw.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
+        if converted != raw:
+            log.info(
+                "[config] Dialect converted: postgresql+psycopg2:// → postgresql+psycopg://"
+            )
+        else:
+            log.warning(
+                "[config] DATABASE_URL did NOT contain 'postgresql+psycopg2://' — "
+                "no dialect substitution applied. Scheme in use: %r",
+                raw.split("://")[0] if "://" in raw else raw,
+            )
+        log.info("[config] db_url (final): %s", converted)
+        return converted
 
 
 settings = Settings()
