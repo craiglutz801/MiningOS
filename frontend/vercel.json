@@ -2,7 +2,7 @@
     "rewrites": [
       {
         "source": "/api/:path*",
-        "destination": "https://miningos-production.up.railway.app/:path*"
+        "destination": "https://miningos.onrender.com/:path*"
       }
     ]
   }
