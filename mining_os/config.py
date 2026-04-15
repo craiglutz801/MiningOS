@@ -75,7 +75,9 @@ class Settings(BaseSettings):
     @property
     def db_url(self) -> str:
         if self.DATABASE_URL:
-            return self.DATABASE_URL
+            return self.DATABASE_URL.replace(
+                "postgresql+psycopg2://", "postgresql+psycopg://", 1
+            )
         return (
             f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
