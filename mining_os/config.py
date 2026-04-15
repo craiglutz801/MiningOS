@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     )
 
     # Database
+    DATABASE_URL: str = ""
     POSTGRES_USER: str = "miningos"
     POSTGRES_PASSWORD: str = "miningos"
     POSTGRES_DB: str = "miningos"
@@ -73,6 +74,8 @@ class Settings(BaseSettings):
 
     @property
     def db_url(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
         return (
             f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
