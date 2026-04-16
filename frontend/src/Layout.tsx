@@ -20,7 +20,7 @@ export function Layout() {
             <div className="flex items-center gap-8">
               <Link to="/" className="flex items-center gap-2 text-slate-900 font-semibold text-lg">
                 <span className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center text-white text-sm font-bold">M</span>
-                Mining OS
+                Mining AI
               </Link>
               <nav className="hidden sm:flex items-center gap-1">
                 {nav.map(({ to, label }) => {
@@ -50,7 +50,7 @@ export function Layout() {
       </main>
 
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-slate-500 text-sm">
-        Mining OS — Deal intelligence for claims &amp; minerals
+        Mining AI — Deal intelligence for claims &amp; minerals
       </footer>
     </div>
   );
