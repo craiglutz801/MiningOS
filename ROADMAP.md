@@ -25,14 +25,14 @@ Items are checked off when completed, with the completion date noted.
 - [x] **PLSS from latitude / longitude** — BLM Cadastral reverse lookup (same MapServer layer as forward geocode); per-target action in detail when coords exist and `plss_normalized` is empty; batch in Clean Targets; manual add supports coordinates-only targets; API `coordinates` update and relaxed create (name + lat/lon or PLSS). *(Completed and verified 2026-04-03: live BLM intersect query + `reverse_geocode_plss` returns correct human PLSS string and DB-friendly T/R storage.)*
 - [x] **Batch Fetch Claim Records & LR2000 Report** — Multi-select on Targets table; sequential batch APIs (`/areas-of-focus/batch/fetch-claim-records`, `.../batch/lr2000-geographic-report`) up to 25 ids per request with client chunking; per-row results modal. *(Completed 2026-04-05)*
 - [x] **Clean Targets: AI + web assist for missing PLSS** — OpenAI + DuckDuckGo web snippets infer PLSS from name/state/county/notes; Clean Targets UI runs **preview** (`fill-plss-ai-preview`) then **review modal** (editable PLSS, per-row apply checkboxes) and **Apply** (`fill-plss-ai-apply`). Guardrails: no DB write until Apply; preview/apply caps (40); spacing between web lookups; logging. Legacy `fill-plss-ai` still supports immediate apply for API callers. *(Completed 2026-04-08)*
+- [x] **Automation Engine (Rules + Scheduled Actions)** — Cron-style rules engine: users define a filter (e.g. "high priority targets"), an action (`fetch_claim_records`, `lr2000_report`, `check_blm`, `generate_report`), an outcome (e.g. email on status change), and a schedule. New Automations page (rules CRUD + run history with per-target results). Background scheduler (`automation_scheduler`) runs due rules every 60s. *(Completed 2026-04-15)*
+- [x] **Production safety: never-500 endpoint contract + CI tests** — All user-facing actions now degrade gracefully and always return structured `{ok, error}` JSON. Specifically: Fetch Claim Records falls back to the built-in BLM ArcGIS API when the `BLM_ClaimAgent` companion repo isn't deployed (Render/Railway), and LR2000 Report is wrapped in try/except so it can never bubble to `Internal Server Error`. New `tests/test_api_endpoints.py`, `tests/test_fetch_claim_records.py`, `tests/test_mlrs_geographic_index.py`. GitHub Actions workflow runs pytest on every push; `scripts/pre-push.sh` enforces tests locally before push. See `TESTING.md`. *(Completed 2026-04-20)*
 
 ---
 
 ## Backlog
 
 *Add new initiatives below. Prioritize by moving items up.*
-
-- [ ] **Automation Engine (Rules + Scheduled Actions)** — Build a rules/automation system (cron-style) where users define: a filter (e.g. "high priority targets"), an action (e.g. "Fetch MLRS Records", "Check BLM status", "Generate report"), and an outcome (e.g. "send email notification if status changed"). Configurable schedules (daily, weekly, on-demand). Dashboard UI to create, view, enable/disable automations. Example: "Every Monday, check all high-priority targets for payment status changes and email me if any changed."
 
 ---
 

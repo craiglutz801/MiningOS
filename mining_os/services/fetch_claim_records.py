@@ -210,34 +210,53 @@ def fetch_claim_records_for_area(
         return {"ok": False, "log": "", "claims": [], "error": detail, "fetched_at": None}
 
     agent_path = _blm_agent_path()
-    if not agent_path:
-        return {"ok": False, "log": "", "claims": [], "error": "BLM_ClaimAgent not found. Set MINING_OS_BLM_AGENT_PATH or place repo at Agents/BLM_ClaimAgent.", "fetched_at": None}
-
-    script_path = agent_path / "get_mlrs_from_PLSS.py"
-    if not script_path.exists():
-        return {"ok": False, "log": "", "claims": [], "error": f"Script not found: {script_path}", "fetched_at": None}
-
     out_name = f"area_{area_id}"
-    query_method = "plss_script"
     had_section = bool(plss_row["Section"])
 
-    try:
-        # ── Pass 1: run with section ──
-        log.info("fetch_claim_records [pass1]: twp=%s rng=%s sec=%r state=%s mer=%s",
-                 plss_row["Township"], plss_row["Range"], plss_row["Section"],
-                 plss_row["State"], plss_row["Meridian"])
-        proc, log_text, claims = _run_blm_script(agent_path, plss_row, area_name, out_name)
+    # In production (Render/Railway), the BLM_ClaimAgent companion repo is not deployed.
+    # We still want this endpoint to work — fall back to the built-in BLM ArcGIS API
+    # (Pass 3 + Pass 4 below) which queries the same national MLRS layer.
+    has_script = False
+    proc = None  # subprocess.CompletedProcess | None
+    log_text = ""
+    claims: list = []
+    query_method = "built_in_api_only"
 
-        # ── Pass 2: if 0 claims and had section, broaden to whole township/range ──
-        if not claims and had_section:
-            log.info("fetch_claim_records [pass2]: section-level returned 0 — broadening to full T/R")
-            broad_row = {**plss_row, "Section": ""}
-            proc2, log2, claims2 = _run_blm_script(agent_path, broad_row, area_name, out_name)
-            if claims2:
-                claims = claims2
-                log_text += f"\n\n--- Broadened search (removed section {plss_row['Section']}, searched full T/R) ---\n" + log2
-                query_method = "plss_script_broadened"
-                log.info("fetch_claim_records: broadened search found %d claims", len(claims))
+    if agent_path:
+        script_path = agent_path / "get_mlrs_from_PLSS.py"
+        if script_path.exists():
+            has_script = True
+            query_method = "plss_script"
+        else:
+            log_text = f"BLM_ClaimAgent script not found at {script_path}; using built-in API fallback.\n"
+            log.info("fetch_claim_records: script missing at %s — using built-in API fallback", script_path)
+    else:
+        log_text = (
+            "BLM_ClaimAgent companion repo not present in this environment "
+            "(set MINING_OS_BLM_AGENT_PATH or place repo at Agents/BLM_ClaimAgent for the script-based path); "
+            "using built-in BLM ArcGIS API fallback.\n"
+        )
+        log.info("fetch_claim_records: BLM_ClaimAgent not found — using built-in API fallback")
+
+    try:
+        if has_script:
+            # ── Pass 1: run with section ──
+            log.info("fetch_claim_records [pass1]: twp=%s rng=%s sec=%r state=%s mer=%s",
+                     plss_row["Township"], plss_row["Range"], plss_row["Section"],
+                     plss_row["State"], plss_row["Meridian"])
+            proc, script_log, claims = _run_blm_script(agent_path, plss_row, area_name, out_name)
+            log_text += script_log
+
+            # ── Pass 2: if 0 claims and had section, broaden to whole township/range ──
+            if not claims and had_section:
+                log.info("fetch_claim_records [pass2]: section-level returned 0 — broadening to full T/R")
+                broad_row = {**plss_row, "Section": ""}
+                proc2, log2, claims2 = _run_blm_script(agent_path, broad_row, area_name, out_name)
+                if claims2:
+                    claims = claims2
+                    log_text += f"\n\n--- Broadened search (removed section {plss_row['Section']}, searched full T/R) ---\n" + log2
+                    query_method = "plss_script_broadened"
+                    log.info("fetch_claim_records: broadened search found %d claims", len(claims))
 
         # ── Pass 3: spatial fallback via lat/lon ──
         if not claims and latitude is not None and longitude is not None:
@@ -285,8 +304,14 @@ def fetch_claim_records_for_area(
             "query_method": query_method,
             "ok": True,
         }
-        if proc.returncode != 0 and not claims:
+        if proc is not None and proc.returncode != 0 and not claims:
             payload["error"] = f"Script exited with code {proc.returncode}"
+            payload["ok"] = False
+        elif not has_script and not claims:
+            payload["error"] = (
+                "No claims found via built-in BLM API. The PLSS may have no recorded MLRS claims, "
+                "or the BLM ArcGIS service is temporarily unreachable."
+            )
             payload["ok"] = False
 
         from mining_os.services.areas_of_focus import merge_area_characteristics, update_area_status

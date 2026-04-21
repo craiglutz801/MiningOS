@@ -22,7 +22,27 @@ def run_lr2000_geographic_index_for_area(area_id: int, area: dict[str, Any]) -> 
     """
     Use target PLSS (+ spatial fallback) to query BLM MLRS mining claims.
     Persists snapshot under characteristics.lr2000_geographic_index.
+
+    Defensive: wraps the entire flow so callers always get a structured
+    response (`ok`, `error`, `claims`, ...) instead of an unhandled 500.
     """
+    try:
+        return _run_lr2000_geographic_index_for_area(area_id, area)
+    except Exception as e:
+        log.exception("run_lr2000_geographic_index_for_area failed for area_id=%s: %s", area_id, e)
+        return {
+            "ok": False,
+            "error": f"LR2000 report failed: {e}",
+            "claims": [],
+            "query_method": None,
+            "fetched_at": None,
+            "log": "",
+            "input": {},
+            "source": None,
+        }
+
+
+def _run_lr2000_geographic_index_for_area(area_id: int, area: dict[str, Any]) -> dict[str, Any]:
     from mining_os.services.areas_of_focus import merge_area_characteristics
     from mining_os.services.blm_plss import query_claims_by_coords, query_claims_by_plss
     from mining_os.services.fetch_claim_records import (
@@ -30,6 +50,18 @@ def run_lr2000_geographic_index_for_area(area_id: int, area: dict[str, Any]) -> 
         STATE_MERIDIAN,
         _parse_plss_for_script,
     )
+
+    if not area or not isinstance(area, dict):
+        return {
+            "ok": False,
+            "error": "Area not found or invalid.",
+            "claims": [],
+            "query_method": None,
+            "fetched_at": None,
+            "log": "",
+            "input": {},
+            "source": None,
+        }
 
     location_plss = area.get("location_plss")
     state_abbr = area.get("state_abbr")
@@ -126,7 +158,12 @@ def run_lr2000_geographic_index_for_area(area_id: int, area: dict[str, Any]) -> 
         "input": input_summary,
     }
 
-    merge_area_characteristics(area_id, {"lr2000_geographic_index": payload})
+    try:
+        merge_area_characteristics(area_id, {"lr2000_geographic_index": payload})
+    except Exception as merge_err:
+        log.warning("LR2000: failed to persist characteristics for area %s: %s", area_id, merge_err)
+        log_parts.append(f"warn: could not persist snapshot: {merge_err}")
+        payload["log"] = "\n".join(log_parts)
 
     return {
         "ok": True,

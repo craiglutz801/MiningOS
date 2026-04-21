@@ -58,6 +58,92 @@ def health() -> Dict[str, str]:
     return {"status": "ok"}
 
 
+def _safe_fetch_claim_records(area_id: int) -> Dict[str, Any]:
+    """
+    Safe wrapper for the BLM Fetch Claim Records action.
+
+    Always returns a structured JSON payload (`ok`, `claims`, `error`, `log`,
+    `fetched_at`) — never bubbles to a 500. Used by both the `/api`-prefixed
+    and bare-prefix route variants so prod always sees a clean error message.
+    """
+    log.info("safe_fetch_claim_records CALLED area_id=%s", area_id)
+    try:
+        from mining_os.services.areas_of_focus import get_area
+        from mining_os.services.fetch_claim_records import fetch_claim_records_for_area
+
+        area = get_area(area_id)
+        if not area:
+            log.warning("fetch_claim_records: area_id=%s not found", area_id)
+            return {
+                "ok": False,
+                "log": "",
+                "claims": [],
+                "error": "Area not found. The target may have been deleted or the ID is invalid.",
+                "fetched_at": None,
+            }
+        log.info(
+            "fetch_claim_records: area_id=%s plss=%s state=%s meridian=%s twp=%s rng=%s sec=%s lat=%s lon=%s",
+            area_id, area.get("location_plss"), area.get("state_abbr"), area.get("meridian"),
+            area.get("township"), area.get("range"), area.get("section"),
+            area.get("latitude"), area.get("longitude"),
+        )
+        return fetch_claim_records_for_area(
+            area_id,
+            area.get("name") or "",
+            area.get("location_plss"),
+            state_abbr=area.get("state_abbr"),
+            meridian=area.get("meridian"),
+            township=area.get("township"),
+            range_val=area.get("range"),
+            section=area.get("section"),
+            latitude=area.get("latitude"),
+            longitude=area.get("longitude"),
+        )
+    except Exception as e:
+        log.exception("safe_fetch_claim_records failed for area_id=%s: %s", area_id, e)
+        return {
+            "ok": False,
+            "log": "",
+            "claims": [],
+            "error": f"Fetch Claim Records failed: {e}",
+            "fetched_at": None,
+        }
+
+
+def _safe_lr2000_report(area_id: int) -> Dict[str, Any]:
+    """Safe wrapper for the LR2000 / MLRS Geographic Index report (always structured JSON)."""
+    log.info("safe_lr2000_report CALLED area_id=%s", area_id)
+    try:
+        from mining_os.services.areas_of_focus import get_area
+        from mining_os.services.mlrs_geographic_index import run_lr2000_geographic_index_for_area
+
+        area = get_area(area_id)
+        if not area:
+            return {
+                "ok": False,
+                "error": "Area not found. The target may have been deleted or the ID is invalid.",
+                "claims": [],
+                "fetched_at": None,
+                "query_method": None,
+                "log": "",
+                "input": {},
+                "source": None,
+            }
+        return run_lr2000_geographic_index_for_area(area_id, area)
+    except Exception as e:
+        log.exception("safe_lr2000_report failed for area_id=%s: %s", area_id, e)
+        return {
+            "ok": False,
+            "error": f"LR2000 report failed: {e}",
+            "claims": [],
+            "fetched_at": None,
+            "query_method": None,
+            "log": "",
+            "input": {},
+            "source": None,
+        }
+
+
 @api_app.get("/map/sma-query")
 def map_sma_query(
     lat: float = Query(..., ge=-90, le=90, description="WGS84 latitude"),
@@ -669,56 +755,13 @@ def api_check_blm(area_id: int) -> Dict[str, Any]:
 @api_app.post("/areas-of-focus/{area_id}/fetch-claim-records")
 def api_fetch_claim_records(area_id: int) -> Dict[str, Any]:
     """Run BLM claim search using stored PLSS fields + spatial fallback. Returns 200 with error in body when area not found."""
-    from mining_os.services.areas_of_focus import get_area
-    from mining_os.services.fetch_claim_records import fetch_claim_records_for_area
-
-    area = get_area(area_id)
-    if not area:
-        log.warning("fetch_claim_records: area_id=%s not found", area_id)
-        return {
-            "ok": False,
-            "log": "",
-            "claims": [],
-            "error": "Area not found. The target may have been deleted or the ID is invalid.",
-            "fetched_at": None,
-        }
-    log.info("fetch_claim_records: area_id=%s plss=%s state=%s meridian=%s twp=%s rng=%s sec=%s lat=%s lon=%s",
-             area_id, area.get("location_plss"), area.get("state_abbr"), area.get("meridian"),
-             area.get("township"), area.get("range"), area.get("section"),
-             area.get("latitude"), area.get("longitude"))
-    return fetch_claim_records_for_area(
-        area_id,
-        area.get("name") or "",
-        area.get("location_plss"),
-        state_abbr=area.get("state_abbr"),
-        meridian=area.get("meridian"),
-        township=area.get("township"),
-        range_val=area.get("range"),
-        section=area.get("section"),
-        latitude=area.get("latitude"),
-        longitude=area.get("longitude"),
-    )
+    return _safe_fetch_claim_records(area_id)
 
 
 @api_app.post("/areas-of-focus/{area_id}/lr2000-geographic-report")
 def api_lr2000_geographic_report(area_id: int) -> Dict[str, Any]:
     """MLRS geographic mining-claims query (same national layer as BLM report 104), in-app — no browser."""
-    from mining_os.services.areas_of_focus import get_area
-    from mining_os.services.mlrs_geographic_index import run_lr2000_geographic_index_for_area
-
-    area = get_area(area_id)
-    if not area:
-        return {
-            "ok": False,
-            "error": "Area not found. The target may have been deleted or the ID is invalid.",
-            "claims": [],
-            "fetched_at": None,
-            "query_method": None,
-            "log": "",
-            "input": {},
-            "source": None,
-        }
-    return run_lr2000_geographic_index_for_area(area_id, area)
+    return _safe_lr2000_report(area_id)
 
 
 @api_app.post("/areas-of-focus/{area_id}/generate-report")
@@ -1287,54 +1330,12 @@ def plss_from_coordinates_toplevel(area_id: int) -> Dict[str, Any]:
 @app.post("/api/areas-of-focus/{area_id}/fetch-claim-records")
 def fetch_claim_records_toplevel(area_id: int) -> Dict[str, Any]:
     """Run BLM claim search using stored PLSS fields + spatial fallback. Explicit route so request is not 404."""
-    log.info("fetch_claim_records_toplevel CALLED area_id=%s", area_id)
-    from mining_os.services.areas_of_focus import get_area
-    from mining_os.services.fetch_claim_records import fetch_claim_records_for_area
-    area = get_area(area_id)
-    if not area:
-        log.warning("fetch_claim_records: area_id=%s not found", area_id)
-        return {
-            "ok": False,
-            "log": "",
-            "claims": [],
-            "error": "Area not found. The target may have been deleted or the ID is invalid.",
-            "fetched_at": None,
-        }
-    log.info("fetch_claim_records: area_id=%s plss=%s state=%s meridian=%s twp=%s rng=%s sec=%s",
-             area_id, area.get("location_plss"), area.get("state_abbr"), area.get("meridian"),
-             area.get("township"), area.get("range"), area.get("section"))
-    return fetch_claim_records_for_area(
-        area_id,
-        area.get("name") or "",
-        area.get("location_plss"),
-        state_abbr=area.get("state_abbr"),
-        meridian=area.get("meridian"),
-        township=area.get("township"),
-        range_val=area.get("range"),
-        section=area.get("section"),
-        latitude=area.get("latitude"),
-        longitude=area.get("longitude"),
-    )
+    return _safe_fetch_claim_records(area_id)
 
 
 @app.post("/api/areas-of-focus/{area_id}/lr2000-geographic-report")
 def lr2000_geographic_report_toplevel(area_id: int) -> Dict[str, Any]:
-    from mining_os.services.areas_of_focus import get_area
-    from mining_os.services.mlrs_geographic_index import run_lr2000_geographic_index_for_area
-
-    area = get_area(area_id)
-    if not area:
-        return {
-            "ok": False,
-            "error": "Area not found. The target may have been deleted or the ID is invalid.",
-            "claims": [],
-            "fetched_at": None,
-            "query_method": None,
-            "log": "",
-            "input": {},
-            "source": None,
-        }
-    return run_lr2000_geographic_index_for_area(area_id, area)
+    return _safe_lr2000_report(area_id)
 
 
 @app.post("/api/areas-of-focus/{area_id}/generate-report")

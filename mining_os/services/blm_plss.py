@@ -172,7 +172,9 @@ def parse_plss_string(plss: str, default_state: str = "UT") -> dict | None:
                     section = _normalize_section(str(n))
                     break
         if section is None:
-            trail = re.search(r"(?:^|(?<=\s))(\d{1,2})$", rest)
+            # Allow trailing section digits to follow a direction letter too,
+            # so compact forms like "12S18W10" yield section=010.
+            trail = re.search(r"(?:^|(?<=\s)|(?<=[NSEW]))(\d{1,2})$", rest)
             if trail and 1 <= int(trail.group(1)) <= 36:
                 section = _normalize_section(trail.group(1))
 
