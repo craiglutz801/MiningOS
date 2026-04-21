@@ -1,0 +1,44 @@
+# Production dependencies for the Mining OS API (Render / Railway / any PaaS).
+# Kept in sync with pyproject.toml. If you change one, update both.
+#
+# Why this file exists:
+#   Render's Python auto-detect prefers requirements.txt over pyproject.toml.
+#   Without it, auto-detect partially installs and ships with missing deps
+#   (e.g. "No module named 'requests'"). Keep this file at the repo root.
+
+# Web framework + server
+fastapi>=0.111.0
+uvicorn>=0.30.0
+python-multipart>=0.0.9
+
+# Data validation / config
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+python-dotenv>=1.0.1
+
+# Database
+SQLAlchemy>=2.0.30
+psycopg[binary]>=3.1.19
+geoalchemy2>=0.15.1
+
+# HTTP + external APIs (REQUIRED by BLM ArcGIS queries)
+requests>=2.32.0
+openai>=1.0.0
+duckduckgo-search>=4.0.0
+
+# PDF processing
+pymupdf>=1.24.0
+pypdf>=4.0.0
+
+# Scheduling (automation engine)
+croniter>=6.0.0
+
+# Geospatial + data
+pandas>=2.2.2
+shapely>=2.0.4
+pyproj>=3.6.1
+geopandas>=0.14.4
+
+# Dashboard (kept for parity; Streamlit UI lives in mining_os/dashboard)
+streamlit>=1.36.0
+pydeck>=0.9.1

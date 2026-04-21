@@ -90,6 +90,29 @@ def diag_environment() -> Dict[str, Any]:
     }
     result["env"] = env_flags
 
+    # Runtime-critical Python modules: if any of these are missing, at
+    # least one user-facing action will break. This is the single best
+    # signal that the deploy is broken (e.g. requirements.txt wasn't
+    # installed, build command is wrong, etc.).
+    critical_modules = [
+        "fastapi", "pydantic", "sqlalchemy", "psycopg",
+        "requests", "openai", "duckduckgo_search",
+        "croniter", "fitz", "pypdf", "dotenv",
+    ]
+    module_status: Dict[str, Any] = {}
+    missing: list[str] = []
+    for mod in critical_modules:
+        try:
+            __import__(mod)
+            module_status[mod] = True
+        except ImportError as e:
+            module_status[mod] = {"error": str(e)}
+            missing.append(mod)
+    result["modules"] = module_status
+    if missing:
+        result["ok"] = False
+        result["modules_missing"] = missing
+
     # BLM_ClaimAgent companion repo detection
     try:
         from mining_os.services.fetch_claim_records import _blm_agent_path

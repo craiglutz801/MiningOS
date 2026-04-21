@@ -258,6 +258,10 @@ def fetch_claim_records_for_area(
                     query_method = "plss_script_broadened"
                     log.info("fetch_claim_records: broadened search found %d claims", len(claims))
 
+        # Track the first fatal environment error (e.g. missing `requests` module)
+        # so we can surface it instead of the generic "no claims" message.
+        fatal_env_error: str | None = None
+
         # ── Pass 3: spatial fallback via lat/lon ──
         if not claims and latitude is not None and longitude is not None:
             log.info("fetch_claim_records [spatial]: trying coords (%.5f, %.5f)", latitude, longitude)
@@ -270,8 +274,16 @@ def fetch_claim_records_for_area(
                     claims = spatial
                     query_method = "spatial"
                     log_text += f"\n[spatial] Found {len(claims)} claim(s) within 2 km of ({latitude}, {longitude})"
+            except ModuleNotFoundError as e:
+                fatal_env_error = (
+                    f"Server dependency missing: {e.name!r}. "
+                    "Re-deploy with all runtime dependencies installed "
+                    "(see requirements.txt)."
+                )
+                log.error("fetch_claim_records: spatial import failed: %s", e)
             except Exception as e:
                 log.warning("fetch_claim_records: spatial fallback failed: %s", e)
+                log_text += f"\n[spatial] error: {e}"
 
         # ── Pass 4: built-in direct API (last resort) ──
         if not claims:
@@ -291,8 +303,16 @@ def fetch_claim_records_for_area(
                     claims = api_claims
                     query_method = "built_in_api"
                     log_text += f"\n[built-in API] Found {len(claims)} claim(s) via direct query (no section filter)"
+            except ModuleNotFoundError as e:
+                fatal_env_error = fatal_env_error or (
+                    f"Server dependency missing: {e.name!r}. "
+                    "Re-deploy with all runtime dependencies installed "
+                    "(see requirements.txt)."
+                )
+                log.error("fetch_claim_records: built-in API import failed: %s", e)
             except Exception as e:
                 log.warning("fetch_claim_records: built-in API failed: %s", e)
+                log_text += f"\n[built-in API] error: {e}"
 
         # ── Save results ──
         fetched_at = datetime.now(timezone.utc).isoformat()
@@ -304,7 +324,10 @@ def fetch_claim_records_for_area(
             "query_method": query_method,
             "ok": True,
         }
-        if proc is not None and proc.returncode != 0 and not claims:
+        if fatal_env_error and not claims:
+            payload["error"] = fatal_env_error
+            payload["ok"] = False
+        elif proc is not None and proc.returncode != 0 and not claims:
             payload["error"] = f"Script exited with code {proc.returncode}"
             payload["ok"] = False
         elif not has_script and not claims:

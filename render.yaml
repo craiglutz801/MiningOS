@@ -1,0 +1,22 @@
+# Render blueprint for the Mining OS API.
+# If you have a render.yaml here, Render uses these commands. If you don't,
+# configure the same values under the service's "Settings" tab in the Render
+# dashboard:
+#   Build Command:  pip install --upgrade pip && pip install -r requirements.txt
+#   Start Command:  uvicorn mining_os.api.main:app --host 0.0.0.0 --port $PORT
+
+services:
+  - type: web
+    name: mining-os-api
+    runtime: python
+    plan: starter
+    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
+    startCommand: "uvicorn mining_os.api.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.0"
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
