@@ -67,6 +67,59 @@ class TestHealth:
         assert r.json()["status"] == "ok"
 
 
+class TestDiagnostics:
+    """Production diagnostics — must always return 200 with useful JSON."""
+
+    def test_environment_returns_200(self, client):
+        r = client.get("/api/diag/environment")
+        assert r.status_code == 200
+        body = r.json()
+        assert "env" in body
+        assert "blm_claim_agent" in body
+        assert "database" in body
+        assert "blm_arcgis" in body
+        # env presence flags
+        assert isinstance(body["env"]["DATABASE_URL"], bool)
+        assert isinstance(body["env"]["OPENAI_API_KEY"], bool)
+
+    def test_area_returns_200_when_missing(self, client, monkeypatch):
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.get_area",
+            lambda area_id: None,
+        )
+        r = client.get("/api/diag/area/9999")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ok"] is False
+        assert "not found" in body["error"]
+
+    def test_area_reports_stored_fields(self, client, monkeypatch, fake_area):
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.get_area",
+            lambda area_id: fake_area,
+        )
+        r = client.get("/api/diag/area/1")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ok"] is True
+        assert body["has_stored_plss_components"] is True
+        assert body["has_coords"] is True
+        assert body["fields"]["state_abbr"] == "UT"
+
+    def test_diag_fetch_claim_records_proxies_safe_wrapper(
+        self, client, monkeypatch
+    ):
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.get_area",
+            lambda area_id: None,
+        )
+        r = client.post("/api/diag/fetch-claim-records/1")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ok"] is False
+        assert "Area not found" in body["error"]
+
+
 class TestFetchClaimRecordsEndpoint:
     def test_returns_200_when_area_missing(self, client, monkeypatch):
         monkeypatch.setattr(

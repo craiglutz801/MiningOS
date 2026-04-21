@@ -58,6 +58,158 @@ def health() -> Dict[str, str]:
     return {"status": "ok"}
 
 
+@api_app.get("/diag/environment")
+def diag_environment() -> Dict[str, Any]:
+    """
+    Production self-diagnostic.
+
+    Returns a single JSON blob summarizing everything that typically breaks
+    on Render/Railway when this app is deployed without the companion
+    BLM_ClaimAgent repo or with an unreachable DB. Safe to hit from any
+    browser — it never returns secrets, only their presence / prefixes.
+    """
+    import os
+    import sys
+
+    def _truthy(v: str | None) -> bool:
+        return bool(v) and v.strip() != ""
+
+    result: Dict[str, Any] = {
+        "ok": True,
+        "python": sys.version.split()[0],
+        "platform": sys.platform,
+    }
+
+    # Environment flags (presence only, never values)
+    env_flags = {
+        "DATABASE_URL": _truthy(os.getenv("DATABASE_URL")),
+        "OPENAI_API_KEY": _truthy(os.getenv("OPENAI_API_KEY")),
+        "SMTP_HOST": _truthy(os.getenv("SMTP_HOST")),
+        "MINING_OS_BLM_AGENT_PATH": os.getenv("MINING_OS_BLM_AGENT_PATH") or None,
+        "PORT": os.getenv("PORT"),
+    }
+    result["env"] = env_flags
+
+    # BLM_ClaimAgent companion repo detection
+    try:
+        from mining_os.services.fetch_claim_records import _blm_agent_path
+        agent_path = _blm_agent_path()
+        result["blm_claim_agent"] = {
+            "path": str(agent_path) if agent_path else None,
+            "present": bool(agent_path),
+            "note": (
+                "BLM_ClaimAgent is optional — when missing, fetch-claim-records "
+                "automatically falls back to the built-in BLM ArcGIS API."
+            ) if not agent_path else "Script-based path available.",
+        }
+    except Exception as e:
+        result["blm_claim_agent"] = {"error": str(e)}
+
+    # Database reachability
+    try:
+        from mining_os.db import get_engine
+        eng = get_engine()
+        with eng.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            count_row = conn.execute(
+                text("SELECT COUNT(*) FROM areas_of_focus")
+            ).scalar()
+        result["database"] = {"reachable": True, "areas_count": int(count_row or 0)}
+    except Exception as e:
+        result["database"] = {"reachable": False, "error": str(e)[:500]}
+        result["ok"] = False
+
+    # BLM ArcGIS reachability (same endpoint fetch-claim-records relies on)
+    try:
+        import requests
+        r = requests.get(
+            "https://gis.blm.gov/nlsdb/rest/services/HUB/"
+            "BLM_Natl_MLRS_Mining_Claims_Not_Closed/FeatureServer/0/query",
+            params={"where": "1=2", "outFields": "*", "f": "json"},
+            timeout=15,
+        )
+        result["blm_arcgis"] = {
+            "reachable": r.status_code == 200,
+            "status_code": r.status_code,
+            "content_type": r.headers.get("content-type"),
+        }
+        if r.status_code != 200:
+            result["ok"] = False
+    except Exception as e:
+        result["blm_arcgis"] = {"reachable": False, "error": str(e)[:500]}
+        result["ok"] = False
+
+    return result
+
+
+@api_app.get("/diag/area/{area_id}")
+def diag_area(area_id: int) -> Dict[str, Any]:
+    """
+    Per-target diagnostic — reports exactly what the backend sees for this
+    target (PLSS fields, coords) so you can tell at a glance whether the
+    problem is missing PLSS, unparseable PLSS, missing coords, etc.
+    """
+    try:
+        from mining_os.services.areas_of_focus import get_area
+        area = get_area(area_id)
+    except Exception as e:
+        return {"ok": False, "error": f"DB lookup failed: {e}"}
+
+    if not area:
+        return {"ok": False, "error": f"Area {area_id} not found"}
+
+    fields = {
+        "id": area.get("id"),
+        "name": area.get("name"),
+        "location_plss": area.get("location_plss"),
+        "state_abbr": area.get("state_abbr"),
+        "meridian": area.get("meridian"),
+        "township": area.get("township"),
+        "range": area.get("range"),
+        "section": area.get("section"),
+        "latitude": area.get("latitude"),
+        "longitude": area.get("longitude"),
+    }
+
+    # Try to parse the PLSS to see if parsing is the issue
+    parse_result = None
+    try:
+        from mining_os.services.fetch_claim_records import _parse_plss_for_script
+        parsed = _parse_plss_for_script(area.get("location_plss"))
+        parse_result = {"parsed": parsed, "parseable": parsed is not None}
+    except Exception as e:
+        parse_result = {"parseable": False, "error": str(e)}
+
+    has_components = bool(area.get("state_abbr") and area.get("township") and area.get("range"))
+    has_coords = area.get("latitude") is not None and area.get("longitude") is not None
+
+    return {
+        "ok": True,
+        "fields": fields,
+        "has_stored_plss_components": has_components,
+        "has_coords": has_coords,
+        "plss_parse": parse_result,
+        "would_skip_with": None if (has_components or parse_result and parse_result.get("parseable") or has_coords)
+            else "No stored components, unparseable PLSS, and no coordinates — target has no usable location.",
+    }
+
+
+@api_app.post("/diag/fetch-claim-records/{area_id}")
+def diag_fetch_claim_records(area_id: int) -> Dict[str, Any]:
+    """
+    Runs Fetch Claim Records exactly like the real endpoint but returns
+    the FULL response (including the log) so you can see which pass found
+    claims or why every pass failed.
+    """
+    return _safe_fetch_claim_records(area_id)
+
+
+@api_app.post("/diag/lr2000/{area_id}")
+def diag_lr2000(area_id: int) -> Dict[str, Any]:
+    """Runs Run LR2000 Report exactly like the real endpoint (full response)."""
+    return _safe_lr2000_report(area_id)
+
+
 def _safe_fetch_claim_records(area_id: int) -> Dict[str, Any]:
     """
     Safe wrapper for the BLM Fetch Claim Records action.
