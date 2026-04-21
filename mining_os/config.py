@@ -94,19 +94,26 @@ class Settings(BaseSettings):
             log.info("[config] db_url (fallback): %s", url)
             return url
 
-        log.info("[config] DATABASE_URL raw value: %r", raw)
-        converted = raw.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
+        log.info("[config] DATABASE_URL raw value (scheme only): %s",
+                 raw.split("://", 1)[0] if "://" in raw else "<invalid>")
+
+        # Managed Postgres providers hand out URLs in a variety of schemes.
+        # We need to normalize them to `postgresql+psycopg://` so SQLAlchemy
+        # uses psycopg (v3) which is what requirements.txt installs
+        # (`psycopg[binary]`). Without this, SQLAlchemy tries to import
+        # psycopg2 on bare `postgresql://` URLs and fails in prod.
+        converted = raw
+        if converted.startswith("postgres://"):
+            converted = "postgresql://" + converted[len("postgres://"):]
+        if converted.startswith("postgresql+psycopg2://"):
+            converted = "postgresql+psycopg://" + converted[len("postgresql+psycopg2://"):]
+        elif converted.startswith("postgresql://"):
+            converted = "postgresql+psycopg://" + converted[len("postgresql://"):]
+
         if converted != raw:
-            log.info(
-                "[config] Dialect converted: postgresql+psycopg2:// → postgresql+psycopg://"
-            )
-        else:
-            log.warning(
-                "[config] DATABASE_URL did NOT contain 'postgresql+psycopg2://' — "
-                "no dialect substitution applied. Scheme in use: %r",
-                raw.split("://")[0] if "://" in raw else raw,
-            )
-        log.info("[config] db_url (final): %s", converted)
+            log.info("[config] Dialect normalized to postgresql+psycopg:// (psycopg v3)")
+        log.info("[config] db_url scheme (final): %s",
+                 converted.split("://", 1)[0] if "://" in converted else "<invalid>")
         return converted
 
 
