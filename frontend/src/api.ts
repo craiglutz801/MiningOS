@@ -133,6 +133,37 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ latitude, longitude }),
       }),
+    updateName: (id: number, name: string) =>
+      request<{ id: number; name: string }>(`/areas-of-focus/${id}/name`, {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      }),
+    updatePlss: (
+      id: number,
+      location_plss: string | null,
+      opts: { regeocode_coordinates?: boolean } = {},
+    ) =>
+      request<{
+        ok: boolean;
+        error?: string;
+        location_plss?: string | null;
+        state_abbr?: string | null;
+        township?: string | null;
+        range?: string | null;
+        section?: string | null;
+        meridian?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        regeocoded?: boolean;
+        conflicting_id?: number;
+        conflicting_name?: string;
+      }>(`/areas-of-focus/${id}/plss`, {
+        method: "POST",
+        body: JSON.stringify({
+          location_plss,
+          regeocode_coordinates: opts.regeocode_coordinates ?? true,
+        }),
+      }),
     plssFromCoordinates: (id: number) =>
       request<{
         ok: boolean;

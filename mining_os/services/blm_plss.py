@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 import logging
 from typing import List
 
@@ -19,40 +20,79 @@ BASE_API_URL = "https://gis.blm.gov/nlsdb/rest/services/HUB/BLM_Natl_MLRS_Mining
 DEFAULT_MERIDIAN = "26"
 
 
-def _normalize_township(value: str | None) -> str | None:
-    """e.g. 12S, 120S -> 0120S."""
+def _blm_request_with_retry(params: dict, retries: int = 2) -> dict | None:
+    """GET the MLRS FeatureServer with retry on transient 500s and network errors."""
+    backoff = 0.4
+    for attempt in range(retries + 1):
+        try:
+            resp = requests.get(BASE_API_URL, params=params, timeout=30)
+            resp.raise_for_status()
+            body = (resp.text or "").strip()
+            if not body:
+                return None
+            data = json.loads(body)
+            if not isinstance(data, dict):
+                return None
+        except (json.JSONDecodeError, ValueError, requests.RequestException) as e:
+            if attempt < retries:
+                time.sleep(backoff)
+                backoff *= 2
+                continue
+            log.warning("BLM MLRS query failed: %s", e)
+            return None
+
+        err = data.get("error")
+        if err:
+            if attempt < retries and isinstance(err, dict) and err.get("code") == 500:
+                time.sleep(backoff)
+                backoff *= 2
+                continue
+            log.warning("BLM MLRS API error: %s", err)
+            return None
+        return data
+    return None
+
+
+def _encode_tr_value(value: str | None, directions: str) -> str | None:
+    """
+    Encode a township or range value to BLM's 4-digit `×10` format.
+
+    Handles both conventions seen in the DB:
+      - 4-char already-encoded: '0280S', '0080N' (pass through, zero-padded)
+      - 1-3 char human form:    '28S', '8N', '149N' (multiply by 10, pad)
+
+    ``directions`` should be 'NS' for township or 'EW' for range so the regex
+    rejects the wrong orientation.
+    """
     if not value or not isinstance(value, str):
         return None
-    value = value.strip().upper().replace(" ", "")
-    m = re.match(r"^(\d+)\s*([NS])$", value)
+    s = value.strip().upper().replace(" ", "")
+    m = re.match(rf"^(\d+)\s*([{directions}])$", s)
     if not m:
-        return value
-    num, direction = m.groups()
+        return s
+    num_str, direction = m.groups()
+    if len(num_str) >= 4:
+        return num_str.zfill(4) + direction
     try:
-        n = int(num.lstrip("0") or "0")
-        if 0 < n < 100:
-            n *= 10
+        n = int(num_str) * 10
         return str(n).zfill(4) + direction
     except (ValueError, TypeError):
-        return num.zfill(4) + direction
+        return num_str.zfill(4) + direction
+
+
+def _normalize_township(value: str | None) -> str | None:
+    """
+    e.g. '28S' -> '0280S', '8N' -> '0080N', '0280S' -> '0280S'.
+
+    See ``_encode_tr_value`` for the dual-convention rationale. This is the
+    format expected by BLM MLRS CSE_META prefixes.
+    """
+    return _encode_tr_value(value, "NS")
 
 
 def _normalize_range(value: str | None) -> str | None:
-    """e.g. 14E -> 0140E."""
-    if not value or not isinstance(value, str):
-        return None
-    value = value.strip().upper().replace(" ", "")
-    m = re.match(r"^(\d+)\s*([EW])$", value)
-    if not m:
-        return value
-    num, direction = m.groups()
-    try:
-        n = int(num.lstrip("0") or "0")
-        if 0 < n < 100:
-            n *= 10
-        return str(n).zfill(4) + direction
-    except (ValueError, TypeError):
-        return num.zfill(4) + direction
+    """e.g. '14E' -> '0140E', '0140E' -> '0140E'."""
+    return _encode_tr_value(value, "EW")
 
 
 def _normalize_section(value: str | None) -> str | None:
@@ -228,21 +268,10 @@ def query_claims_by_plss(
         "outSR": "4326",
         "f": "json",
     }
-    try:
-        resp = requests.get(BASE_API_URL, params=params, timeout=30)
-        resp.raise_for_status()
-        text = (resp.text or "").strip()
-        if not text:
-            return []
-        data = json.loads(text)
-        if not isinstance(data, dict):
-            return []
-    except (json.JSONDecodeError, ValueError, requests.RequestException) as e:
-        log.warning("BLM PLSS query failed: %s", e)
+    data = _blm_request_with_retry(params)
+    if data is None:
         return []
-
-    claims = _extract_claims_from_response(data, state)
-    return claims
+    return _extract_claims_from_response(data, state)
 
 
 def query_claims_by_coords(
@@ -271,19 +300,9 @@ def query_claims_by_coords(
         "outSR": "4326",
         "f": "json",
     }
-    try:
-        resp = requests.get(BASE_API_URL, params=params, timeout=30)
-        resp.raise_for_status()
-        text = (resp.text or "").strip()
-        if not text:
-            return []
-        data = json.loads(text)
-        if not isinstance(data, dict):
-            return []
-    except (json.JSONDecodeError, ValueError, requests.RequestException) as e:
-        log.warning("BLM spatial query failed for (%.5f, %.5f): %s", lat, lon, e)
+    data = _blm_request_with_retry(params)
+    if data is None:
         return []
-
     return _extract_claims_from_response(data, "")
 
 

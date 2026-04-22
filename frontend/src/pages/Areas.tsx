@@ -230,6 +230,13 @@ export function Areas() {
   const [notesEditing, setNotesEditing] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
   const [notesSaving, setNotesSaving] = useState(false);
+  const [nameEditing, setNameEditing] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [plssEditing, setPlssEditing] = useState(false);
+  const [plssDraft, setPlssDraft] = useState("");
+  const [plssRegeocode, setPlssRegeocode] = useState(true);
+  const [plssSaving, setPlssSaving] = useState(false);
   const [fetchClaimRecordsLoading, setFetchClaimRecordsLoading] = useState(false);
   const [lr2000Loading, setLr2000Loading] = useState(false);
   const [rawJsonModal, setRawJsonModal] = useState<{ title: string; data: unknown } | null>(null);
@@ -2332,8 +2339,67 @@ export function Areas() {
           <div className="p-4 overflow-y-auto flex-1 min-h-0">
               <div className="space-y-3 text-sm">
                 <div>
-                  <span className="text-slate-500 block">Name</span>
-                  <span className="font-medium text-slate-900">{selected.name}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Name</span>
+                    {!nameEditing && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNameDraft(selected.name || "");
+                          setNameEditing(true);
+                        }}
+                        className="text-xs text-primary-600 hover:underline"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                  {nameEditing ? (
+                    <div className="mt-1 space-y-2">
+                      <input
+                        type="text"
+                        value={nameDraft}
+                        onChange={(e) => setNameDraft(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="Target name"
+                        maxLength={500}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={nameSaving || !nameDraft.trim()}
+                          onClick={async () => {
+                            if (!nameDraft.trim()) return;
+                            setNameSaving(true);
+                            setError(null);
+                            try {
+                              await api.areas.updateName(selected.id, nameDraft.trim());
+                              const full = await api.areas.get(selected.id);
+                              setSelected(full);
+                              setNameEditing(false);
+                              load();
+                            } catch (err) {
+                              setError(err instanceof Error ? err.message : "Failed to rename target");
+                            } finally {
+                              setNameSaving(false);
+                            }
+                          }}
+                          className="px-3 py-1 bg-primary-600 text-white rounded text-xs font-medium hover:bg-primary-700 disabled:opacity-50"
+                        >
+                          {nameSaving ? "Saving…" : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNameEditing(false)}
+                          className="px-3 py-1 bg-slate-100 text-slate-600 rounded text-xs font-medium hover:bg-slate-200"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="font-medium text-slate-900">{selected.name}</span>
+                  )}
                 </div>
                 <div>
                   <span className="text-slate-500 block">Target Status</span>
@@ -2532,8 +2598,95 @@ export function Areas() {
                   </button>
                 )}
                 <div>
-                  <span className="text-slate-500 block">Location (PLSS)</span>
-                  <span className="text-slate-700">{selected.location_plss || "—"}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Location (PLSS)</span>
+                    {!plssEditing && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPlssDraft(selected.location_plss || "");
+                          setPlssRegeocode(true);
+                          setPlssEditing(true);
+                        }}
+                        className="text-xs text-primary-600 hover:underline"
+                      >
+                        {selected.location_plss ? "Edit" : "Add"}
+                      </button>
+                    )}
+                  </div>
+                  {plssEditing ? (
+                    <div className="mt-1 space-y-2">
+                      <input
+                        type="text"
+                        value={plssDraft}
+                        onChange={(e) => setPlssDraft(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="e.g. UT 13S 11W Sec 29"
+                      />
+                      <label className="flex items-center gap-2 text-xs text-slate-600 select-none">
+                        <input
+                          type="checkbox"
+                          checked={plssRegeocode}
+                          onChange={(e) => setPlssRegeocode(e.target.checked)}
+                          className="h-3.5 w-3.5"
+                        />
+                        Re-derive latitude/longitude from this PLSS via BLM
+                      </label>
+                      <div className="text-[11px] text-slate-500 leading-snug">
+                        Format: <code>STATE TOWNSHIP RANGE SECTION</code> (e.g. <code>UT 13S 11W 29</code>
+                        or <code>NV T5N R32E Sec 12</code>). Leave blank to clear.
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={plssSaving}
+                          onClick={async () => {
+                            setPlssSaving(true);
+                            setError(null);
+                            try {
+                              const res = await api.areas.updatePlss(
+                                selected.id,
+                                plssDraft.trim() || null,
+                                { regeocode_coordinates: plssRegeocode },
+                              );
+                              if (!res.ok) {
+                                const msg =
+                                  res.error === "unparseable_plss"
+                                    ? "Could not parse that PLSS string. Use STATE TOWNSHIP RANGE SECTION (e.g. UT 13S 11W 29)."
+                                    : res.error === "duplicate_plss"
+                                      ? `That section is already used by another target${res.conflicting_name ? ` (${res.conflicting_name})` : ""}.`
+                                      : res.error === "not_found"
+                                        ? "Target not found."
+                                        : res.error || "Failed to update PLSS";
+                                setError(msg);
+                              } else {
+                                const full = await api.areas.get(selected.id);
+                                setSelected(full);
+                                setPlssEditing(false);
+                                load();
+                              }
+                            } catch (err) {
+                              setError(err instanceof Error ? err.message : "Failed to update PLSS");
+                            } finally {
+                              setPlssSaving(false);
+                            }
+                          }}
+                          className="px-3 py-1 bg-primary-600 text-white rounded text-xs font-medium hover:bg-primary-700 disabled:opacity-50"
+                        >
+                          {plssSaving ? "Saving…" : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPlssEditing(false)}
+                          className="px-3 py-1 bg-slate-100 text-slate-600 rounded text-xs font-medium hover:bg-slate-200"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-slate-700">{selected.location_plss || "—"}</span>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>

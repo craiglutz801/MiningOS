@@ -609,6 +609,198 @@ def update_area_coordinates(area_id: int, latitude: float | None, longitude: flo
     return (r.rowcount or 0) > 0
 
 
+def update_area_name(area_id: int, name: str | None) -> bool:
+    """
+    Rename a target. Returns True when a row was updated. An empty or
+    whitespace-only name is rejected (targets must always have a name).
+    """
+    nm = (name or "").strip()
+    if not nm:
+        return False
+    eng = get_engine()
+    with eng.begin() as conn:
+        r = conn.execute(
+            text("UPDATE areas_of_focus SET name = :name, updated_at = now() WHERE id = :id"),
+            {"id": area_id, "name": nm[:500]},
+        )
+    return (r.rowcount or 0) > 0
+
+
+def update_area_plss(
+    area_id: int,
+    location_plss: str | None,
+    *,
+    regeocode_coordinates: bool = True,
+) -> dict[str, Any]:
+    """
+    User-initiated edit of a target's PLSS location.
+
+    Parses ``location_plss`` into state/township/range/section/meridian and
+    overwrites those columns (unlike ``apply_plss_lookup_result`` which
+    preserves existing values via COALESCE — that's the right call for AI /
+    reverse-geocode paths but wrong for a human edit where clearing a
+    section is a deliberate action).
+
+    When ``regeocode_coordinates`` is True (default) and the PLSS parses
+    cleanly, we also re-derive lat/lon from the new PLSS via BLM Cadastral
+    and overwrite them. This is the fix for "target has wrong PLSS and
+    wrong coords" scenarios (e.g. Spor Mountain) — the user corrects the
+    PLSS and the coords follow automatically.
+
+    Passing an empty/None ``location_plss`` clears the PLSS and all parsed
+    components (coordinates are preserved).
+
+    Returns a dict::
+
+        {
+          "ok": bool,
+          "error": str | None,
+          "location_plss": str | None,
+          "state_abbr": str | None,
+          "township": str | None,
+          "range": str | None,
+          "section": str | None,
+          "meridian": str | None,
+          "latitude": float | None,
+          "longitude": float | None,
+          "regeocoded": bool,
+          # on duplicate_plss error:
+          "conflicting_id": int | None,
+          "conflicting_name": str | None,
+        }
+    """
+    area = get_area(area_id)
+    if not area:
+        return {"ok": False, "error": "not_found"}
+
+    lp = (location_plss or "").strip()
+
+    if not lp:
+        eng = get_engine()
+        with eng.begin() as conn:
+            r = conn.execute(
+                text("""
+                UPDATE areas_of_focus SET
+                  location_plss = NULL,
+                  plss_normalized = NULL,
+                  state_abbr = NULL,
+                  township = NULL,
+                  "range" = NULL,
+                  section = NULL,
+                  meridian = NULL,
+                  updated_at = now()
+                WHERE id = :id
+                """),
+                {"id": area_id},
+            )
+            if (r.rowcount or 0) == 0:
+                return {"ok": False, "error": "not_found"}
+        return {
+            "ok": True,
+            "location_plss": None,
+            "state_abbr": None,
+            "township": None,
+            "range": None,
+            "section": None,
+            "meridian": None,
+            "latitude": area.get("latitude"),
+            "longitude": area.get("longitude"),
+            "regeocoded": False,
+        }
+
+    comp = _parse_plss_to_components(lp, default_state=(area.get("state_abbr") or "UT"))
+    if not comp:
+        return {
+            "ok": False,
+            "error": "unparseable_plss",
+            "location_plss": lp,
+        }
+
+    st = comp.get("state_abbr")
+    twp = comp.get("township")
+    rng = comp.get("range")
+    sec = comp.get("section")
+    mer = comp.get("meridian")
+
+    plss_key = _normalize_plss(lp, default_state=st or "UT")
+    if not plss_key:
+        plss_key = re.sub(r"\s+", " ", lp).upper().strip()
+
+    eng = get_engine()
+    new_lat: float | None = area.get("latitude")
+    new_lon: float | None = area.get("longitude")
+    geocoded = False
+
+    if regeocode_coordinates:
+        try:
+            from mining_os.services.plss_geocode import geocode_plss
+            geo = geocode_plss(state=st, township=twp, range_val=rng, section=sec, meridian=None)
+            if geo:
+                new_lat = geo["latitude"]
+                new_lon = geo["longitude"]
+                geocoded = True
+        except Exception as e:
+            log.warning("update_area_plss: geocode_plss failed for area %s: %s", area_id, e)
+
+    with eng.begin() as conn:
+        conflict = conn.execute(
+            text("SELECT id, name FROM areas_of_focus WHERE plss_normalized = :k AND id <> :id LIMIT 1"),
+            {"k": plss_key, "id": area_id},
+        ).mappings().first()
+        if conflict:
+            return {
+                "ok": False,
+                "error": "duplicate_plss",
+                "conflicting_id": int(conflict["id"]),
+                "conflicting_name": (conflict.get("name") or "").strip() or f"#{conflict['id']}",
+                "location_plss": lp,
+            }
+
+        r = conn.execute(
+            text("""
+            UPDATE areas_of_focus SET
+              location_plss = :location_plss,
+              plss_normalized = :plss_normalized,
+              state_abbr = :state_abbr,
+              township = :township,
+              "range" = :range_val,
+              section = :section,
+              meridian = :meridian,
+              latitude = :lat,
+              longitude = :lon,
+              updated_at = now()
+            WHERE id = :id
+            """),
+            {
+                "id": area_id,
+                "location_plss": lp,
+                "plss_normalized": plss_key,
+                "state_abbr": st,
+                "township": twp,
+                "range_val": rng,
+                "section": sec,
+                "meridian": mer,
+                "lat": new_lat,
+                "lon": new_lon,
+            },
+        )
+        if (r.rowcount or 0) == 0:
+            return {"ok": False, "error": "not_found"}
+
+    return {
+        "ok": True,
+        "location_plss": lp,
+        "state_abbr": st,
+        "township": twp,
+        "range": rng,
+        "section": sec,
+        "meridian": mer,
+        "latitude": new_lat,
+        "longitude": new_lon,
+        "regeocoded": geocoded,
+    }
+
+
 def update_area_status(id: int, status: str, blm_serial_number: str | None = None, blm_case_url: str | None = None) -> bool:
     eng = get_engine()
     with eng.begin() as conn:

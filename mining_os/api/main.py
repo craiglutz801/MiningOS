@@ -882,6 +882,29 @@ def api_set_area_notes(area_id: int, body: AreaNotesBody = Body(...)) -> Dict[st
     return {"id": area_id, "notes": body.notes}
 
 
+class AreaNameBody(BaseModel):
+    name: str
+
+
+@api_app.post("/areas-of-focus/{area_id}/name")
+def api_set_area_name(area_id: int, body: AreaNameBody = Body(...)) -> Dict[str, Any]:
+    """Rename a target. 400 if name is empty; 404 if target doesn't exist."""
+    from mining_os.services.areas_of_focus import get_area, update_area_name
+    if not (body.name or "").strip():
+        raise HTTPException(status_code=400, detail="Name is required")
+    if not get_area(area_id):
+        raise HTTPException(status_code=404, detail="Target not found")
+    ok = update_area_name(area_id, body.name)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Failed to update name")
+    return {"id": area_id, "name": body.name.strip()[:500]}
+
+
+class AreaPlssBody(BaseModel):
+    location_plss: Optional[str] = None
+    regeocode_coordinates: bool = True
+
+
 class AreaCoordinatesBody(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -908,6 +931,21 @@ def api_plss_from_coordinates(area_id: int) -> Dict[str, Any]:
     from mining_os.services.areas_of_focus import reverse_plss_from_coordinates_for_area
 
     return reverse_plss_from_coordinates_for_area(area_id)
+
+
+@api_app.post("/areas-of-focus/{area_id}/plss")
+def api_set_area_plss(area_id: int, body: AreaPlssBody = Body(...)) -> Dict[str, Any]:
+    """
+    User-initiated PLSS edit. Parses the provided string, overwrites state/
+    township/range/section/meridian, and (by default) re-geocodes lat/lon
+    from the new PLSS via BLM Cadastral.
+    """
+    from mining_os.services.areas_of_focus import update_area_plss
+    return update_area_plss(
+        area_id,
+        body.location_plss,
+        regeocode_coordinates=body.regeocode_coordinates,
+    )
 
 
 @api_app.post("/areas-of-focus/{area_id}/check-blm")
@@ -1500,6 +1538,29 @@ def plss_from_coordinates_toplevel(area_id: int) -> Dict[str, Any]:
     from mining_os.services.areas_of_focus import reverse_plss_from_coordinates_for_area
 
     return reverse_plss_from_coordinates_for_area(area_id)
+
+
+@app.post("/api/areas-of-focus/{area_id}/name")
+def set_area_name_toplevel(area_id: int, body: AreaNameBody = Body(...)) -> Dict[str, Any]:
+    from mining_os.services.areas_of_focus import get_area, update_area_name
+    if not (body.name or "").strip():
+        raise HTTPException(status_code=400, detail="Name is required")
+    if not get_area(area_id):
+        raise HTTPException(status_code=404, detail="Target not found")
+    ok = update_area_name(area_id, body.name)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Failed to update name")
+    return {"id": area_id, "name": body.name.strip()[:500]}
+
+
+@app.post("/api/areas-of-focus/{area_id}/plss")
+def set_area_plss_toplevel(area_id: int, body: AreaPlssBody = Body(...)) -> Dict[str, Any]:
+    from mining_os.services.areas_of_focus import update_area_plss
+    return update_area_plss(
+        area_id,
+        body.location_plss,
+        regeocode_coordinates=body.regeocode_coordinates,
+    )
 
 
 @app.post("/api/areas-of-focus/{area_id}/fetch-claim-records")
