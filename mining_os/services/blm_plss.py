@@ -342,6 +342,51 @@ def query_claims_by_plss(
     return _extract_claims_from_response(data, state)
 
 
+def query_claims_by_plss_with_status(
+    state: str,
+    township: str,
+    range_val: str,
+    section: str | None = None,
+    meridian: str = DEFAULT_MERIDIAN,
+) -> tuple[bool, List[dict]]:
+    """
+    Same as ``query_claims_by_plss`` but distinguishes "query succeeded, 0 results"
+    from "query failed" (BLM service unreachable / returned an error).
+
+    Returns ``(queried_ok, claims)``:
+      - ``queried_ok=True, claims=[]``  → BLM responded successfully with no matching claims
+        (valid answer: no MLRS claims filed at this PLSS).
+      - ``queried_ok=True, claims=[...]`` → normal success.
+      - ``queried_ok=False, claims=[]`` → BLM service failed / unreachable (network, 500, timeout).
+    """
+    state = (state or "UT").strip().upper()
+    meridian = str(meridian or DEFAULT_MERIDIAN).strip()
+    township = _normalize_township(township) or township
+    range_val = _normalize_range(range_val) or range_val
+
+    if section is not None:
+        sec = _normalize_section(section)
+        if not sec:
+            return (True, [])
+        mtrs_prefix = f"{state} {meridian} {township} {range_val} {sec}"
+        where = f"CSE_META LIKE '{mtrs_prefix}%'"
+    else:
+        mtrs_prefix = f"{state} {meridian} {township} {range_val}"
+        where = f"CSE_META LIKE '{mtrs_prefix} %'"
+
+    params = {
+        "where": where,
+        "outFields": "*",
+        "returnGeometry": "true",
+        "outSR": "4326",
+        "f": "json",
+    }
+    data = _blm_request_with_retry(params)
+    if data is None:
+        return (False, [])
+    return (True, _extract_claims_from_response(data, state))
+
+
 def query_claims_by_coords(
     lat: float,
     lon: float,

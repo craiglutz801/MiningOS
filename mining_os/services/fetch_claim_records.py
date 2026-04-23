@@ -286,24 +286,34 @@ def fetch_claim_records_for_area(
                 log_text += f"\n[spatial] error: {e}"
 
         # ── Pass 4: built-in direct API (last resort) ──
+        # Track whether the built-in API actually got a successful response from BLM
+        # (vs. a network/service failure). "Successful query, 0 claims" is a valid
+        # answer and should NOT be reported as an error.
+        built_in_api_queried_ok: bool | None = None
         if not claims:
             log.info("fetch_claim_records [api]: trying built-in PLSS API query")
             try:
-                from mining_os.services.blm_plss import query_claims_by_plss
-                api_claims = query_claims_by_plss(
+                from mining_os.services.blm_plss import query_claims_by_plss_with_status
+                queried_ok, api_claims = query_claims_by_plss_with_status(
                     state=plss_row["State"],
                     township=plss_row["Township"],
                     range_val=plss_row["Range"],
                     section=None,
                     meridian=plss_row["Meridian"],
                 )
+                built_in_api_queried_ok = queried_ok
                 if api_claims:
                     for c in api_claims:
                         c.pop("geometry", None)
                     claims = api_claims
                     query_method = "built_in_api"
                     log_text += f"\n[built-in API] Found {len(claims)} claim(s) via direct query (no section filter)"
+                elif queried_ok:
+                    log_text += "\n[built-in API] BLM responded successfully with 0 claims for this PLSS."
+                else:
+                    log_text += "\n[built-in API] BLM MLRS service did not respond successfully."
             except ModuleNotFoundError as e:
+                built_in_api_queried_ok = False
                 fatal_env_error = fatal_env_error or (
                     f"Server dependency missing: {e.name!r}. "
                     "Re-deploy with all runtime dependencies installed "
@@ -311,6 +321,7 @@ def fetch_claim_records_for_area(
                 )
                 log.error("fetch_claim_records: built-in API import failed: %s", e)
             except Exception as e:
+                built_in_api_queried_ok = False
                 log.warning("fetch_claim_records: built-in API failed: %s", e)
                 log_text += f"\n[built-in API] error: {e}"
 
@@ -330,10 +341,11 @@ def fetch_claim_records_for_area(
         elif proc is not None and proc.returncode != 0 and not claims:
             payload["error"] = f"Script exited with code {proc.returncode}"
             payload["ok"] = False
-        elif not has_script and not claims:
+        elif not has_script and not claims and built_in_api_queried_ok is False:
+            # Only treat this as an error when BLM itself was unreachable.
+            # "Queried successfully, 0 claims" is a valid answer (no recorded MLRS claims).
             payload["error"] = (
-                "No claims found via built-in BLM API. The PLSS may have no recorded MLRS claims, "
-                "or the BLM ArcGIS service is temporarily unreachable."
+                "BLM ArcGIS MLRS service is temporarily unreachable. Please try again in a moment."
             )
             payload["ok"] = False
 
