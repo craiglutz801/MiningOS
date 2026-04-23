@@ -108,6 +108,74 @@ def _normalize_section(value: str | None) -> str | None:
     return None
 
 
+def normalize_plss_field(value: str | None, kind: str) -> str | None:
+    """
+    Robust per-field normalizer for user-entered PLSS components.
+
+    Unlike ``parse_plss_string`` (which expects a full PLSS string and bails
+    when a leading "T"/"R" prefixes a field), this strips the common labels
+    (``T``, ``Twp``, ``Township``, ``R``, ``Rng``, ``Range``, ``Sec``,
+    ``Section`` + their long-form direction words) and normalizes to the
+    BLM-encoded format used everywhere else in the codebase.
+
+    Accepts inputs like ``T12S``, ``12S``, ``Township 12 South``, ``t. 12 s``,
+    ``0120S``, ``12 s``. Returns:
+      - township/range: 4-digit ×10 encoded form like ``0120S`` / ``0120W``
+      - section: zero-padded 3-digit like ``035``
+      - state: 2-letter upper like ``UT``
+      - meridian: 2-digit string like ``26`` (or the raw digits if provided)
+
+    Returns ``None`` for unparseable / empty input.
+    ``kind`` must be one of ``"township" | "range" | "section" | "state" | "meridian"``.
+    """
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+
+    if kind == "state":
+        s = re.sub(r"[^A-Za-z]", "", s).upper()
+        return s[:2] if len(s) >= 2 else None
+
+    if kind == "meridian":
+        digits = re.sub(r"\D", "", s)
+        if not digits:
+            return None
+        return digits.zfill(2)[:2]
+
+    up = s.upper()
+    up = re.sub(r"\bNORTH\b", "N", up)
+    up = re.sub(r"\bSOUTH\b", "S", up)
+    up = re.sub(r"\bEAST\b", "E", up)
+    up = re.sub(r"\bWEST\b", "W", up)
+
+    if kind == "section":
+        up = re.sub(r"\b(SECTION|SEC)\b\.?", "", up)
+        digits = re.sub(r"\D", "", up)
+        return _normalize_section(digits) if digits else None
+
+    if kind == "township":
+        up = re.sub(r"\b(?:TOWNSHIP|TWP)\b\.?", "", up)
+        up = re.sub(r"^\s*T\s*\.?\s*(?=\d)", "", up)
+        up = re.sub(r"[\s\.]+", "", up)
+        m = re.fullmatch(r"(\d+)([NS])", up)
+        if not m:
+            return None
+        return _normalize_township(m.group(1) + m.group(2))
+
+    if kind == "range":
+        up = re.sub(r"\b(?:RANGE|RNG)\b\.?", "", up)
+        up = re.sub(r"^\s*R\s*\.?\s*(?=\d)", "", up)
+        up = re.sub(r"[\s\.]+", "", up)
+        m = re.fullmatch(r"(\d+)([EW])", up)
+        if not m:
+            return None
+        return _normalize_range(m.group(1) + m.group(2))
+
+    return None
+
+
 def parse_plss_string(plss: str, default_state: str = "UT") -> dict | None:
     """
     Smart PLSS parser — extracts state, township, range, section from many formats.

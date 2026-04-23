@@ -905,6 +905,15 @@ class AreaPlssBody(BaseModel):
     regeocode_coordinates: bool = True
 
 
+class AreaPlssComponentsBody(BaseModel):
+    state_abbr: Optional[str] = None
+    township: Optional[str] = None
+    range_val: Optional[str] = None
+    section: Optional[str] = None
+    meridian: Optional[str] = None
+    regeocode_coordinates: bool = True
+
+
 class AreaCoordinatesBody(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -944,6 +953,29 @@ def api_set_area_plss(area_id: int, body: AreaPlssBody = Body(...)) -> Dict[str,
     return update_area_plss(
         area_id,
         body.location_plss,
+        regeocode_coordinates=body.regeocode_coordinates,
+    )
+
+
+@api_app.post("/areas-of-focus/{area_id}/plss-components")
+def api_set_area_plss_components(
+    area_id: int, body: AreaPlssComponentsBody = Body(...)
+) -> Dict[str, Any]:
+    """
+    User-initiated PLSS edit by individual Township / Range / Section /
+    State / Meridian fields. Each input is normalized (``T12S`` → ``0120S``,
+    ``Sec 35`` → ``035``) and persisted to the dedicated columns;
+    ``location_plss`` is rebuilt as a canonical string so downstream
+    consumers (Fetch Claim Records, BLM LR2000, etc.) pick up the change.
+    """
+    from mining_os.services.areas_of_focus import update_area_plss_components
+    return update_area_plss_components(
+        area_id,
+        state_abbr=body.state_abbr,
+        township=body.township,
+        range_val=body.range_val,
+        section=body.section,
+        meridian=body.meridian,
         regeocode_coordinates=body.regeocode_coordinates,
     )
 
@@ -1559,6 +1591,22 @@ def set_area_plss_toplevel(area_id: int, body: AreaPlssBody = Body(...)) -> Dict
     return update_area_plss(
         area_id,
         body.location_plss,
+        regeocode_coordinates=body.regeocode_coordinates,
+    )
+
+
+@app.post("/api/areas-of-focus/{area_id}/plss-components")
+def set_area_plss_components_toplevel(
+    area_id: int, body: AreaPlssComponentsBody = Body(...)
+) -> Dict[str, Any]:
+    from mining_os.services.areas_of_focus import update_area_plss_components
+    return update_area_plss_components(
+        area_id,
+        state_abbr=body.state_abbr,
+        township=body.township,
+        range_val=body.range_val,
+        section=body.section,
+        meridian=body.meridian,
         regeocode_coordinates=body.regeocode_coordinates,
     )
 

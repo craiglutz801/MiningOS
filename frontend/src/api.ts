@@ -164,6 +164,39 @@ export const api = {
           regeocode_coordinates: opts.regeocode_coordinates ?? true,
         }),
       }),
+    updatePlssComponents: (
+      id: number,
+      fields: {
+        state_abbr?: string | null;
+        township?: string | null;
+        range_val?: string | null;
+        section?: string | null;
+        meridian?: string | null;
+      },
+      opts: { regeocode_coordinates?: boolean } = {},
+    ) =>
+      request<{
+        ok: boolean;
+        error?: string;
+        detail?: string;
+        location_plss?: string | null;
+        state_abbr?: string | null;
+        township?: string | null;
+        range?: string | null;
+        section?: string | null;
+        meridian?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        regeocoded?: boolean;
+        conflicting_id?: number;
+        conflicting_name?: string;
+      }>(`/areas-of-focus/${id}/plss-components`, {
+        method: "POST",
+        body: JSON.stringify({
+          ...fields,
+          regeocode_coordinates: opts.regeocode_coordinates ?? true,
+        }),
+      }),
     plssFromCoordinates: (id: number) =>
       request<{
         ok: boolean;

@@ -234,7 +234,10 @@ export function Areas() {
   const [nameDraft, setNameDraft] = useState("");
   const [nameSaving, setNameSaving] = useState(false);
   const [plssEditing, setPlssEditing] = useState(false);
-  const [plssDraft, setPlssDraft] = useState("");
+  const [plssStateDraft, setPlssStateDraft] = useState("");
+  const [plssTownshipDraft, setPlssTownshipDraft] = useState("");
+  const [plssRangeDraft, setPlssRangeDraft] = useState("");
+  const [plssSectionDraft, setPlssSectionDraft] = useState("");
   const [plssRegeocode, setPlssRegeocode] = useState(true);
   const [plssSaving, setPlssSaving] = useState(false);
   const [fetchClaimRecordsLoading, setFetchClaimRecordsLoading] = useState(false);
@@ -2604,7 +2607,17 @@ export function Areas() {
                       <button
                         type="button"
                         onClick={() => {
-                          setPlssDraft(selected.location_plss || "");
+                          // Pre-fill from the stored components. The DB keeps BLM-encoded
+                          // values like "0120S" / "0120W" / "035"; display them in the
+                          // friendlier "12S" / "12W" / "35" form the user is used to.
+                          const compact = (v?: string | null) =>
+                            v ? v.replace(/^0+(\d)/, "$1") : "";
+                          const compactSec = (v?: string | null) =>
+                            v ? v.replace(/^0+(?=\d)/, "") : "";
+                          setPlssStateDraft((selected.state_abbr || "").toUpperCase());
+                          setPlssTownshipDraft(compact(selected.township));
+                          setPlssRangeDraft(compact(selected.range));
+                          setPlssSectionDraft(compactSec(selected.section));
                           setPlssRegeocode(true);
                           setPlssEditing(true);
                         }}
@@ -2616,13 +2629,49 @@ export function Areas() {
                   </div>
                   {plssEditing ? (
                     <div className="mt-1 space-y-2">
-                      <input
-                        type="text"
-                        value={plssDraft}
-                        onChange={(e) => setPlssDraft(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="e.g. UT 13S 11W Sec 29"
-                      />
+                      <div className="grid grid-cols-4 gap-2">
+                        <label className="flex flex-col gap-1">
+                          <span className="text-[11px] text-slate-500">State</span>
+                          <input
+                            type="text"
+                            value={plssStateDraft}
+                            onChange={(e) => setPlssStateDraft(e.target.value.toUpperCase().slice(0, 2))}
+                            maxLength={2}
+                            className="px-2 py-1.5 border border-slate-200 rounded text-sm uppercase focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="UT"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-1">
+                          <span className="text-[11px] text-slate-500">Township</span>
+                          <input
+                            type="text"
+                            value={plssTownshipDraft}
+                            onChange={(e) => setPlssTownshipDraft(e.target.value)}
+                            className="px-2 py-1.5 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="12S"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-1">
+                          <span className="text-[11px] text-slate-500">Range</span>
+                          <input
+                            type="text"
+                            value={plssRangeDraft}
+                            onChange={(e) => setPlssRangeDraft(e.target.value)}
+                            className="px-2 py-1.5 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="12W"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-1">
+                          <span className="text-[11px] text-slate-500">Section</span>
+                          <input
+                            type="text"
+                            value={plssSectionDraft}
+                            onChange={(e) => setPlssSectionDraft(e.target.value)}
+                            className="px-2 py-1.5 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="35"
+                          />
+                        </label>
+                      </div>
                       <label className="flex items-center gap-2 text-xs text-slate-600 select-none">
                         <input
                           type="checkbox"
@@ -2633,8 +2682,8 @@ export function Areas() {
                         Re-derive latitude/longitude from this PLSS via BLM
                       </label>
                       <div className="text-[11px] text-slate-500 leading-snug">
-                        Format: <code>STATE TOWNSHIP RANGE SECTION</code> (e.g. <code>UT 13S 11W 29</code>
-                        or <code>NV T5N R32E Sec 12</code>). Leave blank to clear.
+                        Accepts <code>12S</code> or <code>T12S</code>, <code>12W</code> or <code>R12W</code>,
+                        section 1-36. Leave all blank → Save clears the PLSS.
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -2644,15 +2693,38 @@ export function Areas() {
                             setPlssSaving(true);
                             setError(null);
                             try {
-                              const res = await api.areas.updatePlss(
+                              const stateVal = plssStateDraft.trim();
+                              const twpVal = plssTownshipDraft.trim();
+                              const rngVal = plssRangeDraft.trim();
+                              const secVal = plssSectionDraft.trim();
+                              if (!twpVal && !rngVal && !secVal && !stateVal) {
+                                const res = await api.areas.updatePlss(selected.id, null, {
+                                  regeocode_coordinates: false,
+                                });
+                                if (!res.ok) {
+                                  setError(res.error || "Failed to clear PLSS");
+                                } else {
+                                  const full = await api.areas.get(selected.id);
+                                  setSelected(full);
+                                  setPlssEditing(false);
+                                  load();
+                                }
+                                return;
+                              }
+                              const res = await api.areas.updatePlssComponents(
                                 selected.id,
-                                plssDraft.trim() || null,
+                                {
+                                  state_abbr: stateVal || null,
+                                  township: twpVal || null,
+                                  range_val: rngVal || null,
+                                  section: secVal || null,
+                                },
                                 { regeocode_coordinates: plssRegeocode },
                               );
                               if (!res.ok) {
                                 const msg =
-                                  res.error === "unparseable_plss"
-                                    ? "Could not parse that PLSS string. Use STATE TOWNSHIP RANGE SECTION (e.g. UT 13S 11W 29)."
+                                  res.error === "invalid_components"
+                                    ? res.detail || "One or more PLSS fields could not be parsed."
                                     : res.error === "duplicate_plss"
                                       ? `That section is already used by another target${res.conflicting_name ? ` (${res.conflicting_name})` : ""}.`
                                       : res.error === "not_found"

@@ -801,6 +801,146 @@ def update_area_plss(
     }
 
 
+def update_area_plss_components(
+    area_id: int,
+    *,
+    state_abbr: str | None,
+    township: str | None,
+    range_val: str | None,
+    section: str | None,
+    meridian: str | None = None,
+    regeocode_coordinates: bool = True,
+) -> dict[str, Any]:
+    """
+    User-initiated edit of PLSS by *individual component* (Township, Range,
+    Section, State, optional Meridian) rather than a raw PLSS string.
+
+    Each input is run through :func:`blm_plss.normalize_plss_field` which
+    tolerates messy user input (``T12S``, ``12S``, ``Township 12 South``,
+    ``t.12.s``, ``0120S`` — all become ``0120S``). State + Township + Range
+    are required; Section is optional but recommended. Meridian defaults
+    from the state when blank.
+
+    The canonical ``location_plss`` string is rebuilt from the normalized
+    components as ``"<STATE> <T##D> <R##D> Sec <###>"`` (e.g.
+    ``"UT T12S R12W Sec 035"``) so the rest of the system (including the
+    Fetch Claim Records pipeline) sees a clean, parseable value.
+
+    Behaviour otherwise mirrors :func:`update_area_plss`: duplicate-section
+    guard, coords re-geocoded from the new PLSS when ``regeocode_coordinates``
+    is true, and the same response shape on success/failure.
+    """
+    from mining_os.services.blm_plss import normalize_plss_field
+
+    area = get_area(area_id)
+    if not area:
+        return {"ok": False, "error": "not_found"}
+
+    from mining_os.services.fetch_claim_records import STATE_MERIDIAN, DEFAULT_MERIDIAN
+
+    st = normalize_plss_field(state_abbr, "state") or (area.get("state_abbr") or "UT")
+    twp = normalize_plss_field(township, "township")
+    rng = normalize_plss_field(range_val, "range")
+    sec = normalize_plss_field(section, "section") if section not in (None, "") else None
+    mer = normalize_plss_field(meridian, "meridian") if meridian not in (None, "") else None
+    if not mer:
+        mer = STATE_MERIDIAN.get(st, DEFAULT_MERIDIAN)
+
+    missing = [k for k, v in (("township", twp), ("range", rng)) if not v]
+    if missing:
+        return {
+            "ok": False,
+            "error": "invalid_components",
+            "detail": (
+                f"Could not parse {', '.join(missing)}. "
+                "Township must look like '12S' or 'T12S'; Range like '12W' or 'R12W'."
+            ),
+        }
+
+    def _compact_tr(encoded: str) -> str:
+        m = re.match(r"^0*(\d+)([NSEW])$", encoded)
+        return f"{m.group(1)}{m.group(2)}" if m else encoded
+
+    parts = [st, f"T{_compact_tr(twp)}", f"R{_compact_tr(rng)}"]
+    if sec:
+        parts.append(f"Sec {sec}")
+    lp = " ".join(parts)
+    plss_key = _normalize_plss(lp, default_state=st) or re.sub(r"\s+", " ", lp).upper().strip()
+
+    new_lat: float | None = area.get("latitude")
+    new_lon: float | None = area.get("longitude")
+    geocoded = False
+    if regeocode_coordinates:
+        try:
+            from mining_os.services.plss_geocode import geocode_plss
+            geo = geocode_plss(state=st, township=twp, range_val=rng, section=sec, meridian=None)
+            if geo:
+                new_lat = geo["latitude"]
+                new_lon = geo["longitude"]
+                geocoded = True
+        except Exception as e:
+            log.warning("update_area_plss_components: geocode_plss failed for area %s: %s", area_id, e)
+
+    eng = get_engine()
+    with eng.begin() as conn:
+        conflict = conn.execute(
+            text("SELECT id, name FROM areas_of_focus WHERE plss_normalized = :k AND id <> :id LIMIT 1"),
+            {"k": plss_key, "id": area_id},
+        ).mappings().first()
+        if conflict:
+            return {
+                "ok": False,
+                "error": "duplicate_plss",
+                "conflicting_id": int(conflict["id"]),
+                "conflicting_name": (conflict.get("name") or "").strip() or f"#{conflict['id']}",
+                "location_plss": lp,
+            }
+
+        r = conn.execute(
+            text("""
+            UPDATE areas_of_focus SET
+              location_plss = :location_plss,
+              plss_normalized = :plss_normalized,
+              state_abbr = :state_abbr,
+              township = :township,
+              "range" = :range_val,
+              section = :section,
+              meridian = :meridian,
+              latitude = :lat,
+              longitude = :lon,
+              updated_at = now()
+            WHERE id = :id
+            """),
+            {
+                "id": area_id,
+                "location_plss": lp,
+                "plss_normalized": plss_key,
+                "state_abbr": st,
+                "township": twp,
+                "range_val": rng,
+                "section": sec,
+                "meridian": mer,
+                "lat": new_lat,
+                "lon": new_lon,
+            },
+        )
+        if (r.rowcount or 0) == 0:
+            return {"ok": False, "error": "not_found"}
+
+    return {
+        "ok": True,
+        "location_plss": lp,
+        "state_abbr": st,
+        "township": twp,
+        "range": rng,
+        "section": sec,
+        "meridian": mer,
+        "latitude": new_lat,
+        "longitude": new_lon,
+        "regeocoded": geocoded,
+    }
+
+
 def update_area_status(id: int, status: str, blm_serial_number: str | None = None, blm_case_url: str | None = None) -> bool:
     eng = get_engine()
     with eng.begin() as conn:
