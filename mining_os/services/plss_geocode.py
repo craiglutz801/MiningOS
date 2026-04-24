@@ -194,16 +194,25 @@ def _plss_request_with_retry(params: dict, plssid: str, retries: int = 2) -> dic
 
 def _decode_tr_encoded_segment(enc: str) -> str | None:
     """
-    Decode a PLSSID 5-char segment (4-digit + N/S/E/W) to a form compatible with areas_of_focus._display_trs
-    (integer part is stored “×10” when < 100 so //10 display matches human T/R labels).
+    Decode a PLSSID 5-char segment (4-digit + N/S/E/W) to the storage form
+    used by areas_of_focus.
+
+    BLM PLSSID encodes township/range as ``human_value × 10`` zero-padded to 4 digits
+    (e.g. T8 → ``"0080"``, T12 → ``"0120"``, T149 → ``"1490"``). The storage form
+    in areas_of_focus.township / .range is the same ``×10`` integer string, and
+    ``_human_tr_label`` divides by 10 for display. So decoding simply strips the
+    leading zeros and re-attaches the direction.
+
+    Examples:
+        "0080S" -> "80S"   (display: T8S)
+        "0120S" -> "120S"  (display: T12S)
+        "1490S" -> "1490S" (display: T149S)
     """
     m = re.match(r"^(\d{4})([NSEW])$", (enc or "").strip().upper())
     if not m:
         return None
     n = int(m.group(1))
     d = m.group(2)
-    if n < 100:
-        n *= 10
     return f"{n}{d}"
 
 

@@ -34,3 +34,10 @@ db_data/
 
 target_pipeline/data/mlrs/mlrs_open_claims.csv
 target_pipeline/data/usgs/mrds.csv
+
+# Local DB backups (may contain credentials / data)
+.local_backups/
+
+# Pipeline reverse-geocode cache + dry-run artifacts
+target_pipeline/.cache/
+target_pipeline/data/mines_to_targets/
