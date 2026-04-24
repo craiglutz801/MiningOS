@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import type { MapTarget } from "../../map/useTargetsLayer";
 import { getTargetStatusLabel } from "../../map/targetStyles";
 
@@ -24,8 +25,8 @@ export function TargetPopup({ target }: TargetPopupProps) {
       {target.claimType && (
         <div style={{ color: "#64748b", fontSize: 12 }}>Type: {target.claimType}</div>
       )}
-      <a
-        href={`/areas?areaId=${target.id}`}
+      <Link
+        to={`/areas?areaId=${target.id}`}
         style={{
           display: "inline-block",
           marginTop: 8,
@@ -36,7 +37,7 @@ export function TargetPopup({ target }: TargetPopupProps) {
         }}
       >
         View target →
-      </a>
+      </Link>
     </div>
   );
 }
