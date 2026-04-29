@@ -75,6 +75,7 @@ export const api = {
       status?: string;
       state_abbr?: string;
       claim_type?: string;
+      retrieval_type?: string;
       township?: string;
       range_val?: string;
       sector?: string;
@@ -86,6 +87,7 @@ export const api = {
       if (params?.status) q.set("status", params.status);
       if (params?.state_abbr) q.set("state_abbr", params.state_abbr);
       if (params?.claim_type) q.set("claim_type", params.claim_type);
+      if (params?.retrieval_type) q.set("retrieval_type", params.retrieval_type);
       if (params?.township) q.set("township", params.township);
       if (params?.range_val) q.set("range_val", params.range_val);
       if (params?.sector) q.set("sector", params.sector);
@@ -645,6 +647,7 @@ export interface Area {
   section?: string;
   is_uploaded?: boolean;
   claim_type?: string;
+  retrieval_type?: string;
   report_count?: number;
   magnitude_score?: number;
     characteristics?: {

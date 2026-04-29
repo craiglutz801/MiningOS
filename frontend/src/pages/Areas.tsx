@@ -134,6 +134,7 @@ export function Areas() {
   const [statusFilter, setStatusFilter] = useState(statusParam);
   const [stateFilter, setStateFilter] = useState("");
   const [claimTypeFilter, setClaimTypeFilter] = useState("");
+  const [retrievalTypeFilter, setRetrievalTypeFilter] = useState("");
   const [townshipFilter, setTownshipFilter] = useState("");
   const [rangeFilter, setRangeFilter] = useState("");
   const [sectorFilter, setSectorFilter] = useState("");
@@ -327,6 +328,7 @@ export function Areas() {
         status: statusFilter || undefined,
         state_abbr: stateFilter || undefined,
         claim_type: claimTypeFilter || undefined,
+        retrieval_type: retrievalTypeFilter || undefined,
         township: townshipFilter.trim() || undefined,
         range_val: rangeFilter.trim() || undefined,
         sector: sectorFilter.trim() || undefined,
@@ -466,7 +468,7 @@ export function Areas() {
 
   useEffect(
     () => load(),
-    [mineralFilter, statusFilter, stateFilter, claimTypeFilter, townshipFilter, rangeFilter, sectorFilter, nameFilter]
+    [mineralFilter, statusFilter, stateFilter, claimTypeFilter, retrievalTypeFilter, townshipFilter, rangeFilter, sectorFilter, nameFilter]
   );
 
   const refreshMineralSuggestions = async () => {
@@ -2119,7 +2121,19 @@ export function Areas() {
               <option value="Mining claims">Mining claims</option>
             </select>
           </label>
-          {(nameFilter || mineralFilter || statusFilter || stateFilter || claimTypeFilter || townshipFilter || rangeFilter || sectorFilter) && (
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-slate-500">Retrieval type</span>
+            <select
+              value={retrievalTypeFilter}
+              onChange={(e) => setRetrievalTypeFilter(e.target.value)}
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">All</option>
+              <option value="Known Mine">Known Mine</option>
+              <option value="User Added">User Added</option>
+            </select>
+          </label>
+          {(nameFilter || mineralFilter || statusFilter || stateFilter || claimTypeFilter || retrievalTypeFilter || townshipFilter || rangeFilter || sectorFilter) && (
             <button
               type="button"
               onClick={() => {
@@ -2128,6 +2142,7 @@ export function Areas() {
                 setStatusFilter("");
                 setStateFilter("");
                 setClaimTypeFilter("");
+                setRetrievalTypeFilter("");
                 setTownshipFilter("");
                 setRangeFilter("");
                 setSectorFilter("");
@@ -2420,6 +2435,7 @@ export function Areas() {
                           status: statusFilter || undefined,
                           state_abbr: stateFilter || undefined,
                           claim_type: claimTypeFilter || undefined,
+                          retrieval_type: retrievalTypeFilter || undefined,
                           township: townshipFilter.trim() || undefined,
                           range_val: rangeFilter.trim() || undefined,
                           sector: sectorFilter.trim() || undefined,
@@ -2804,6 +2820,10 @@ export function Areas() {
                   <span className="text-slate-500 block">Claim Type</span>
                   <span className="text-slate-700">{selected.claim_type || "—"}</span>
                 </div>
+                <div>
+                  <span className="text-slate-500 block">Retrieval Type</span>
+                  <span className="text-slate-700">{selected.retrieval_type || "User Added"}</span>
+                </div>
                 {selected.characteristics?.blm_prod_types && selected.characteristics.blm_prod_types.length > 0 && (
                   <div>
                     <span className="text-slate-500 block">BLM Type</span>
@@ -3095,6 +3115,7 @@ export function Areas() {
                             status: statusFilter || undefined,
                             state_abbr: stateFilter || undefined,
                             claim_type: claimTypeFilter || undefined,
+                            retrieval_type: retrievalTypeFilter || undefined,
                             township: townshipFilter.trim() || undefined,
                             range_val: rangeFilter.trim() || undefined,
                             sector: sectorFilter.trim() || undefined,

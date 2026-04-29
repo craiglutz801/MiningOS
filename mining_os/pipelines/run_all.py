@@ -48,6 +48,7 @@ def init_db() -> None:
         "015_plss_components_and_uploaded.sql",
         "016_areas_optional_coordinates.sql",
         "017_automation_engine.sql",
+        "018_add_retrieval_type.sql",
     ]:
         sql_path = sql_dir / name
         if sql_path.exists():

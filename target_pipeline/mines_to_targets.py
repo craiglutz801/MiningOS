@@ -430,6 +430,7 @@ def upsert_payloads(payloads: list[dict[str, Any]], commit_every: int = 100) -> 
                 report_links=p["report_links"] or None,
                 validity_notes=p["validity_notes"],
                 source=p["source"],
+                retrieval_type="Known Mine",
                 state_abbr=p["state_abbr"],
                 township=p["township"],
                 range_val=p["range_val"],

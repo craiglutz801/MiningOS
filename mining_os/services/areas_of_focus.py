@@ -43,6 +43,22 @@ def _format_area_display(row: dict) -> dict:
     return row
 
 
+RETRIEVAL_TYPE_KNOWN_MINE = "Known Mine"
+RETRIEVAL_TYPE_USER_ADDED = "User Added"
+
+
+def _normalize_retrieval_type(value: str | None, source: str | None = None) -> str:
+    """Normalize retrieval_type to the canonical UI labels."""
+    v = (value or "").strip().lower()
+    if v in {"known mine", "known_mine", "known-mine"}:
+        return RETRIEVAL_TYPE_KNOWN_MINE
+    if v in {"user added", "user_added", "user-added", "manual"}:
+        return RETRIEVAL_TYPE_USER_ADDED
+    if (source or "").strip().lower() == "mrds_auto":
+        return RETRIEVAL_TYPE_KNOWN_MINE
+    return RETRIEVAL_TYPE_USER_ADDED
+
+
 def _parse_coords(s: str) -> tuple[float | None, float | None]:
     """Parse 'lat, lon' or '38.5136, -113.2622' -> (lat, lon)."""
     if not s or not isinstance(s, str):
@@ -282,6 +298,7 @@ def list_areas(
     status: str | None = None,
     state_abbr: str | None = None,
     claim_type: str | None = None,
+    retrieval_type: str | None = None,
     township: str | None = None,
     range_val: str | None = None,
     sector: str | None = None,
@@ -306,6 +323,10 @@ def list_areas(
     if claim_type:
         filters.append("(claim_type = :claim_type OR (claim_type IS NULL AND :claim_type = ''))")
         params["claim_type"] = claim_type.strip().lower()
+    if retrieval_type:
+        filters.append("COALESCE(retrieval_type, :retrieval_type_default) = :retrieval_type")
+        params["retrieval_type"] = _normalize_retrieval_type(retrieval_type)
+        params["retrieval_type_default"] = RETRIEVAL_TYPE_USER_ADDED
     # Advanced search: PLSS at section (sector) level. plss_normalized format: "STATE TWP RNG" or "STATE TWP RNG SEC"
     t_norm = _normalize_plss_filter_component(township, "township")
     r_norm = _normalize_plss_filter_component(range_val, "range")
@@ -332,7 +353,7 @@ def list_areas(
     SELECT a.id, a.name, a.location_plss, a.location_coords, a.latitude, a.longitude,
            a.minerals, a.status, a.status_checked_at, a.report_links, a.report_summary,
            a.validity_notes, a.source, a.external_id, a.blm_case_url, a.blm_serial_number,
-           COALESCE(a.priority, 'low') AS priority, a.state_abbr, a.meridian, a.claim_type, a.created_at, a.updated_at,
+           COALESCE(a.priority, 'low') AS priority, a.state_abbr, a.meridian, a.claim_type, COALESCE(a.retrieval_type, 'User Added') AS retrieval_type, a.created_at, a.updated_at,
            a.township, a."range", a.section, COALESCE(a.is_uploaded, false) AS is_uploaded,
            COALESCE(arc.report_count, 0)::int AS report_count,
            (COALESCE(a.roi_score, 0) + COALESCE(arc.report_count, 0) * 5)::int AS magnitude_score
@@ -361,7 +382,7 @@ def list_areas(
                 SELECT a.id, a.name, a.location_plss, a.location_coords, a.latitude, a.longitude,
                        a.minerals, a.status, a.status_checked_at, a.report_links, a.report_summary,
                        a.validity_notes, a.source, a.external_id, a.blm_case_url, a.blm_serial_number,
-                       'monitoring_low' AS priority, a.state_abbr, a.meridian, a.claim_type, a.created_at, a.updated_at,
+                       'monitoring_low' AS priority, a.state_abbr, a.meridian, a.claim_type, COALESCE(a.retrieval_type, 'User Added') AS retrieval_type, a.created_at, a.updated_at,
                        a.township, a."range", a.section, COALESCE(a.is_uploaded, false) AS is_uploaded,
                        COALESCE(arc.report_count, 0)::int AS report_count,
                        (COALESCE(a.roi_score, 0) + COALESCE(arc.report_count, 0) * 5)::int AS magnitude_score
@@ -386,7 +407,7 @@ def list_areas(
                 SELECT a.id, a.name, a.location_plss, a.location_coords, a.latitude, a.longitude,
                        a.minerals, a.status, a.status_checked_at, a.report_links, a.report_summary,
                        a.validity_notes, a.source, a.external_id, a.blm_case_url, a.blm_serial_number,
-                       COALESCE(a.priority, 'low') AS priority, a.state_abbr, a.meridian, a.claim_type, a.created_at, a.updated_at,
+                       COALESCE(a.priority, 'low') AS priority, a.state_abbr, a.meridian, a.claim_type, COALESCE(a.retrieval_type, 'User Added') AS retrieval_type, a.created_at, a.updated_at,
                        COALESCE(arc.report_count, 0)::int AS report_count,
                        (COALESCE(a.roi_score, 0) + COALESCE(arc.report_count, 0) * 5)::int AS magnitude_score
                 FROM areas_of_focus a
@@ -434,7 +455,7 @@ def get_area(id: int) -> dict | None:
                        validity_notes, source, external_id, blm_case_url, blm_serial_number,
                        priority, roi_score, characteristics, state_abbr, meridian,
                        township, "range", section, COALESCE(is_uploaded, false) AS is_uploaded,
-                       plss_normalized, claim_type, created_at, updated_at
+                       plss_normalized, claim_type, COALESCE(retrieval_type, 'User Added') AS retrieval_type, created_at, updated_at
                 FROM areas_of_focus WHERE id = :id
                 """),
                 {"id": id},
@@ -448,7 +469,7 @@ def get_area(id: int) -> dict | None:
                            minerals, status, status_checked_at, report_links, report_summary,
                            validity_notes, source, external_id, blm_case_url, blm_serial_number,
                            priority, roi_score, characteristics, state_abbr, meridian,
-                           plss_normalized, claim_type, created_at, updated_at
+                           plss_normalized, claim_type, COALESCE(retrieval_type, 'User Added') AS retrieval_type, created_at, updated_at
                     FROM areas_of_focus WHERE id = :id
                     """),
                     {"id": id},
@@ -463,6 +484,7 @@ def get_area(id: int) -> dict | None:
                         row["characteristics"] = {}
                     row.setdefault("plss_normalized", None)
                     row.setdefault("claim_type", None)
+                    row.setdefault("retrieval_type", RETRIEVAL_TYPE_USER_ADDED)
                     return row
                 return None
             if "priority" in err and "column" in err:
@@ -486,6 +508,7 @@ def get_area(id: int) -> dict | None:
                     row.setdefault("is_uploaded", False)
                     row.setdefault("plss_normalized", None)
                     row.setdefault("claim_type", None)
+                    row.setdefault("retrieval_type", RETRIEVAL_TYPE_USER_ADDED)
                     return row
                 return None
             if "characteristics" in err and "column" in err:
@@ -508,6 +531,7 @@ def get_area(id: int) -> dict | None:
                     row.setdefault("is_uploaded", False)
                     row.setdefault("plss_normalized", None)
                     row.setdefault("claim_type", None)
+                    row.setdefault("retrieval_type", RETRIEVAL_TYPE_USER_ADDED)
                     return row
                 return None
             raise
@@ -517,6 +541,7 @@ def get_area(id: int) -> dict | None:
             row["characteristics"] = {}
         row.setdefault("plss_normalized", None)
         row.setdefault("claim_type", None)
+        row.setdefault("retrieval_type", RETRIEVAL_TYPE_USER_ADDED)
         _format_area_display(row)
     return row
 
@@ -1474,6 +1499,7 @@ def upsert_area(
     section: str | None = None,
     meridian: str | None = None,
     is_uploaded: bool | None = None,
+    retrieval_type: str | None = None,
     skip_plss_geocode: bool = False,
 ) -> int:
     """Insert or update by PLSS (Target). Parses location_plss into state, township, range, section; sets is_uploaded when provided."""
@@ -1520,6 +1546,8 @@ def upsert_area(
         except Exception:
             log.debug("Auto-geocode failed for %r, skipping", name_trim, exc_info=True)
 
+    retrieval_type = _normalize_retrieval_type(retrieval_type, source)
+
     with eng.begin() as conn:
         if plss_norm:
             existing = conn.execute(
@@ -1554,6 +1582,7 @@ def upsert_area(
                       "range" = COALESCE(:range_val, "range"),
                       section = COALESCE(:section, section),
                       meridian = COALESCE(:meridian, meridian),
+                      retrieval_type = COALESCE(:retrieval_type, retrieval_type),
                       is_uploaded = CASE WHEN :is_uploaded IS TRUE THEN TRUE ELSE is_uploaded END,
                       updated_at = now()
                     WHERE id = :id
@@ -1580,6 +1609,7 @@ def upsert_area(
                         "range_val": range_val,
                         "section": section,
                         "meridian": meridian,
+                        "retrieval_type": retrieval_type,
                         "is_uploaded": is_uploaded,
                     },
                 )
@@ -1593,12 +1623,12 @@ def upsert_area(
               name, location_plss, location_coords, plss_normalized, latitude, longitude,
               minerals, status, report_links, report_summary, validity_notes,
               source, external_id, blm_case_url, blm_serial_number, roi_score, priority,
-              state_abbr, township, "range", section, meridian, is_uploaded
+              state_abbr, township, "range", section, meridian, retrieval_type, is_uploaded
             ) VALUES (
               :name, :location_plss, :location_coords, :plss_normalized, :lat, :lon,
               :minerals, :status, :report_links, :report_summary, :validity_notes,
               :source, :external_id, :blm_case_url, :blm_serial_number, :roi_score, :priority,
-              :state_abbr, :township, :range_val, :section, :meridian, :is_uploaded
+              :state_abbr, :township, :range_val, :section, :meridian, :retrieval_type, :is_uploaded
             )
             RETURNING id
             """),
@@ -1625,6 +1655,7 @@ def upsert_area(
                 "range_val": range_val,
                 "section": section,
                 "meridian": meridian,
+                "retrieval_type": retrieval_type,
                 "is_uploaded": is_uploaded if is_uploaded is not None else False,
             },
         ).first()
