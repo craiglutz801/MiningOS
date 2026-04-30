@@ -201,7 +201,76 @@ _MINERAL_CODE_TO_NAME: dict[str, str] = {
     "lstc": "Crushed Limestone",
     "abr": "Abrasive",
     "kyn": "Kyanite",
+    # --- MRDS PGE / rare-earth / clay / heavy-mineral codes (seen on prod) ---
+    "pgept": "Platinum",
+    "pgerh": "Rhodium",
+    "pgepd": "Palladium",
+    "pgeir": "Iridium",
+    "pgeos": "Osmium",
+    "pgeru": "Ruthenium",
+    "reey": "Yttrium",
+    "reela": "Lanthanum",
+    "reece": "Cerium",
+    "gemsp": "Gemstone",
+    "clybn": "Bentonite",
+    "clybk": "Ball Clay",
+    "tim": "Ilmenite",
+    "oilr": "Petroleum",
+    "ra": "Radium",
+    "coal": "Coal",
+    "sa": "Salt",
+    "pea": "Peat",
+    "coas": "Coastal Sand",
+    "ja": "Jade",
 }
+
+
+# If a space-separated token contains any of these words, treat the whole
+# string as a human phrase (not an MRDS code run). Prevents e.g. "Gas Co"
+# from becoming Natural Gas + Cobalt.
+_MINERAL_PHRASE_TRIGGER_WORDS: frozenset[str] = frozenset(
+    {
+        # NOTE: Do not include two-letter English words that double as element
+        # symbols (e.g. "as" = arsenic, "in" = indium). Rely on longer triggers
+        # so MRDS code runs like "Au Cu … As …" still expand correctly.
+        "and",
+        "or",
+        "the",
+        "of",
+        "for",
+        "with",
+        "from",
+        "sand",
+        "gravel",
+        "stone",
+        "clay",
+        "rare",
+        "earth",
+        "elements",
+        "group",
+        "metals",
+        "oil",
+        "gas",
+        "natural",
+        "crushed",
+        "dimension",
+        "volcanic",
+        "field",
+        "lightweight",
+        "refractory",
+        "dolomitic",
+        "kaolin",
+        "specimen",
+        "reservoir",
+        "petroleum",
+        "aggregate",
+        "industrial",
+        "minerals",
+        "coastal",
+        "oil",
+        "sand",
+    }
+)
 
 
 def _expand_mineral_codes(token: str) -> List[str]:
@@ -212,9 +281,13 @@ def _expand_mineral_codes(token: str) -> List[str]:
       1. If the whole token is itself a known code (e.g. "Be", "Sdg"), expand to its name.
       2. If the token splits on whitespace into pieces and EVERY piece is a known code
          (e.g. "Pb Ag Zn"), expand each piece.
-      3. Otherwise treat the token as a real (already-spelled-out) mineral name and
-         clean it via _clean_mineral_name. This preserves legitimate multi-word names
-         like "Sand and Gravel" or "Rare Earth Elements" that a user typed in.
+      3. If the token splits into short alphanumeric MRDS-style tokens and at least
+         one maps (e.g. "Au Ag Pgept" where PGEpt was missing before), expand each
+         known piece and drop unknowns only if we produced at least one name; otherwise
+         fall through.
+      4. If any piece looks like natural language (phrase trigger words), keep the
+         whole string as one cleaned mineral name ("Sand and Gravel", "Gas Co").
+      5. Otherwise treat the token as a real mineral name via _clean_mineral_name.
     """
     s = (token or "").strip()
     if not s:
@@ -224,8 +297,23 @@ def _expand_mineral_codes(token: str) -> List[str]:
         return [_MINERAL_CODE_TO_NAME[key]]
     pieces = re.split(r"[\s\-]+", s)
     pieces = [p for p in pieces if p]
-    if len(pieces) >= 2 and all(p.lower() in _MINERAL_CODE_TO_NAME for p in pieces):
-        return [_MINERAL_CODE_TO_NAME[p.lower()] for p in pieces]
+    if len(pieces) >= 2:
+        plowers = [p.lower() for p in pieces]
+        if any(p in _MINERAL_PHRASE_TRIGGER_WORDS for p in plowers):
+            cleaned = _clean_mineral_name(s)
+            return [cleaned] if cleaned else []
+        if all(p.lower() in _MINERAL_CODE_TO_NAME for p in pieces):
+            return [_MINERAL_CODE_TO_NAME[p.lower()] for p in pieces]
+        if all(re.fullmatch(r"[A-Za-z0-9]{1,6}", p) for p in pieces):
+            out: list[str] = []
+            for p in pieces:
+                pl = p.lower()
+                if pl in _MINERAL_CODE_TO_NAME:
+                    nm = _MINERAL_CODE_TO_NAME[pl]
+                    if nm not in out:
+                        out.append(nm)
+            if out:
+                return out
     cleaned = _clean_mineral_name(s)
     return [cleaned] if cleaned else []
 
@@ -1764,6 +1852,12 @@ def upsert_area(
                         "is_uploaded": is_uploaded,
                     },
                 )
+                if merged_minerals:
+                    try:
+                        from mining_os.services.minerals import ensure_minerals_exist
+                        ensure_minerals_exist(merged_minerals)
+                    except Exception:
+                        log.debug("ensure_minerals_exist failed for update of %r", name_trim, exc_info=True)
                 return existing["id"]
 
         # Insert new target (no existing PLSS or no PLSS)
@@ -1810,6 +1904,15 @@ def upsert_area(
                 "is_uploaded": is_uploaded if is_uploaded is not None else False,
             },
         ).first()
+
+    # Make sure every mineral now on this target also exists on the Minerals
+    # page. Failure here must NEVER block the target write.
+    if minerals:
+        try:
+            from mining_os.services.minerals import ensure_minerals_exist
+            ensure_minerals_exist(minerals)
+        except Exception:
+            log.debug("ensure_minerals_exist failed for target %r", name_trim, exc_info=True)
     return row[0] if row else 0
 
 
