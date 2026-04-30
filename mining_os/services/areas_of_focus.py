@@ -73,19 +73,170 @@ def _parse_coords(s: str) -> tuple[float | None, float | None]:
     return None, None
 
 
+_TITLE_CASE_STOPWORDS = {"and", "of", "the", "in", "on", "to", "for", "with"}
+
+
 def _clean_mineral_name(raw: str) -> str | None:
     """Clean a single mineral name: strip numbers, parens, title-case."""
-    s = raw.strip()
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s or s.lower() == "none":
+        return None
     s = re.sub(r"\(.*?\)", "", s)          # remove (parenthesized notes)
     s = re.sub(r"[^a-zA-Z\s\-]", "", s)   # strip numbers and special chars
     s = re.sub(r"\s+", " ", s).strip()     # collapse whitespace
     if len(s) < 2:
         return None
-    return s.title()
+    words = s.split(" ")
+    out_words: list[str] = []
+    for i, w in enumerate(words):
+        lw = w.lower()
+        out_words.append(lw if (i > 0 and lw in _TITLE_CASE_STOPWORDS) else w.title())
+    return " ".join(out_words)
+
+
+# ---------------------------------------------------------------------------
+# Mineral / commodity code → canonical full name
+# ---------------------------------------------------------------------------
+# Strict rule: NEVER store a 1-2 letter chemical symbol or a USGS MRDS
+# commodity abbreviation in `areas_of_focus.minerals`. Always store the
+# full, title-cased name. The map below covers (a) all chemical elements
+# that show up in MRDS commodity strings and (b) the common MRDS 3-5
+# character commodity codes (Sdg, Cly, Lst, Stnc, Stnd, Gyp, Pum, Sil, Vol,
+# Stn, Gem, Geo, Oilsa, Lstd, Clyk, Clyfr, Qtz, etc.). All keys are
+# lower-cased; lookup is case-insensitive.
+
+_MINERAL_CODE_TO_NAME: dict[str, str] = {
+    # --- Chemical elements (MRDS uses chemical symbols heavily) ----------
+    "ag": "Silver", "al": "Aluminum", "as": "Arsenic", "au": "Gold",
+    "b": "Boron", "ba": "Barium", "be": "Beryllium", "bi": "Bismuth",
+    "br": "Bromine", "c": "Carbon", "ca": "Calcium", "cd": "Cadmium",
+    "ce": "Cerium", "cl": "Chlorine", "co": "Cobalt", "cr": "Chromium",
+    "cs": "Cesium", "cu": "Copper", "dy": "Dysprosium", "er": "Erbium",
+    "eu": "Europium", "f": "Fluorine", "fe": "Iron", "ga": "Gallium",
+    "gd": "Gadolinium", "ge": "Germanium", "h": "Hydrogen", "he": "Helium",
+    "hf": "Hafnium", "hg": "Mercury", "ho": "Holmium", "i": "Iodine",
+    "in": "Indium", "ir": "Iridium", "k": "Potassium", "la": "Lanthanum",
+    "li": "Lithium", "lu": "Lutetium", "mg": "Magnesium", "mn": "Manganese",
+    "mo": "Molybdenum", "n": "Nitrogen", "na": "Sodium", "nb": "Niobium",
+    "nd": "Neodymium", "ne": "Neon", "ni": "Nickel", "o": "Oxygen",
+    "os": "Osmium", "p": "Phosphorus", "pb": "Lead", "pd": "Palladium",
+    "pr": "Praseodymium", "pt": "Platinum", "rb": "Rubidium", "re": "Rhenium",
+    "rh": "Rhodium", "ru": "Ruthenium", "s": "Sulfur", "sb": "Antimony",
+    "sc": "Scandium", "se": "Selenium", "si": "Silicon", "sm": "Samarium",
+    "sn": "Tin", "sr": "Strontium", "ta": "Tantalum", "tb": "Terbium",
+    "te": "Tellurium", "th": "Thorium", "ti": "Titanium", "tl": "Thallium",
+    "tm": "Thulium", "u": "Uranium", "v": "Vanadium", "w": "Tungsten",
+    "y": "Yttrium", "yb": "Ytterbium", "zn": "Zinc", "zr": "Zirconium",
+
+    # --- USGS MRDS commodity abbreviations (industrial / non-metal) ------
+    "sdg": "Sand and Gravel",
+    "cly": "Clay",
+    "clyk": "Kaolin Clay",
+    "clyfr": "Refractory Clay",
+    "clyb": "Bentonite Clay",
+    "lst": "Limestone",
+    "lstd": "Dolomitic Limestone",
+    "stnc": "Crushed Stone",
+    "stnd": "Dimension Stone",
+    "stn": "Stone",
+    "gyp": "Gypsum",
+    "pum": "Pumice",
+    "sil": "Silica",
+    "vol": "Volcanic Material",
+    "gem": "Gemstone",
+    "geo": "Geothermal",
+    "oilsa": "Oil Sand",
+    "qtz": "Quartz",
+    "asb": "Asbestos",
+    "bar": "Barite",
+    "bx": "Bauxite",
+    "cem": "Cement",
+    "coa": "Coal",
+    "diam": "Diamond",
+    "dol": "Dolomite",
+    "fld": "Feldspar",
+    "fls": "Fluorspar",
+    "gar": "Garnet",
+    "gra": "Graphite",
+    "mag": "Magnetite",
+    "mar": "Marble",
+    "mca": "Mica",
+    "olv": "Olivine",
+    "per": "Perlite",
+    "pyr": "Pyrite",
+    "sal": "Salt",
+    "sap": "Sapphire",
+    "slr": "Sulfur",
+    "tlc": "Talc",
+    "trn": "Turquoise",
+    "ver": "Vermiculite",
+    "wol": "Wollastonite",
+    "zeo": "Zeolite",
+    "phs": "Phosphate",
+    "phr": "Phosphate Rock",
+    "pot": "Potash",
+    "soda": "Soda Ash",
+    "ree": "Rare Earth Elements",
+    "pge": "Platinum Group Elements",
+    "pgm": "Platinum Group Metals",
+    "ind": "Industrial Minerals",
+    "agg": "Aggregate",
+    "tng": "Tungsten",
+    # additional MRDS abbreviations seen in the wild
+    "dit": "Diatomite",
+    "nah": "Nahcolite",
+    "mbl": "Marble",
+    "nas": "Sodium Sulfate",
+    "abrg": "Abrasive Garnet",
+    "lwa": "Lightweight Aggregate",
+    "stnf": "Field Stone",
+    "sla": "Slate",
+    "grt": "Garnet",
+    "grf": "Graphite",
+    "sp": "Specimen",
+    "spc": "Specimen",
+    "mic": "Mica",
+    "lstc": "Crushed Limestone",
+    "abr": "Abrasive",
+    "kyn": "Kyanite",
+}
+
+
+def _expand_mineral_codes(token: str) -> List[str]:
+    """
+    Expand a single token into one or more full mineral names.
+
+    Rules (in order):
+      1. If the whole token is itself a known code (e.g. "Be", "Sdg"), expand to its name.
+      2. If the token splits on whitespace into pieces and EVERY piece is a known code
+         (e.g. "Pb Ag Zn"), expand each piece.
+      3. Otherwise treat the token as a real (already-spelled-out) mineral name and
+         clean it via _clean_mineral_name. This preserves legitimate multi-word names
+         like "Sand and Gravel" or "Rare Earth Elements" that a user typed in.
+    """
+    s = (token or "").strip()
+    if not s:
+        return []
+    key = s.lower()
+    if key in _MINERAL_CODE_TO_NAME:
+        return [_MINERAL_CODE_TO_NAME[key]]
+    pieces = re.split(r"[\s\-]+", s)
+    pieces = [p for p in pieces if p]
+    if len(pieces) >= 2 and all(p.lower() in _MINERAL_CODE_TO_NAME for p in pieces):
+        return [_MINERAL_CODE_TO_NAME[p.lower()] for p in pieces]
+    cleaned = _clean_mineral_name(s)
+    return [cleaned] if cleaned else []
 
 
 def _normalize_minerals(cell: Any) -> List[str]:
-    """Accept a string or list, return cleaned, title-cased, deduplicated mineral names."""
+    """Accept a string or list, return full-name, title-cased, deduplicated mineral names.
+
+    Also expands USGS MRDS chemical symbols (Au, Be, F, Pb, ...) and commodity
+    abbreviations (Sdg, Cly, Lst, ...) to canonical full names. Codes are NEVER
+    stored — see `_MINERAL_CODE_TO_NAME` and `_expand_mineral_codes`.
+    """
     if cell is None:
         return []
     if isinstance(cell, list):
@@ -96,9 +247,9 @@ def _normalize_minerals(cell: Any) -> List[str]:
         return []
     out: list[str] = []
     for raw in parts:
-        cleaned = _clean_mineral_name(str(raw))
-        if cleaned and cleaned not in out:
-            out.append(cleaned)
+        for name in _expand_mineral_codes(str(raw)):
+            if name and name not in out:
+                out.append(name)
     return out
 
 

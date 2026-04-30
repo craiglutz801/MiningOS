@@ -114,9 +114,16 @@ class SectionGroup:
 
 
 def _split_commodities(code_list: str) -> list[str]:
+    """Split MRDS CODE_LIST into individual commodity tokens.
+
+    MRDS uses whitespace, commas, semicolons, slashes, and pipes as separators
+    (e.g. "Au Ag Cu Pb Zn"). We split on all of them; downstream
+    `_normalize_minerals` (in mining_os.services.areas_of_focus) maps each
+    code to its full canonical name (Au -> Gold, etc.).
+    """
     if not code_list:
         return []
-    parts = re.split(r"[,;|/]+", code_list)
+    parts = re.split(r"[\s,;|/]+", code_list)
     out: list[str] = []
     for p in parts:
         s = p.strip().lower()
