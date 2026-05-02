@@ -66,11 +66,12 @@ def _resolve_playwright_max_ms() -> int:
 
 
 def _resolve_parallel_workers() -> int:
-    raw = (os.getenv("MINING_OS_MLRS_PARALLELISM") or "3").strip()
+    default_workers = "1" if (os.getenv("RENDER") or "").strip() == "true" else "3"
+    raw = (os.getenv("MINING_OS_MLRS_PARALLELISM") or default_workers).strip()
     try:
         workers = int(raw)
     except ValueError:
-        workers = 3
+        workers = int(default_workers)
     return max(1, min(workers, 4))
 
 
