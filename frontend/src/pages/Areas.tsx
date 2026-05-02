@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
-import { api, ApiError, type Area, type BatchAreaActionRow } from "../api";
+import { api, ApiError, type Area, type BatchAreaActionRow, type FetchClaimRecordsProgress } from "../api";
 import { parseCsvForPreview, type CsvInspectResult } from "../csvInspectLocal";
 import { ClaimPaymentBadge, getClaimPaymentText } from "../areas/claimPaymentBadge";
 
@@ -67,6 +67,18 @@ function areaHasFiniteCoords(a: Pick<Area, "latitude" | "longitude"> | null | un
 function areaMissingNormalizedPlss(a: Pick<Area, "plss_normalized"> | null | undefined): boolean {
   if (!a) return true;
   return !String(a.plss_normalized ?? "").trim();
+}
+
+function formatFetchClaimProgress(progress: FetchClaimRecordsProgress): string {
+  const msg = progress.message?.trim();
+  if (msg) return msg;
+  if (typeof progress.current === "number" && typeof progress.total === "number" && progress.total > 0) {
+    return `Checked ${progress.current} of ${progress.total} claim pages…`;
+  }
+  if (progress.status === "queued") return "Queued Fetch Claim Records job…";
+  if (progress.status === "running") return "Fetching claim records…";
+  if (progress.status === "done") return "Fetch complete.";
+  return "Fetch Claim Records failed.";
 }
 
 const SATELLITE_TILE = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -243,6 +255,7 @@ export function Areas() {
   const [plssRegeocode, setPlssRegeocode] = useState(true);
   const [plssSaving, setPlssSaving] = useState(false);
   const [fetchClaimRecordsLoading, setFetchClaimRecordsLoading] = useState(false);
+  const [fetchClaimRecordsProgress, setFetchClaimRecordsProgress] = useState<string | null>(null);
   const [lr2000Loading, setLr2000Loading] = useState(false);
   const [clearClaimSnapshotLoading, setClearClaimSnapshotLoading] = useState(false);
   const [clearLr2000SnapshotLoading, setClearLr2000SnapshotLoading] = useState(false);
@@ -3225,80 +3238,89 @@ export function Areas() {
                   </a>
                 )}
                 {selected.location_plss && (
-                  <button
-                    onClick={async () => {
-                      if (!selected?.id) return;
-                      setFetchClaimRecordsLoading(true);
-                      setError(null);
-                      try {
-                        const result = await api.areas.fetchClaimRecords(selected.id);
-                        const claimRecords = {
-                          fetched_at: result.fetched_at ?? new Date().toISOString(),
-                          log: result.log ?? "",
-                          claims: result.claims ?? [],
-                          error: result.error,
-                        };
-                        setSelected((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                characteristics: {
-                                  ...prev.characteristics,
-                                  claim_records: claimRecords,
-                                },
-                              }
-                            : prev
-                        );
+                  <>
+                    <button
+                      onClick={async () => {
+                        if (!selected?.id) return;
+                        setFetchClaimRecordsLoading(true);
+                        setFetchClaimRecordsProgress("Queued Fetch Claim Records job…");
+                        setError(null);
                         try {
-                          const list = await api.areas.list({
-                            mineral: mineralFilter || undefined,
-                            status: statusFilter || undefined,
-                            state_abbr: stateFilter || undefined,
-                            claim_type: claimTypeFilter || undefined,
-                            retrieval_type: retrievalTypeFilter || undefined,
-                            township: townshipFilter.trim() || undefined,
-                            range_val: rangeFilter.trim() || undefined,
-                            sector: sectorFilter.trim() || undefined,
-                            name: nameFilter.trim() || undefined,
-                            limit: 500,
+                          const result = await api.areas.fetchClaimRecords(selected.id, {
+                            onProgress: (progress) => setFetchClaimRecordsProgress(formatFetchClaimProgress(progress)),
                           });
-                          setAreas(list);
-                          const full = await api.areas.get(selected.id);
-                          setSelected(full);
-                        } catch {
-                          /* refresh best-effort; we already updated selected with claim_records */
-                        }
-                        if (result.error && !result.ok) setError(result.error);
-                      } catch (e) {
-                        let msg =
-                          e instanceof ApiError && e.body?.detail
-                            ? String(e.body.detail)
-                            : (e as Error).message;
-                        if (e instanceof ApiError && e.body?.error === "client_timeout") {
-                          msg = e.message;
-                        }
-                        // The script may have finished and saved data even if the browser timed out.
-                        // Reload the area from the DB so the user can still view results.
-                        try {
-                          const full = await api.areas.get(selected.id);
-                          setSelected(full);
-                          if (full.characteristics?.claim_records) {
-                            setError("Request timed out, but results were saved. See MLRS Scrape section above.");
-                          } else {
+                          const claimRecords = {
+                            fetched_at: result.fetched_at ?? new Date().toISOString(),
+                            log: result.log ?? "",
+                            claims: result.claims ?? [],
+                            error: result.error,
+                          };
+                          setSelected((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  characteristics: {
+                                    ...prev.characteristics,
+                                    claim_records: claimRecords,
+                                  },
+                                }
+                              : prev
+                          );
+                          try {
+                            const list = await api.areas.list({
+                              mineral: mineralFilter || undefined,
+                              status: statusFilter || undefined,
+                              state_abbr: stateFilter || undefined,
+                              claim_type: claimTypeFilter || undefined,
+                              retrieval_type: retrievalTypeFilter || undefined,
+                              township: townshipFilter.trim() || undefined,
+                              range_val: rangeFilter.trim() || undefined,
+                              sector: sectorFilter.trim() || undefined,
+                              name: nameFilter.trim() || undefined,
+                              limit: 500,
+                            });
+                            setAreas(list);
+                            const full = await api.areas.get(selected.id);
+                            setSelected(full);
+                          } catch {
+                            /* refresh best-effort; we already updated selected with claim_records */
+                          }
+                          if (result.error && !result.ok) setError(result.error);
+                        } catch (e) {
+                          let msg =
+                            e instanceof ApiError && e.body?.detail
+                              ? String(e.body.detail)
+                              : (e as Error).message;
+                          if (e instanceof ApiError && e.body?.error === "client_timeout") {
+                            msg = e.message;
+                          }
+                          // The script may have finished and saved data even if the browser timed out.
+                          // Reload the area from the DB so the user can still view results.
+                          try {
+                            const full = await api.areas.get(selected.id);
+                            setSelected(full);
+                            if (full.characteristics?.claim_records) {
+                              setError("Request timed out, but results were saved. See MLRS Scrape section above.");
+                            } else {
+                              setError(msg);
+                            }
+                          } catch {
                             setError(msg);
                           }
-                        } catch {
-                          setError(msg);
+                        } finally {
+                          setFetchClaimRecordsProgress(null);
+                          setFetchClaimRecordsLoading(false);
                         }
-                      } finally {
-                        setFetchClaimRecordsLoading(false);
-                      }
-                    }}
-                    disabled={fetchClaimRecordsLoading}
-                    className="mt-2 w-full px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
-                  >
-                    {fetchClaimRecordsLoading ? "Fetching…" : "Fetch Claim Records (PLSS)"}
-                  </button>
+                      }}
+                      disabled={fetchClaimRecordsLoading}
+                      className="mt-2 w-full px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      {fetchClaimRecordsLoading ? "Fetching…" : "Fetch Claim Records (PLSS)"}
+                    </button>
+                    {fetchClaimRecordsLoading && fetchClaimRecordsProgress && (
+                      <p className="mt-1 text-[11px] text-slate-500">{fetchClaimRecordsProgress}</p>
+                    )}
+                  </>
                 )}
                 <button
                   type="button"

@@ -31,10 +31,13 @@ Install browsers (required for MLRS Lightning SPA):
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 from urllib.parse import urljoin
 
@@ -48,20 +51,150 @@ _CLOSING_FRAG = "may result in the closing of the claim"
 _STANDARD_MESSAGE = (
     "Maintenance fee payment was not received and may result in the closing of the claim."
 )
+_PROGRESS_PREFIX = "__MLRS_PROGRESS__"
+_PAYMENT_CACHE_LOCK = threading.Lock()
+_PAYMENT_CACHE: dict[str, dict[str, Any]] = {}
 
 
 def _resolve_playwright_max_ms() -> int:
-    raw = (os.getenv("MINING_OS_MLRS_PLAYWRIGHT_MAX_MS") or "50000").strip()
+    raw = (os.getenv("MINING_OS_MLRS_PLAYWRIGHT_MAX_MS") or "30000").strip()
     try:
         ms = int(raw)
     except ValueError:
-        ms = 50_000
-    return max(20_000, min(ms, 120_000))
+        ms = 30_000
+    return max(12_000, min(ms, 120_000))
+
+
+def _resolve_parallel_workers() -> int:
+    raw = (os.getenv("MINING_OS_MLRS_PARALLELISM") or "3").strip()
+    try:
+        workers = int(raw)
+    except ValueError:
+        workers = 3
+    return max(1, min(workers, 4))
+
+
+def _resolve_cache_ttl_seconds() -> int:
+    raw = (os.getenv("MINING_OS_MLRS_PAYMENT_CACHE_TTL_HOURS") or "24").strip()
+    try:
+        hours = float(raw)
+    except ValueError:
+        hours = 24.0
+    return max(0, int(hours * 3600))
+
+
+def _cache_key_variants(claim: dict[str, Any]) -> list[str]:
+    keys: list[str] = []
+    case_url = (claim.get("case_page") or "").strip()
+    if case_url:
+        keys.append(f"case:{case_url}")
+    serial = str(claim.get("serial_number") or "").strip()
+    if serial:
+        keys.append(f"serial:{serial}")
+    return keys
+
+
+def _payment_status_resolved(claim: dict[str, Any]) -> bool:
+    return (claim.get("payment_status") or "").strip().lower() in {"paid", "unpaid"}
+
+
+def _payment_cache_payload(claim: dict[str, Any]) -> dict[str, Any] | None:
+    if not _payment_status_resolved(claim):
+        return None
+    return {
+        "payment_status": claim.get("payment_status"),
+        "payment_message": claim.get("payment_message"),
+        "payment_check_source": claim.get("payment_check_source"),
+        "payment_checked_at": claim.get("payment_checked_at"),
+    }
+
+
+def _mark_payment_checked(claim: dict[str, Any]) -> None:
+    if _payment_status_resolved(claim) and not claim.get("payment_checked_at"):
+        claim["payment_checked_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _remember_payment_cache(claim: dict[str, Any]) -> None:
+    payload = _payment_cache_payload(claim)
+    if not payload:
+        return
+    checked_at = payload.get("payment_checked_at") or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    record = {**payload, "cached_at_epoch": time.time(), "payment_checked_at": checked_at}
+    with _PAYMENT_CACHE_LOCK:
+        for key in _cache_key_variants(claim):
+            _PAYMENT_CACHE[key] = dict(record)
+
+
+def _apply_payment_cache(claim: dict[str, Any]) -> bool:
+    ttl = _resolve_cache_ttl_seconds()
+    if ttl <= 0 or _payment_status_resolved(claim):
+        return False
+    now = time.time()
+    hit: dict[str, Any] | None = None
+    stale_keys: list[str] = []
+    with _PAYMENT_CACHE_LOCK:
+        for key in _cache_key_variants(claim):
+            record = _PAYMENT_CACHE.get(key)
+            if not record:
+                continue
+            age = now - float(record.get("cached_at_epoch") or 0)
+            if age > ttl:
+                stale_keys.append(key)
+                continue
+            hit = record
+            break
+        for key in stale_keys:
+            _PAYMENT_CACHE.pop(key, None)
+    if not hit:
+        return False
+    _merge_payment_fields(claim, hit)
+    claim["payment_check_source"] = f'{claim.get("payment_check_source") or "cache"}_cache'
+    if hit.get("payment_checked_at"):
+        claim["payment_checked_at"] = hit["payment_checked_at"]
+    return _payment_status_resolved(claim)
+
+
+def prime_payment_cache(claims: list[dict[str, Any]], fetched_at: str | None = None) -> int:
+    """Seed the in-memory cache from a prior persisted claim snapshot."""
+    ttl = _resolve_cache_ttl_seconds()
+    if ttl <= 0:
+        return 0
+    if fetched_at:
+        try:
+            fetched_epoch = time.mktime(time.strptime(fetched_at[:19], "%Y-%m-%dT%H:%M:%S"))
+        except Exception:
+            fetched_epoch = None
+        if fetched_epoch is not None and (time.time() - fetched_epoch) > ttl:
+            return 0
+    seeded = 0
+    for claim in claims or []:
+        if not isinstance(claim, dict):
+            continue
+        if not _payment_status_resolved(claim):
+            continue
+        _remember_payment_cache(claim)
+        seeded += 1
+    return seeded
+
+
+def _emit_progress(payload: dict[str, Any]) -> None:
+    if (os.getenv("MINING_OS_MLRS_PROGRESS_STDERR") or "").strip() != "1":
+        return
+    import sys
+
+    sys.stderr.write(f"{_PROGRESS_PREFIX}{json.dumps(payload, separators=(',', ':'))}\n")
+    sys.stderr.flush()
 
 
 def _merge_payment_fields(dst: dict[str, Any], src: dict[str, Any]) -> None:
     """Merge enrichment fields; clear stale errors when we resolve unpaid."""
-    for key in ("payment_status", "payment_message", "payment_check_error", "payment_check_source"):
+    for key in (
+        "payment_status",
+        "payment_message",
+        "payment_check_error",
+        "payment_check_source",
+        "payment_checked_at",
+    ):
         if key in src and src[key] is not None:
             dst[key] = src[key]
     if (src.get("payment_status") or "").strip().lower() == "unpaid":
@@ -438,7 +571,17 @@ def _close_playwright_batch(st: dict[str, Any]) -> None:
         st.clear()
 
 
-def enrich_claims_from_mlrs_case_pages(claims: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _claim_needs_payment_enrichment(claim: dict[str, Any]) -> bool:
+    url = claim.get("case_page")
+    if not url or not isinstance(url, str) or not url.strip().startswith("http"):
+        return False
+    return (claim.get("payment_status") or "unknown").strip().lower() not in {"paid", "unpaid"}
+
+
+def enrich_claims_from_mlrs_case_pages(
+    claims: list[dict[str, Any]],
+    progress_cb=None,
+) -> list[dict[str, Any]]:
     """Enrich claims with MLRS payment status.
 
     Runs the actual scrape inside a fresh subprocess so each Playwright Chromium
@@ -452,12 +595,71 @@ def enrich_claims_from_mlrs_case_pages(claims: list[dict[str, Any]]) -> list[dic
     """
     if not claims:
         return claims
+    candidates: list[tuple[int, dict[str, Any]]] = []
+    cache_hits = 0
+    for idx, claim in enumerate(claims):
+        if not isinstance(claim, dict):
+            continue
+        if _apply_payment_cache(claim):
+            cache_hits += 1
+        if _claim_needs_payment_enrichment(claim):
+            candidates.append((idx, claim))
+
+    total = len(candidates) + cache_hits
+    if progress_cb:
+        if cache_hits:
+            progress_cb(
+                {
+                    "phase": "payment_cache",
+                    "current": cache_hits,
+                    "total": total,
+                    "message": f"Reused cached payment results for {cache_hits} claim(s).",
+                }
+            )
+        elif total:
+            progress_cb(
+                {
+                    "phase": "payment_cache",
+                    "current": 0,
+                    "total": total,
+                    "message": f"Checking payment status for {total} claim page(s)…",
+                }
+            )
+    if not candidates:
+        return claims
+
+    subset = [claim for _, claim in candidates]
+
+    def _wrapped_progress(payload: dict[str, Any]) -> None:
+        if not progress_cb:
+            return
+        done = int(payload.get("done") or 0) + cache_hits
+        progress_cb(
+            {
+                "phase": "payment_enrich",
+                "current": done,
+                "total": total,
+                "message": payload.get("message")
+                or f"Checked {done} of {total} claim page(s)…",
+            }
+        )
+
     if (os.getenv("MINING_OS_MLRS_ENRICH_INPROC") or "").strip() == "1":
-        return _enrich_claims_inproc(claims)
-    return _enrich_claims_subprocess(claims)
+        enriched_subset = _enrich_claims_inproc(subset, progress_cb=_wrapped_progress)
+    else:
+        enriched_subset = _enrich_claims_subprocess(subset, progress_cb=_wrapped_progress)
+
+    for (idx, _), enriched in zip(candidates, enriched_subset):
+        claims[idx] = enriched
+    return claims
 
 
-def _enrich_claims_subprocess(claims: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _run_enrich_subprocess_chunk(
+    claims: list[dict[str, Any]],
+    *,
+    chunk_id: int = 0,
+    progress_cb=None,
+) -> list[dict[str, Any]]:
     """Run :func:`_enrich_claims_inproc` in an isolated child Python process.
 
     Uses :class:`subprocess.Popen` with explicit pipes and a daemon thread that
@@ -467,14 +669,13 @@ def _enrich_claims_subprocess(claims: list[dict[str, Any]]) -> list[dict[str, An
     appeared to hang forever even though the scrape worked fine when launched
     by hand.
     """
-    import json
     import subprocess
     import sys
-    import threading
 
     log.info(
-        "mlrs payment enrich: dispatching %d claim row(s) to subprocess (Playwright isolation)",
+        "mlrs payment enrich: dispatching %d claim row(s) to subprocess (chunk=%d, Playwright isolation)",
         len(claims),
+        chunk_id,
     )
 
     try:
@@ -483,7 +684,13 @@ def _enrich_claims_subprocess(claims: list[dict[str, Any]]) -> list[dict[str, An
         log.warning("mlrs enrich: claims not JSON-serialisable, falling back in-process: %s", e)
         return _enrich_claims_inproc(claims)
 
-    env = {**os.environ, "MINING_OS_MLRS_ENRICH_INPROC": "1", "PYTHONUNBUFFERED": "1"}
+    env = {
+        **os.environ,
+        "MINING_OS_MLRS_ENRICH_INPROC": "1",
+        "MINING_OS_MLRS_PROGRESS_STDERR": "1",
+        "MINING_OS_MLRS_PROGRESS_CHUNK_ID": str(chunk_id),
+        "PYTHONUNBUFFERED": "1",
+    }
     cmd = [sys.executable, "-m", "mining_os.services.mlrs_case_payment"]
 
     try:
@@ -521,6 +728,14 @@ def _enrich_claims_subprocess(claims: list[dict[str, Any]]) -> list[dict[str, An
             for raw in iter(proc.stderr.readline, b""):
                 line = raw.decode("utf-8", errors="replace").rstrip()
                 if not line:
+                    continue
+                if line.startswith(_PROGRESS_PREFIX):
+                    try:
+                        payload = json.loads(line[len(_PROGRESS_PREFIX):])
+                    except Exception:
+                        payload = None
+                    if payload and progress_cb:
+                        progress_cb(payload)
                     continue
                 with err_lock:
                     log.info("mlrs[sub] %s", line)
@@ -582,7 +797,64 @@ def _enrich_claims_subprocess(claims: list[dict[str, Any]]) -> list[dict[str, An
     return enriched
 
 
-def _enrich_claims_inproc(claims: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _enrich_claims_subprocess(claims: list[dict[str, Any]], progress_cb=None) -> list[dict[str, Any]]:
+    if not claims:
+        return claims
+
+    workers = _resolve_parallel_workers()
+    if len(claims) < 4 or workers <= 1:
+        return _run_enrich_subprocess_chunk(claims, chunk_id=0, progress_cb=progress_cb)
+
+    chunk_count = min(workers, len(claims))
+    chunks: list[list[tuple[int, dict[str, Any]]]] = [[] for _ in range(chunk_count)]
+    for pos, claim in enumerate(claims):
+        chunks[pos % chunk_count].append((pos, claim))
+    chunk_progress: dict[int, dict[str, Any]] = {i: {"done": 0, "total": len(chunks[i])} for i in range(chunk_count)}
+    progress_lock = threading.Lock()
+    results: list[dict[str, Any] | None] = [None] * len(claims)
+
+    def _chunk_progress(chunk_id: int, payload: dict[str, Any]) -> None:
+        if not progress_cb:
+            return
+        with progress_lock:
+            chunk_progress[chunk_id] = {
+                "done": int(payload.get("done") or 0),
+                "total": int(payload.get("total") or len(chunks[chunk_id])),
+            }
+            done = sum(item["done"] for item in chunk_progress.values())
+            total = sum(item["total"] for item in chunk_progress.values())
+        progress_cb(
+            {
+                "done": done,
+                "total": total,
+                "message": f"Checked {done} of {total} claim page(s)…",
+            }
+        )
+
+    def _run_one_chunk(chunk_id: int, rows: list[tuple[int, dict[str, Any]]]) -> tuple[int, list[tuple[int, dict[str, Any]]]]:
+        local_claims = [claim for _, claim in rows]
+        local_enriched = _run_enrich_subprocess_chunk(
+            local_claims,
+            chunk_id=chunk_id,
+            progress_cb=lambda payload: _chunk_progress(chunk_id, payload),
+        )
+        return chunk_id, [(rows[i][0], local_enriched[i]) for i in range(len(rows))]
+
+    with ThreadPoolExecutor(max_workers=chunk_count) as pool:
+        futures = [
+            pool.submit(_run_one_chunk, chunk_id, rows)
+            for chunk_id, rows in enumerate(chunks)
+            if rows
+        ]
+        for fut in as_completed(futures):
+            _chunk_id, chunk_rows = fut.result()
+            for pos, claim in chunk_rows:
+                results[pos] = claim
+
+    return [claim if claim is not None else claims[idx] for idx, claim in enumerate(results)]
+
+
+def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> list[dict[str, Any]]:
     """In-process implementation (used directly inside the subprocess)."""
     if not claims:
         return claims
@@ -625,18 +897,40 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]]) -> list[dict[str, Any]]:
             log.warning("mlrs payment: playwright chromium launch failed: %s", e)
             return None
 
+    total = len(claims)
+    done = 0
+
+    def _progress(message: str | None = None) -> None:
+        payload = {
+            "chunk_id": int((os.getenv("MINING_OS_MLRS_PROGRESS_CHUNK_ID") or "0") or "0"),
+            "done": done,
+            "total": total,
+            "message": message or f"Checked {done} of {total} claim page(s)…",
+        }
+        if progress_cb:
+            progress_cb(payload)
+        _emit_progress(payload)
+
     try:
         for i, c in enumerate(claims):
             if i > 0:
                 time.sleep(0.12)
             if not isinstance(c, dict):
+                done += 1
+                _progress()
                 continue
             url = c.get("case_page")
             if not url or not isinstance(url, str) or not url.strip().startswith("http"):
+                done += 1
+                _progress()
                 continue
 
             prev = (c.get("payment_status") or "unknown").strip().lower()
             if prev in ("paid", "unpaid"):
+                _mark_payment_checked(c)
+                _remember_payment_cache(c)
+                done += 1
+                _progress()
                 continue
 
             http_info = _payment_from_http(url.strip())
@@ -644,6 +938,10 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
             if (c.get("payment_status") or "unknown").strip().lower() == "unpaid":
                 log.debug("mlrs payment: unpaid via case HTTP %s", c.get("serial_number"))
+                _mark_payment_checked(c)
+                _remember_payment_cache(c)
+                done += 1
+                _progress()
                 continue
 
             report_u = c.get("payment_report")
@@ -661,6 +959,10 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
             if (c.get("payment_status") or "unknown").strip().lower() == "unpaid":
                 log.debug("mlrs payment: unpaid via RAS %s", c.get("serial_number"))
+                _mark_payment_checked(c)
+                _remember_payment_cache(c)
+                done += 1
+                _progress()
                 continue
 
             if try_headless and (c.get("payment_status") or "unknown").strip().lower() == "unknown":
@@ -698,6 +1000,11 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     sel_info = _payment_from_selenium(url.strip())
                     _merge_payment_fields(c, sel_info)
                 time.sleep(0.35)
+
+            _mark_payment_checked(c)
+            _remember_payment_cache(c)
+            done += 1
+            _progress()
 
         return claims
     finally:

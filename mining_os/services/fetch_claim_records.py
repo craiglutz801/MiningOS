@@ -23,7 +23,7 @@ import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 log = logging.getLogger("mining_os.fetch_claim_records")
 
@@ -64,6 +64,11 @@ STATE_MERIDIAN = {
     "WY": "28",  # 6th Principal (also 34 Wind River)
 }
 DEFAULT_MERIDIAN = "26"
+
+
+def _progress(progress_cb: Callable[[dict[str, Any]], None] | None, **payload: Any) -> None:
+    if progress_cb:
+        progress_cb(payload)
 
 
 def _blm_agent_path() -> Path | None:
@@ -278,6 +283,8 @@ def fetch_claim_records_for_area(
     section: str | None = None,
     latitude: float | None = None,
     longitude: float | None = None,
+    previous_claim_records: dict[str, Any] | None = None,
+    progress_cb: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """
     Query BLM for mining claims.  Strategy:
@@ -299,6 +306,12 @@ def fetch_claim_records_for_area(
                  plss_row["State"], plss_row["Meridian"], plss_row["Township"], plss_row["Range"], plss_row["Section"])
     else:
         plss_row = _parse_plss_for_script(location_plss)
+
+    _progress(
+        progress_cb,
+        phase="plss_ready",
+        message="PLSS resolved. Looking up claim records…",
+    )
 
     if not plss_row:
         log.warning("fetch_claim_records: no valid PLSS parsed from %r for area %s (%s)", location_plss, area_id, area_name)
@@ -353,6 +366,7 @@ def fetch_claim_records_for_area(
 
     try:
         if has_script:
+            _progress(progress_cb, phase="script_query", message="Running BLM_ClaimAgent script…")
             # ── Pass 1: run with section ──
             log.info("fetch_claim_records [pass1]: twp=%s rng=%s sec=%r state=%s mer=%s",
                      plss_row["Township"], plss_row["Range"], plss_row["Section"],
@@ -377,6 +391,7 @@ def fetch_claim_records_for_area(
 
         # ── Pass 3: spatial fallback via lat/lon ──
         if not claims and latitude is not None and longitude is not None:
+            _progress(progress_cb, phase="spatial_query", message="Trying nearby-coordinate claim search…")
             log.info("fetch_claim_records [spatial]: trying coords (%.5f, %.5f)", latitude, longitude)
             try:
                 from mining_os.services.blm_plss import query_claims_by_coords
@@ -402,6 +417,7 @@ def fetch_claim_records_for_area(
         # answer and should NOT be reported as an error.
         built_in_api_queried_ok: bool | None = None
         if not claims:
+            _progress(progress_cb, phase="api_query", message="Querying the BLM MLRS API…")
             log.info("fetch_claim_records [api]: trying built-in PLSS API query")
             try:
                 from mining_os.services.blm_plss import query_claims_by_plss_with_status
@@ -437,14 +453,40 @@ def fetch_claim_records_for_area(
         # ── Step 3 (same as BLM_ClaimAgent get_mlrs_from_PLSS): MLRS case-page banner ──
         # ArcGIS does not include payment text; scrape case_page for the maintenance-fee message.
         if claims:
-            from mining_os.services.mlrs_case_payment import enrich_claims_from_mlrs_case_pages
+            from mining_os.services.mlrs_case_payment import (
+                enrich_claims_from_mlrs_case_pages,
+                prime_payment_cache,
+            )
+
+            prior_claims = []
+            prior_fetched_at = None
+            if isinstance(previous_claim_records, dict):
+                prior_claims = previous_claim_records.get("claims") or []
+                prior_fetched_at = previous_claim_records.get("fetched_at")
+            seeded = prime_payment_cache(prior_claims, fetched_at=prior_fetched_at)
+            if seeded:
+                _progress(
+                    progress_cb,
+                    phase="payment_cache_seed",
+                    message=f"Loaded {seeded} cached payment result(s) from the previous fetch.",
+                )
 
             before = sum(
                 1
                 for c in claims
                 if isinstance(c, dict) and (c.get("payment_status") or "").strip().lower() == "unpaid"
             )
-            claims = enrich_claims_from_mlrs_case_pages(claims)
+            _progress(
+                progress_cb,
+                phase="payment_begin",
+                current=0,
+                total=len(claims),
+                message=f"Checking payment status for {len(claims)} claim(s)…",
+            )
+            if progress_cb:
+                claims = enrich_claims_from_mlrs_case_pages(claims, progress_cb=progress_cb)
+            else:
+                claims = enrich_claims_from_mlrs_case_pages(claims)
             after = sum(
                 1
                 for c in claims
@@ -453,6 +495,13 @@ def fetch_claim_records_for_area(
             log_text += (
                 f"\n[case-page payment] Enriched {len(claims)} claim(s); "
                 f"unpaid count {before} → {after}."
+            )
+            _progress(
+                progress_cb,
+                phase="payment_done",
+                current=len(claims),
+                total=len(claims),
+                message=f"Finished checking {len(claims)} claim(s).",
             )
 
         # ── Save results ──

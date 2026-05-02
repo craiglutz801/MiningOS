@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -102,3 +103,69 @@ def test_enrich_skips_when_already_unpaid(monkeypatch):
         out = mcp.enrich_claims_from_mlrs_case_pages(claims)
     assert out[0]["payment_message"] == "existing"
     assert not mock_get.called
+
+
+def test_enrich_reuses_recent_cached_payment_result(monkeypatch):
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_SELENIUM", "0")
+    monkeypatch.setenv("MINING_OS_MLRS_ENRICH_INPROC", "1")
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_CACHE_TTL_HOURS", "24")
+    with mcp._PAYMENT_CACHE_LOCK:
+        mcp._PAYMENT_CACHE.clear()
+
+    now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    mcp.prime_payment_cache(
+        [
+            {
+                "serial_number": "UT-1",
+                "case_page": "https://mlrs.blm.gov/s/blm-case/a/b",
+                "payment_status": "unpaid",
+                "payment_message": "cached unpaid",
+                "payment_check_source": "seed",
+                "payment_checked_at": now_iso,
+            }
+        ],
+        fetched_at=now_iso,
+    )
+
+    with patch("mining_os.services.mlrs_case_payment.requests.get") as mock_get:
+        claims = [
+            {
+                "serial_number": "UT-1",
+                "payment_status": "unknown",
+                "case_page": "https://mlrs.blm.gov/s/blm-case/a/b",
+            }
+        ]
+        out = mcp.enrich_claims_from_mlrs_case_pages(claims)
+
+    assert out[0]["payment_status"] == "unpaid"
+    assert out[0]["payment_message"] == "cached unpaid"
+    assert out[0]["payment_check_source"] == "seed_cache"
+    assert not mock_get.called
+
+
+def test_enrich_reports_progress(monkeypatch):
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_SELENIUM", "0")
+    monkeypatch.setenv("MINING_OS_MLRS_ENRICH_INPROC", "1")
+    with mcp._PAYMENT_CACHE_LOCK:
+        mcp._PAYMENT_CACHE.clear()
+
+    progress_events: list[dict[str, object]] = []
+
+    def fake_http(_url: str, timeout: float = 28.0):
+        return {
+            "payment_status": "paid",
+            "payment_message": None,
+            "payment_check_source": "mlrs_case_http",
+        }
+
+    monkeypatch.setattr(mcp, "_payment_from_http", fake_http)
+
+    claims = [
+        {"serial_number": "A", "payment_status": "unknown", "case_page": "https://mlrs.blm.gov/s/blm-case/a/a"},
+        {"serial_number": "B", "payment_status": "unknown", "case_page": "https://mlrs.blm.gov/s/blm-case/a/b"},
+    ]
+    out = mcp.enrich_claims_from_mlrs_case_pages(claims, progress_cb=progress_events.append)
+
+    assert [c["payment_status"] for c in out] == ["paid", "paid"]
+    assert any((evt.get("phase") == "payment_cache") for evt in progress_events)
+    assert any((evt.get("phase") == "payment_enrich" and evt.get("current") == 2) for evt in progress_events)

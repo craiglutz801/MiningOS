@@ -288,7 +288,7 @@ def diag_check_payment(case_url: str) -> Dict[str, Any]:
         return {"ok": False, "case_url": case_url, "error": str(e)}
 
 
-def _safe_fetch_claim_records(area_id: int) -> Dict[str, Any]:
+def _safe_fetch_claim_records(area_id: int, progress_cb=None) -> Dict[str, Any]:
     """
     Safe wrapper for the BLM Fetch Claim Records action.
 
@@ -328,6 +328,8 @@ def _safe_fetch_claim_records(area_id: int) -> Dict[str, Any]:
             section=area.get("section"),
             latitude=area.get("latitude"),
             longitude=area.get("longitude"),
+            previous_claim_records=(area.get("characteristics") or {}).get("claim_records"),
+            progress_cb=progress_cb,
         )
     except Exception as e:
         log.exception("safe_fetch_claim_records failed for area_id=%s: %s", area_id, e)
@@ -1168,7 +1170,18 @@ def api_fetch_claim_records(area_id: int) -> Dict[str, Any]:
 def api_fetch_claim_records_start(area_id: int) -> Dict[str, Any]:
     """Start the BLM claim search on a background thread. Returns ``{job_id}`` so the client can poll ``/jobs/{job_id}``."""
     job_id = _new_job("fetch_claim_records", area_id=area_id)
-    _run_job(job_id, _safe_fetch_claim_records, area_id)
+    _set_job(
+        job_id,
+        progress={
+            "phase": "queued",
+            "message": "Queued Fetch Claim Records job…",
+        },
+    )
+
+    def _job_progress(payload: Dict[str, Any]) -> None:
+        _set_job(job_id, progress=payload)
+
+    _run_job(job_id, _safe_fetch_claim_records, area_id, progress_cb=_job_progress)
     return {"ok": True, "job_id": job_id}
 
 

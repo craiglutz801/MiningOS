@@ -43,6 +43,14 @@ export interface BatchAreaActionResponse {
   results?: BatchAreaActionRow[];
 }
 
+export interface FetchClaimRecordsProgress {
+  status: "queued" | "running" | "done" | "error";
+  phase?: string;
+  current?: number;
+  total?: number;
+  message?: string;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const isForm = options?.body instanceof FormData;
   let res: Response;
@@ -268,7 +276,7 @@ export const api = {
      * can time out. The scrape still saves results to the area's
      * ``characteristics.claim_records`` so closing the tab is safe.
      */
-    fetchClaimRecords: async (id: number, opts?: { onProgress?: (status: string) => void }) => {
+    fetchClaimRecords: async (id: number, opts?: { onProgress?: (progress: FetchClaimRecordsProgress) => void }) => {
       type ClaimResult = { ok: boolean; log: string; claims: unknown[]; error?: string; fetched_at?: string };
       const start = await request<{ ok: boolean; job_id: string }>(
         `/areas-of-focus/${id}/fetch-claim-records/start`,
@@ -284,9 +292,21 @@ export const api = {
             status: "queued" | "running" | "done" | "error";
             result?: ClaimResult;
             error?: string;
+            progress?: {
+              phase?: string;
+              current?: number;
+              total?: number;
+              message?: string;
+            };
           }>(`/jobs/${jobId}`);
           consecutiveErrors = 0;
-          opts?.onProgress?.(job.status);
+          opts?.onProgress?.({
+            status: job.status,
+            phase: job.progress?.phase,
+            current: job.progress?.current,
+            total: job.progress?.total,
+            message: job.progress?.message,
+          });
           if (job.status === "done") {
             return job.result ?? { ok: true, log: "", claims: [] };
           }
