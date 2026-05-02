@@ -115,15 +115,25 @@ def diag_environment() -> Dict[str, Any]:
 
     # BLM_ClaimAgent companion repo detection
     try:
-        from mining_os.services.fetch_claim_records import _blm_agent_path
+        from mining_os.services.fetch_claim_records import _blm_agent_path, _use_blm_claim_agent_script
         agent_path = _blm_agent_path()
+        use_agent = _use_blm_claim_agent_script()
         result["blm_claim_agent"] = {
             "path": str(agent_path) if agent_path else None,
             "present": bool(agent_path),
+            "use_agent_script_env": use_agent,
+            "fetch_claim_records_mode": (
+                "agent_script_selenium" if (agent_path and use_agent) else "arcgis_api_only"
+            ),
             "note": (
                 "BLM_ClaimAgent is optional — when missing, fetch-claim-records "
                 "automatically falls back to the built-in BLM ArcGIS API."
-            ) if not agent_path else "Script-based path available.",
+            ) if not agent_path else (
+                "Agent installed; slow Selenium path active (MINING_OS_FETCH_CLAIM_RECORDS_USE_AGENT=1)."
+                if use_agent
+                else "Agent installed but skipped by default — same fast ArcGIS path as production. "
+                     "Set MINING_OS_FETCH_CLAIM_RECORDS_USE_AGENT=1 for Selenium payment scrape."
+            ),
         }
     except Exception as e:
         result["blm_claim_agent"] = {"error": str(e)}
@@ -161,6 +171,30 @@ def diag_environment() -> Dict[str, Any]:
     except Exception as e:
         result["blm_arcgis"] = {"reachable": False, "error": str(e)[:500]}
         result["ok"] = False
+
+    # MLRS payment banner (Playwright) — same stack Fetch Claim Records uses after ArcGIS.
+    try:
+        from mining_os.services.mlrs_case_payment import _should_try_headless
+
+        pw_import_ok = False
+        try:
+            import playwright  # noqa: F401
+
+            pw_import_ok = True
+        except ImportError:
+            pass
+        result["mlrs_payment"] = {
+            "headless_will_run": _should_try_headless(),
+            "MINING_OS_MLRS_PAYMENT_HEADLESS": os.getenv("MINING_OS_MLRS_PAYMENT_HEADLESS"),
+            "playwright_package_installed": pw_import_ok,
+            "note": (
+                "For UNPAID/PAID from MLRS case pages, build must run "
+                "`python -m playwright install chromium` and set MINING_OS_MLRS_PAYMENT_HEADLESS=1 "
+                "on production (see render.yaml). Verify with GET /api/diag/check-payment?case_url=..."
+            ),
+        }
+    except Exception as e:
+        result["mlrs_payment"] = {"error": str(e)}
 
     return result
 
@@ -233,6 +267,27 @@ def diag_lr2000(area_id: int) -> Dict[str, Any]:
     return _safe_lr2000_report(area_id)
 
 
+@api_app.get("/diag/check-payment")
+def diag_check_payment(case_url: str) -> Dict[str, Any]:
+    """
+    Run only the MLRS payment-banner enrichment for one case URL.
+
+    Example:
+        GET /api/diag/check-payment?case_url=https://mlrs.blm.gov/s/blm-case/a02t000000593dSAAQ/UT101527746
+
+    Returns ``payment_status`` plus the path that decided it (``payment_check_source``).
+    Useful for proving Playwright/Selenium are actually working without rerunning
+    the whole Fetch Claim Records pipeline.
+    """
+    try:
+        from mining_os.services.mlrs_case_payment import check_payment_for_url
+
+        return {"ok": True, "case_url": case_url, **check_payment_for_url(case_url)}
+    except Exception as e:
+        log.exception("diag_check_payment failed")
+        return {"ok": False, "case_url": case_url, "error": str(e)}
+
+
 def _safe_fetch_claim_records(area_id: int) -> Dict[str, Any]:
     """
     Safe wrapper for the BLM Fetch Claim Records action.
@@ -283,6 +338,110 @@ def _safe_fetch_claim_records(area_id: int) -> Dict[str, Any]:
             "error": f"Fetch Claim Records failed: {e}",
             "fetched_at": None,
         }
+
+
+# --- Background job registry ---------------------------------------------
+#
+# Long-running endpoints (Fetch Claim Records, LR2000) used to hold a single
+# HTTP connection open for several minutes while Playwright scraped MLRS.
+# That broke through Vite/proxies/load balancers ("Failed to fetch") even
+# when the work itself finished server-side.
+#
+# The fix: kick the work onto a daemon thread, return a job_id immediately,
+# and let the client poll a tiny GET /jobs/{id} endpoint. Each poll request
+# is fast so nothing in the request path can time out.
+#
+# Storage is in-process (dict) — fine because both Render and Railway run a
+# single uvicorn worker. If we ever scale to multiple workers we'd need to
+# move this to Postgres (the result is already persisted to characteristics
+# by the underlying service so end-state recovery still works).
+
+import threading
+import uuid as _uuid
+from datetime import datetime as _datetime, timezone as _timezone
+
+_JOBS: Dict[str, Dict[str, Any]] = {}
+_JOBS_LOCK = threading.Lock()
+_JOBS_RETENTION_SECONDS = 60 * 60  # purge finished jobs older than 1 hour
+
+
+def _now_iso() -> str:
+    return _datetime.now(_timezone.utc).isoformat()
+
+
+def _purge_old_jobs() -> None:
+    cutoff = _datetime.now(_timezone.utc).timestamp() - _JOBS_RETENTION_SECONDS
+    with _JOBS_LOCK:
+        stale = [
+            jid for jid, j in _JOBS.items()
+            if j.get("status") in ("done", "error")
+            and _datetime.fromisoformat(j["updated_at"]).timestamp() < cutoff
+        ]
+        for jid in stale:
+            _JOBS.pop(jid, None)
+
+
+def _new_job(kind: str, **extra: Any) -> str:
+    _purge_old_jobs()
+    job_id = _uuid.uuid4().hex
+    now = _now_iso()
+    with _JOBS_LOCK:
+        _JOBS[job_id] = {
+            "id": job_id,
+            "kind": kind,
+            "status": "queued",
+            "created_at": now,
+            "updated_at": now,
+            "result": None,
+            "error": None,
+            **extra,
+        }
+    return job_id
+
+
+def _set_job(job_id: str, **fields: Any) -> None:
+    with _JOBS_LOCK:
+        if job_id in _JOBS:
+            _JOBS[job_id].update(fields)
+            _JOBS[job_id]["updated_at"] = _now_iso()
+
+
+def _get_job(job_id: str) -> Optional[Dict[str, Any]]:
+    with _JOBS_LOCK:
+        return dict(_JOBS[job_id]) if job_id in _JOBS else None
+
+
+def _run_job(job_id: str, fn, *args, **kwargs) -> None:
+    """Run *fn* on a daemon thread and store its return value in the job."""
+    def _worker() -> None:
+        _set_job(job_id, status="running")
+        try:
+            result = fn(*args, **kwargs)
+            _set_job(job_id, status="done", result=result)
+        except Exception as exc:  # pragma: no cover - background path
+            log.exception("job %s failed: %s", job_id, exc)
+            _set_job(job_id, status="error", error=str(exc))
+    threading.Thread(target=_worker, name=f"job-{job_id[:8]}", daemon=True).start()
+
+
+def _safe_clear_characteristic_keys(area_id: int, keys: list[str]) -> Dict[str, Any]:
+    """Remove known snapshot keys from ``characteristics`` — never raises."""
+    try:
+        from mining_os.services.areas_of_focus import get_area, remove_area_characteristic_keys
+
+        area = get_area(area_id)
+        if not area:
+            return {"ok": False, "error": "Area not found.", "removed": []}
+        ok = remove_area_characteristic_keys(area_id, keys)
+        removed = [k for k in keys if k in ("claim_records", "lr2000_geographic_index")]
+        return {
+            "ok": bool(ok),
+            "removed": removed,
+            "error": None if ok else "Could not update characteristics.",
+        }
+    except Exception as e:
+        log.exception("safe_clear_characteristic_keys failed area_id=%s keys=%s: %s", area_id, keys, e)
+        return {"ok": False, "removed": [], "error": str(e)}
 
 
 def _safe_lr2000_report(area_id: int) -> Dict[str, Any]:
@@ -1005,10 +1164,39 @@ def api_fetch_claim_records(area_id: int) -> Dict[str, Any]:
     return _safe_fetch_claim_records(area_id)
 
 
+@api_app.post("/areas-of-focus/{area_id}/fetch-claim-records/start")
+def api_fetch_claim_records_start(area_id: int) -> Dict[str, Any]:
+    """Start the BLM claim search on a background thread. Returns ``{job_id}`` so the client can poll ``/jobs/{job_id}``."""
+    job_id = _new_job("fetch_claim_records", area_id=area_id)
+    _run_job(job_id, _safe_fetch_claim_records, area_id)
+    return {"ok": True, "job_id": job_id}
+
+
+@api_app.get("/jobs/{job_id}")
+def api_get_job(job_id: str) -> Dict[str, Any]:
+    """Poll endpoint for background jobs (Fetch Claim Records, LR2000, etc.)."""
+    job = _get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+
 @api_app.post("/areas-of-focus/{area_id}/lr2000-geographic-report")
 def api_lr2000_geographic_report(area_id: int) -> Dict[str, Any]:
     """MLRS geographic mining-claims query (same national layer as BLM report 104), in-app — no browser."""
     return _safe_lr2000_report(area_id)
+
+
+@api_app.post("/areas-of-focus/{area_id}/clear-claim-records")
+def api_clear_claim_records_snapshot(area_id: int) -> Dict[str, Any]:
+    """Remove stored ``characteristics.claim_records`` snapshot for this target."""
+    return _safe_clear_characteristic_keys(area_id, ["claim_records"])
+
+
+@api_app.post("/areas-of-focus/{area_id}/clear-lr2000-report")
+def api_clear_lr2000_snapshot(area_id: int) -> Dict[str, Any]:
+    """Remove stored ``characteristics.lr2000_geographic_index`` snapshot for this target."""
+    return _safe_clear_characteristic_keys(area_id, ["lr2000_geographic_index"])
 
 
 @api_app.post("/areas-of-focus/{area_id}/generate-report")
@@ -1619,9 +1807,36 @@ def fetch_claim_records_toplevel(area_id: int) -> Dict[str, Any]:
     return _safe_fetch_claim_records(area_id)
 
 
+@app.post("/api/areas-of-focus/{area_id}/fetch-claim-records/start")
+def fetch_claim_records_start_toplevel(area_id: int) -> Dict[str, Any]:
+    """Toplevel mirror of :func:`api_fetch_claim_records_start` for prod parity."""
+    return api_fetch_claim_records_start(area_id)
+
+
+@app.get("/api/jobs/{job_id}")
+def get_job_toplevel(job_id: str) -> Dict[str, Any]:
+    """Toplevel mirror of :func:`api_get_job`."""
+    return api_get_job(job_id)
+
+
 @app.post("/api/areas-of-focus/{area_id}/lr2000-geographic-report")
 def lr2000_geographic_report_toplevel(area_id: int) -> Dict[str, Any]:
     return _safe_lr2000_report(area_id)
+
+
+@app.post("/api/areas-of-focus/{area_id}/clear-claim-records")
+def clear_claim_records_snapshot_toplevel(area_id: int) -> Dict[str, Any]:
+    return _safe_clear_characteristic_keys(area_id, ["claim_records"])
+
+
+@app.post("/api/areas-of-focus/{area_id}/clear-lr2000-report")
+def clear_lr2000_snapshot_toplevel(area_id: int) -> Dict[str, Any]:
+    return _safe_clear_characteristic_keys(area_id, ["lr2000_geographic_index"])
+
+
+@app.get("/api/diag/check-payment")
+def diag_check_payment_toplevel(case_url: str) -> Dict[str, Any]:
+    return diag_check_payment(case_url)
 
 
 @app.post("/api/areas-of-focus/{area_id}/generate-report")

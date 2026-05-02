@@ -1,6 +1,16 @@
 """
-Run BLM_ClaimAgent get_mlrs_from_PLSS.py for a single target PLSS, capture terminal output
-and generated JSON, and save to the target's characteristics.claim_records.
+Fetch MLRS mining claims for a target PLSS and save under ``characteristics.claim_records``.
+
+**Production path (fast, ~seconds):** BLM national MLRS ArcGIS FeatureServer only — same as Render.
+
+**Optional slow path:** If ``BLM_ClaimAgent`` is installed next to this repo *and*
+``MINING_OS_FETCH_CLAIM_RECORDS_USE_AGENT=1``, runs ``get_mlrs_from_PLSS.py`` end-to-end
+(can take many minutes).
+
+**Payment banner (Step 3):** After ArcGIS returns claims, ``mlrs_case_payment`` loads each
+``case_page`` and detects the same red maintenance-fee text as ``BLM_ClaimAgent/get_mlrs_links.py``
+(HTTP first; Selenium on typical dev machines, skipped on Render/Railway unless enabled — see
+``.env.example``).
 """
 
 from __future__ import annotations
@@ -65,6 +75,17 @@ def _blm_agent_path() -> Path | None:
     if custom and Path(custom).exists():
         return Path(custom)
     return None
+
+
+def _use_blm_claim_agent_script() -> bool:
+    """
+    When True, run BLM_ClaimAgent's get_mlrs_from_PLSS.py (slow Selenium payment scrape).
+
+    Default False so developers with ../BLM_ClaimAgent cloned get the same fast ArcGIS-only
+    behavior as production. Set MINING_OS_FETCH_CLAIM_RECORDS_USE_AGENT=1 to enable.
+    """
+    v = (os.getenv("MINING_OS_FETCH_CLAIM_RECORDS_USE_AGENT") or "").strip().lower()
+    return v in ("1", "true", "yes")
 
 
 def _parse_plss_for_script(location_plss: str | None) -> dict | None:
@@ -148,12 +169,7 @@ def _run_blm_script(agent_path: Path, plss_row: dict, area_name: str, out_name: 
         except Exception as e:
             log.warning("Could not read claim JSON %s: %s", json_path, e)
 
-    for c in claims:
-        c.pop("geometry", None)
-        c.pop("Created_epoch_ms", None)
-        c.pop("Modified_epoch_ms", None)
-        c.pop("Shape__Length", None)
-        c.pop("Shape__Area", None)
+    claims = _normalize_claims(claims)
 
     for p in (json_path, csv_out, log_out):
         try:
@@ -162,6 +178,92 @@ def _run_blm_script(agent_path: Path, plss_row: dict, area_name: str, out_name: 
             pass
 
     return proc, log_text, claims
+
+
+# Heavy / redundant fields that are useful to BLM_ClaimAgent internally but bloat
+# our DB payload and aren't shown in the UI.
+_CLAIM_DROP_FIELDS = (
+    "geometry",
+    "Created_epoch_ms",
+    "Modified_epoch_ms",
+    "Shape__Length",
+    "Shape__Area",
+    "OBJECTID",
+    "STAGE_ID",
+    "LEG_CSE_NR",
+    "SRC",
+    "QLTY",
+    "RCRD_ACRS",
+    "ID",
+    "project_name",
+    "project_latitude",
+    "project_longitude",
+    "plss_state",
+    "plss_meridian",
+    "plss_township",
+    "plss_range",
+    "plss_section",
+    "Location_PLSS",
+)
+
+# Heuristics for the .gov banner that the Selenium scraper sometimes mis-captures
+# when the case page hasn't fully rendered. Treat these as "no owner".
+_BAD_ACCOUNT_NAME_FRAGMENTS = (
+    "official website",
+    "here's how you know",
+    "an official website of the united states",
+)
+
+
+def _clean_account_name(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    lower = cleaned.lower()
+    for frag in _BAD_ACCOUNT_NAME_FRAGMENTS:
+        if frag in lower:
+            return None
+    return cleaned
+
+
+def _normalize_claims(claims: list[dict]) -> list[dict]:
+    """
+    Normalize claim dicts produced by either the BLM_ClaimAgent script (CSE_NAME / CSE_NR)
+    or the built-in BLM ArcGIS API path (claim_name / serial_number) into a single shape.
+
+    Always sets:
+      - ``claim_name``    (from claim_name or CSE_NAME)
+      - ``serial_number`` (from serial_number or CSE_NR)
+      - ``payment_status`` (defaults to 'unknown' when not enriched)
+
+    Drops noise fields (geometry, OBJECTID, project_*) and strips the ".gov" banner
+    text the Selenium owner-scrape sometimes mis-captures into ``account_name``.
+    """
+    if not isinstance(claims, list):
+        return []
+    normalized: list[dict] = []
+    for c in claims:
+        if not isinstance(c, dict):
+            continue
+        for key in _CLAIM_DROP_FIELDS:
+            c.pop(key, None)
+
+        name = c.get("claim_name") or c.get("CSE_NAME")
+        if name:
+            c["claim_name"] = name
+        serial = c.get("serial_number") or c.get("CSE_NR")
+        if serial:
+            c["serial_number"] = serial
+
+        if "payment_status" not in c or not c.get("payment_status"):
+            c["payment_status"] = "unknown"
+
+        c["account_name"] = _clean_account_name(c.get("account_name"))
+
+        normalized.append(c)
+    return normalized
 
 
 def fetch_claim_records_for_area(
@@ -224,9 +326,20 @@ def fetch_claim_records_for_area(
 
     if agent_path:
         script_path = agent_path / "get_mlrs_from_PLSS.py"
-        if script_path.exists():
+        if script_path.exists() and _use_blm_claim_agent_script():
             has_script = True
             query_method = "plss_script"
+        elif script_path.exists() and not _use_blm_claim_agent_script():
+            log_text = (
+                "BLM_ClaimAgent is installed but skipped (same as production). "
+                "Using built-in BLM ArcGIS API only (~seconds). "
+                "For slow Selenium payment scrape per claim, set "
+                "MINING_OS_FETCH_CLAIM_RECORDS_USE_AGENT=1 and restart the API.\n"
+            )
+            log.info(
+                "fetch_claim_records: BLM_ClaimAgent present but disabled — "
+                "set MINING_OS_FETCH_CLAIM_RECORDS_USE_AGENT=1 to use script path"
+            )
         else:
             log_text = f"BLM_ClaimAgent script not found at {script_path}; using built-in API fallback.\n"
             log.info("fetch_claim_records: script missing at %s — using built-in API fallback", script_path)
@@ -269,9 +382,7 @@ def fetch_claim_records_for_area(
                 from mining_os.services.blm_plss import query_claims_by_coords
                 spatial = query_claims_by_coords(latitude, longitude, radius_meters=2000)
                 if spatial:
-                    for c in spatial:
-                        c.pop("geometry", None)
-                    claims = spatial
+                    claims = _normalize_claims(spatial)
                     query_method = "spatial"
                     log_text += f"\n[spatial] Found {len(claims)} claim(s) within 2 km of ({latitude}, {longitude})"
             except ModuleNotFoundError as e:
@@ -303,9 +414,7 @@ def fetch_claim_records_for_area(
                 )
                 built_in_api_queried_ok = queried_ok
                 if api_claims:
-                    for c in api_claims:
-                        c.pop("geometry", None)
-                    claims = api_claims
+                    claims = _normalize_claims(api_claims)
                     query_method = "built_in_api"
                     log_text += f"\n[built-in API] Found {len(claims)} claim(s) via direct query (no section filter)"
                 elif queried_ok:
@@ -324,6 +433,27 @@ def fetch_claim_records_for_area(
                 built_in_api_queried_ok = False
                 log.warning("fetch_claim_records: built-in API failed: %s", e)
                 log_text += f"\n[built-in API] error: {e}"
+
+        # ── Step 3 (same as BLM_ClaimAgent get_mlrs_from_PLSS): MLRS case-page banner ──
+        # ArcGIS does not include payment text; scrape case_page for the maintenance-fee message.
+        if claims:
+            from mining_os.services.mlrs_case_payment import enrich_claims_from_mlrs_case_pages
+
+            before = sum(
+                1
+                for c in claims
+                if isinstance(c, dict) and (c.get("payment_status") or "").strip().lower() == "unpaid"
+            )
+            claims = enrich_claims_from_mlrs_case_pages(claims)
+            after = sum(
+                1
+                for c in claims
+                if isinstance(c, dict) and (c.get("payment_status") or "").strip().lower() == "unpaid"
+            )
+            log_text += (
+                f"\n[case-page payment] Enriched {len(claims)} claim(s); "
+                f"unpaid count {before} → {after}."
+            )
 
         # ── Save results ──
         fetched_at = datetime.now(timezone.utc).isoformat()

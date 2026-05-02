@@ -29,12 +29,14 @@ merges minerals / report_links on conflict.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
 import logging
 import math
 import os
 import re
 import sys
+import threading
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -75,6 +77,10 @@ GEOCODE_GRID_DEGREES = 0.005
 CACHE_DIR = _REPO_ROOT / "target_pipeline" / ".cache"
 DRY_RUN_OUT_DIR = _REPO_ROOT / "target_pipeline" / "data" / "mines_to_targets"
 RAW_MRDS_DIR = DRY_RUN_OUT_DIR / "raw"
+BLM_PLSS_REVERSE_URL = (
+    "https://gis.blm.gov/arcgis/rest/services/Cadastral/"
+    "BLM_Natl_PLSS_CadNSDI/MapServer/2/query"
+)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -245,29 +251,99 @@ def reverse_geocode_points(
     points: list[MinePoint],
     cache: PlssReverseCache,
     pause_seconds: float = 0.25,
+    workers: int = 1,
+    fast_blm: bool = True,
+    fast_timeout_seconds: float = 6.0,
 ) -> dict[int, dict[str, Any] | None]:
     """Map idx→PLSS dict (or None when BLM can't resolve / is outside PLSS)."""
-    from mining_os.services.plss_geocode import reverse_geocode_plss
+    from mining_os.services.plss_geocode import reverse_geocode_plss, _parse_plssid_attrs
+
+    def _fast_reverse(lat: float, lon: float) -> dict[str, Any] | None:
+        params = {
+            "f": "json",
+            "geometry": f"{lon},{lat}",
+            "geometryType": "esriGeometryPoint",
+            "inSR": "4326",
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "PLSSID,FRSTDIVNO",
+            "returnGeometry": "false",
+            "resultRecordCount": "5",
+        }
+        try:
+            r = requests.get(BLM_PLSS_REVERSE_URL, params=params, timeout=fast_timeout_seconds)
+            r.raise_for_status()
+            data = r.json()
+            if not isinstance(data, dict) or data.get("error"):
+                return None
+            feats = data.get("features") or []
+            if not feats:
+                return None
+            attrs = (feats[0] or {}).get("attributes") or {}
+            return _parse_plssid_attrs(attrs.get("PLSSID"), attrs.get("FRSTDIVNO"))
+        except Exception:
+            return None
 
     out: dict[int, dict[str, Any] | None] = {}
     api_calls = 0
+    completed = 0
+    lock = threading.Lock()
+    pending: list[tuple[int, MinePoint]] = []
+
+    # Fast path: fill cached results first.
     for i, p in enumerate(points):
         hit, val = cache.get(p.latitude, p.longitude)
         if hit:
             out[i] = val
-            continue
+        else:
+            pending.append((i, p))
+
+    if not pending:
+        log.info("reverse-geocode done: %d points / %d api calls", len(points), api_calls)
+        return out
+
+    def _worker(item: tuple[int, MinePoint]) -> tuple[int, dict[str, Any] | None]:
+        idx, pt = item
         try:
-            val = reverse_geocode_plss(p.latitude, p.longitude)
+            if fast_blm:
+                val = _fast_reverse(pt.latitude, pt.longitude)
+            else:
+                val = reverse_geocode_plss(pt.latitude, pt.longitude)
         except Exception as e:
-            log.debug("reverse-geocode failed @ %.5f,%.5f: %s", p.latitude, p.longitude, e)
+            log.debug("reverse-geocode failed @ %.5f,%.5f: %s", pt.latitude, pt.longitude, e)
             val = None
-        cache.set(p.latitude, p.longitude, val)
-        out[i] = val
-        api_calls += 1
-        time.sleep(pause_seconds)
-        if api_calls % 100 == 0:
-            cache.flush()
-            log.info("reverse-geocoded %d points (%d api calls so far)", i + 1, api_calls)
+        if pause_seconds > 0:
+            time.sleep(pause_seconds)
+        return idx, val
+
+    if workers <= 1:
+        for idx, p in pending:
+            _, val = _worker((idx, p))
+            cache.set(p.latitude, p.longitude, val)
+            out[idx] = val
+            api_calls += 1
+            completed += 1
+            if api_calls % 100 == 0:
+                cache.flush()
+                log.info("reverse-geocoded %d points (%d api calls so far)", completed, api_calls)
+    else:
+        log.info("reverse-geocoding %d uncached points with %d workers", len(pending), workers)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+            futures = {ex.submit(_worker, item): item for item in pending}
+            for fut in concurrent.futures.as_completed(futures):
+                idx, p = futures[fut]
+                try:
+                    _, val = fut.result()
+                except Exception as e:
+                    log.debug("reverse-geocode future failed @ %.5f,%.5f: %s", p.latitude, p.longitude, e)
+                    val = None
+                with lock:
+                    cache.set(p.latitude, p.longitude, val)
+                    out[idx] = val
+                    api_calls += 1
+                    completed += 1
+                    if api_calls % 200 == 0:
+                        cache.flush()
+                        log.info("reverse-geocoded %d points (%d api calls so far)", completed, api_calls)
     cache.flush()
     log.info("reverse-geocode done: %d points / %d api calls", len(points), api_calls)
     return out
@@ -530,8 +606,25 @@ def main() -> int:
     parser.add_argument(
         "--pause",
         type=float,
-        default=0.25,
-        help="Seconds between BLM Cadastral reverse-geocode calls (default: 0.25)",
+        default=0.0,
+        help="Seconds to sleep after each reverse-geocode request per worker (default: 0.0)",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=12,
+        help="Parallel reverse-geocode worker count (default: 12)",
+    )
+    parser.add_argument(
+        "--fast-blm",
+        action="store_true",
+        help="Use fast no-retry BLM reverse-geocode path (recommended for large imports).",
+    )
+    parser.add_argument(
+        "--fast-timeout",
+        type=float,
+        default=6.0,
+        help="Timeout seconds for --fast-blm requests (default: 6.0)",
     )
     parser.add_argument(
         "--cache",
@@ -581,7 +674,14 @@ def main() -> int:
             log.warning("no points left for %s — skipping", state)
             continue
 
-        geocodes = reverse_geocode_points(points, cache, pause_seconds=args.pause)
+        geocodes = reverse_geocode_points(
+            points,
+            cache,
+            pause_seconds=args.pause,
+            workers=max(1, int(args.workers)),
+            fast_blm=bool(args.fast_blm),
+            fast_timeout_seconds=float(args.fast_timeout),
+        )
         groups = group_by_section(points, geocodes, target_state=state)
         payloads = build_target_payloads(groups)
 

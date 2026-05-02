@@ -1,13 +1,19 @@
 import logging
 import sys
 from pathlib import Path
+from typing import Optional, TextIO
 
 
-def setup_logging(level: str = "INFO") -> None:
-    """Configure logging to stdout and to logs/mining_os.log (relative to repo root)."""
+def setup_logging(level: str = "INFO", *, stream: Optional[TextIO] = None) -> None:
+    """Configure logging to *stream* (default stdout) and to logs/mining_os.log (repo root).
+
+    Use ``stream=sys.stderr`` for subprocess workers that reserve stdout for machine-readable
+    payloads (e.g. MLRS payment enrichment JSON).
+    """
     level_val = getattr(logging, level.upper(), logging.INFO)
     fmt = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
-    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+    out = sys.stdout if stream is None else stream
+    handlers: list[logging.Handler] = [logging.StreamHandler(out)]
     try:
         repo_root = Path(__file__).resolve().parents[1]
         log_dir = repo_root / "logs"

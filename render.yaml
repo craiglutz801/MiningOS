@@ -1,21 +1,31 @@
 # Render blueprint for the Mining OS API.
-# If you have a render.yaml here, Render uses these commands. If you don't,
-# configure the same values under the service's "Settings" tab in the Render
-# dashboard:
-#   Build Command:  pip install --upgrade pip && pip install -r requirements.txt
+# Build MUST compile the Vite frontend into frontend/dist — that folder is
+# gitignored; without npm run build the API still starts but ships no UI (or a
+# stale manual upload).
+# Native Render builders include npm — see:
+# https://render.com/docs/native-environments
+#
+# Dashboard manual overrides should match:
+#   Build Command:  pip install … && python -m playwright install chromium && cd frontend && npm ci && npm run build
 #   Start Command:  uvicorn mining_os.api.main:app --host 0.0.0.0 --port $PORT
+#
+# Playwright Chromium is required so Fetch Claim Records can read the MLRS Lightning SPA
+# (maintenance-fee banner). Without ``python -m playwright install chromium`` the API runs but
+# payment_status stays unknown on case pages.
 
 services:
   - type: web
     name: mining-os-api
     runtime: python
     plan: starter
-    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
+    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt && python -m playwright install chromium && cd frontend && npm ci && npm run build"
     startCommand: "uvicorn mining_os.api.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.7"
+      - key: MINING_OS_MLRS_PAYMENT_HEADLESS
+        value: "1"
       - key: DATABASE_URL
         sync: false
       - key: OPENAI_API_KEY

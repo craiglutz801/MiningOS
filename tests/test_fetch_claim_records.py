@@ -17,6 +17,15 @@ import pytest
 from mining_os.services import fetch_claim_records as fcr
 
 
+@pytest.fixture(autouse=True)
+def _disable_mlrs_case_page_network(monkeypatch):
+    """Fetch tests stub ArcGIS only; do not HTTP/Selenium real mlrs.blm.gov pages."""
+    monkeypatch.setattr(
+        "mining_os.services.mlrs_case_payment.enrich_claims_from_mlrs_case_pages",
+        lambda claims: claims,
+    )
+
+
 @pytest.fixture
 def patched_persist(monkeypatch):
     """Stub out the DB writers so unit tests don't touch Postgres."""
@@ -42,23 +51,27 @@ class TestFallbackWhenAgentMissing:
 
         api_called = {"plss": 0, "coords": 0}
 
-        def fake_query_by_plss(**kwargs):
+        def fake_query_by_plss_with_status(**kwargs):
             api_called["plss"] += 1
-            return [
-                {
-                    "claim_name": "TEST CLAIM",
-                    "serial_number": "UMC123",
-                    "payment_status": "paid",
-                    "BLM_PROD": "Lode",
-                }
-            ]
+            return (
+                True,
+                [
+                    {
+                        "claim_name": "TEST CLAIM",
+                        "serial_number": "UMC123",
+                        "payment_status": "paid",
+                        "BLM_PROD": "Lode",
+                    }
+                ],
+            )
 
         def fake_query_by_coords(*args, **kwargs):
             api_called["coords"] += 1
             return []
 
         monkeypatch.setattr(
-            "mining_os.services.blm_plss.query_claims_by_plss", fake_query_by_plss
+            "mining_os.services.blm_plss.query_claims_by_plss_with_status",
+            fake_query_by_plss_with_status,
         )
         monkeypatch.setattr(
             "mining_os.services.blm_plss.query_claims_by_coords", fake_query_by_coords
@@ -85,9 +98,10 @@ class TestFallbackWhenAgentMissing:
 
     def test_no_agent_no_results_returns_clean_error(self, monkeypatch, patched_persist):
         monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
+        # Simulate the BLM service being unreachable so we surface the error path.
         monkeypatch.setattr(
-            "mining_os.services.blm_plss.query_claims_by_plss",
-            lambda **kw: [],
+            "mining_os.services.blm_plss.query_claims_by_plss_with_status",
+            lambda **kw: (False, []),
         )
         monkeypatch.setattr(
             "mining_os.services.blm_plss.query_claims_by_coords",
@@ -115,8 +129,8 @@ class TestFallbackWhenAgentMissing:
     def test_no_agent_uses_spatial_when_no_plss_match(self, monkeypatch, patched_persist):
         monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
         monkeypatch.setattr(
-            "mining_os.services.blm_plss.query_claims_by_plss",
-            lambda **kw: [],
+            "mining_os.services.blm_plss.query_claims_by_plss_with_status",
+            lambda **kw: (True, []),
         )
 
         spatial_called = []
@@ -146,6 +160,78 @@ class TestFallbackWhenAgentMissing:
         assert len(result["claims"]) == 1
         assert result["claims"][0]["claim_name"] == "SPATIAL HIT"
         assert spatial_called, "spatial fallback should have been invoked"
+
+
+class TestNormalizeClaims:
+    """The unified shape every UI/automation rule expects, regardless of source path."""
+
+    def test_script_shape_gets_claim_name_and_serial_number(self):
+        # BLM_ClaimAgent script returns CSE_NAME / CSE_NR (no claim_name / serial_number).
+        normalized = fcr._normalize_claims(
+            [
+                {
+                    "CSE_NAME": "PEBBLE # 5",
+                    "CSE_NR": "UT101527746",
+                    "case_page": "https://mlrs.blm.gov/s/blm-case/a02t000000593dSAAQ/UT101527746",
+                    "payment_status": "unpaid",
+                    "payment_message": "Maintenance fee payment was not received and may result in the closing of the claim.",
+                    "geometry": {"rings": [[[0, 0]]]},
+                    "OBJECTID": 1,
+                    "Shape__Length": 1.23,
+                    "project_name": "tmp",
+                    "plss_state": "UT",
+                }
+            ]
+        )
+        assert len(normalized) == 1
+        c = normalized[0]
+        assert c["claim_name"] == "PEBBLE # 5"
+        assert c["serial_number"] == "UT101527746"
+        # The unpaid maintenance-fee message is preserved verbatim.
+        assert "Maintenance fee payment was not received" in c["payment_message"]
+        # Heavy / private fields are dropped.
+        for dropped in ("geometry", "OBJECTID", "Shape__Length", "project_name", "plss_state"):
+            assert dropped not in c
+
+    def test_api_shape_keeps_existing_claim_name(self):
+        # Built-in ArcGIS fallback already returns claim_name / serial_number.
+        normalized = fcr._normalize_claims(
+            [
+                {
+                    "claim_name": "ALPHA",
+                    "serial_number": "UMC1",
+                }
+            ]
+        )
+        assert normalized[0]["claim_name"] == "ALPHA"
+        assert normalized[0]["serial_number"] == "UMC1"
+        # payment_status defaults to "unknown" so the UI badge never blanks.
+        assert normalized[0]["payment_status"] == "unknown"
+
+    def test_strips_dot_gov_banner_from_account_name(self):
+        normalized = fcr._normalize_claims(
+            [
+                {
+                    "claim_name": "X",
+                    "serial_number": "Y",
+                    "account_name": "An official website of the United States government\n  Here's how you know",
+                }
+            ]
+        )
+        # The .gov banner that the Selenium scraper sometimes captures is dropped.
+        assert normalized[0]["account_name"] is None
+
+    def test_keeps_real_account_name(self):
+        normalized = fcr._normalize_claims(
+            [
+                {
+                    "claim_name": "X",
+                    "serial_number": "Y",
+                    "account_name": "Acme Mining LLC",
+                }
+            ]
+        )
+        assert normalized[0]["account_name"] == "Acme Mining LLC"
 
 
 class TestPlssMissing:

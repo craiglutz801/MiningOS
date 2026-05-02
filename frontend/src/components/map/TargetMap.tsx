@@ -21,6 +21,7 @@ import { ensureMapPanes, MAP_PANES } from "../../map/panes";
 import { useMapPreferences } from "../../map/useMapPreferences";
 import { useTargetsLayer, type MapTarget } from "../../map/useTargetsLayer";
 import { getTargetStyle, getTargetStatusLabel } from "../../map/targetStyles";
+import { truncateMapTargetName } from "../../map/mapTargetName";
 import { FirstFitBounds } from "../../map/useFirstFitBounds";
 import { TargetPopup } from "./TargetPopup";
 import { MapLegend } from "./MapLegend";
@@ -76,7 +77,7 @@ function TargetMarker({ target }: { target: MapTarget }) {
     >
       <Tooltip direction="top" className="map-tooltip">
         <span>
-          {target.name}
+          {truncateMapTargetName(target.name)}
           <br />
           {minerals} &middot; {target.status}
           <br />
@@ -119,7 +120,7 @@ function SelectedTargetHighlight({ target }: { target: MapTarget }) {
         pane={MAP_PANES.selectedTarget}
       >
         <Tooltip direction="top" permanent className="map-tooltip">
-          <strong>{target.name}</strong>
+          <strong>{truncateMapTargetName(target.name)}</strong>
         </Tooltip>
         <Popup maxWidth={280} className="map-popup-container" autoClose={false}>
           <TargetPopup target={target} />

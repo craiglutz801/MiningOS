@@ -806,6 +806,35 @@ def merge_area_characteristics(area_id: int, updates: Dict[str, Any]) -> bool:
             raise
 
 
+# Keys the UI may delete via explicit "clear snapshot" actions (never arbitrary paths).
+_REMOVABLE_CHARACTERISTIC_KEYS = frozenset({"claim_records", "lr2000_geographic_index"})
+
+
+def remove_area_characteristic_keys(area_id: int, keys: list[str]) -> bool:
+    """
+    Remove one or more top-level keys from ``characteristics`` using PostgreSQL jsonb ``-``.
+    Only whitelisted keys are applied. Returns True if a row was updated.
+    """
+    safe = [k for k in keys if k in _REMOVABLE_CHARACTERISTIC_KEYS]
+    if not safe:
+        return False
+    expr = "COALESCE(characteristics, '{}'::jsonb)"
+    for k in safe:
+        expr = f"({expr} - '{k}')"
+    eng = get_engine()
+    with eng.begin() as conn:
+        r = conn.execute(
+            text(f"""
+            UPDATE areas_of_focus
+            SET characteristics = {expr},
+                updated_at = now()
+            WHERE id = :id
+            """),
+            {"id": area_id},
+        )
+        return r.rowcount > 0
+
+
 VALID_TARGET_STATUSES = (
     "monitoring_low", "monitoring_med", "monitoring_high",
     "negotiation", "due_diligence", "ownership",

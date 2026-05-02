@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { MapTarget } from "../../map/useTargetsLayer";
 import { getTargetStatusLabel } from "../../map/targetStyles";
+import { truncateMapTargetName } from "../../map/mapTargetName";
 
 interface TargetPopupProps {
   target: MapTarget;
@@ -13,7 +14,7 @@ export function TargetPopup({ target }: TargetPopupProps) {
   return (
     <div style={{ fontFamily: "inherit", minWidth: 180 }}>
       <div style={{ fontWeight: 600, color: "#0f172a", marginBottom: 4, fontSize: 14 }}>
-        {target.name}
+        {truncateMapTargetName(target.name)}
       </div>
       <div style={{ color: "#475569", fontSize: 13 }}>{minerals}</div>
       {target.plss && (

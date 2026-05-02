@@ -23,6 +23,11 @@ geoalchemy2>=0.15.1
 
 # HTTP + external APIs (REQUIRED by BLM ArcGIS queries)
 requests>=2.32.0
+# MLRS case-page payment banner — Playwright is the primary headless browser path because
+# the Lightning SPA needs JS to render the overdue message. Selenium kept as a fallback for
+# environments that already have ChromeDriver installed.
+playwright>=1.45.0
+selenium>=4.15.0
 openai>=1.0.0
 duckduckgo-search>=4.0.0
 

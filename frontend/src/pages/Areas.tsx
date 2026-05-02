@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
 import { api, ApiError, type Area, type BatchAreaActionRow } from "../api";
 import { parseCsvForPreview, type CsvInspectResult } from "../csvInspectLocal";
+import { ClaimPaymentBadge, getClaimPaymentText } from "../areas/claimPaymentBadge";
 
 /** Server-enforced max ids per batch POST. */
 const AREA_BATCH_MAX_CHUNK = 25;
@@ -243,6 +244,8 @@ export function Areas() {
   const [plssSaving, setPlssSaving] = useState(false);
   const [fetchClaimRecordsLoading, setFetchClaimRecordsLoading] = useState(false);
   const [lr2000Loading, setLr2000Loading] = useState(false);
+  const [clearClaimSnapshotLoading, setClearClaimSnapshotLoading] = useState(false);
+  const [clearLr2000SnapshotLoading, setClearLr2000SnapshotLoading] = useState(false);
   const [rawJsonModal, setRawJsonModal] = useState<{ title: string; data: unknown } | null>(null);
   const [generateReportLoading, setGenerateReportLoading] = useState(false);
   /** After fill-plss-ai-preview: review proposed PLSS before apply. */
@@ -596,13 +599,18 @@ export function Areas() {
 
   const statusBadge = (status?: string) => {
     const s = (status || "unknown").toLowerCase();
+    const label = s.toUpperCase();
     const styles =
       s === "paid"
-        ? "bg-emerald-100 text-emerald-800"
+        ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
         : s === "unpaid"
-          ? "bg-amber-100 text-amber-800"
-          : "bg-slate-100 text-slate-600";
-    return <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${styles}`}>{s}</span>;
+          ? "bg-red-100 text-red-800 border border-red-300"
+          : "bg-slate-100 text-slate-600 border border-slate-200";
+    return (
+      <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold tracking-wide ${styles}`}>
+        {label}
+      </span>
+    );
   };
 
   const TARGET_STATUS_LABELS: Record<string, string> = {
@@ -2914,9 +2922,63 @@ export function Areas() {
                   const claims = (cr.claims ?? []) as Record<string, unknown>[];
                   return (
                     <div className="mt-3 border border-emerald-200 rounded-lg overflow-hidden">
-                      <div className="px-3 py-2 bg-emerald-50 flex items-center justify-between">
-                        <span className="text-xs font-semibold text-emerald-900">Claim Records from MLRS Scrape</span>
-                        <button type="button" onClick={() => setRawJsonModal({ title: "MLRS Scrape \u2014 Raw JSON", data: cr })} className="text-[11px] text-emerald-700 hover:underline">View Raw JSON</button>
+                      <div className="px-3 py-2 bg-emerald-50 border-b border-emerald-100">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="text-xs font-semibold text-emerald-900 block">
+                              Claim Records from MLRS Scrape
+                            </span>
+                            <button
+                              type="button"
+                              disabled={clearClaimSnapshotLoading}
+                              onClick={async () => {
+                                if (!selected?.id) return;
+                                if (
+                                  !window.confirm(
+                                    "Are you sure? This removes all stored MLRS claim records for this target."
+                                  )
+                                ) {
+                                  return;
+                                }
+                                setClearClaimSnapshotLoading(true);
+                                setError(null);
+                                try {
+                                  const out = await api.areas.clearClaimRecordsSnapshot(selected.id);
+                                  if (!out.ok && out.error) setError(out.error);
+                                  const full = await api.areas.get(selected.id);
+                                  setSelected(full);
+                                  const list = await api.areas.list({
+                                    mineral: mineralFilter || undefined,
+                                    status: statusFilter || undefined,
+                                    state_abbr: stateFilter || undefined,
+                                    claim_type: claimTypeFilter || undefined,
+                                    retrieval_type: retrievalTypeFilter || undefined,
+                                    township: townshipFilter.trim() || undefined,
+                                    range_val: rangeFilter.trim() || undefined,
+                                    sector: sectorFilter.trim() || undefined,
+                                    name: nameFilter.trim() || undefined,
+                                    limit: 500,
+                                  });
+                                  setAreas(list);
+                                } catch (e) {
+                                  setError(e instanceof Error ? e.message : "Clear failed");
+                                } finally {
+                                  setClearClaimSnapshotLoading(false);
+                                }
+                              }}
+                              className="mt-1 block text-left text-[11px] text-slate-600 hover:text-red-700 underline underline-offset-2 disabled:opacity-50"
+                            >
+                              {clearClaimSnapshotLoading ? "Clearing\u2026" : "Clear all stored claims for this target"}
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setRawJsonModal({ title: "MLRS Scrape \u2014 Raw JSON", data: cr })}
+                            className="text-[11px] text-emerald-700 hover:underline shrink-0 pt-0.5"
+                          >
+                            View Raw JSON
+                          </button>
+                        </div>
                       </div>
                       <div className="px-3 py-2 space-y-1">
                         {cr.fetched_at && <p className="text-[11px] text-slate-500">Fetched: {new Date(cr.fetched_at).toLocaleString()}</p>}
@@ -2929,6 +2991,7 @@ export function Areas() {
                               <tr>
                                 <th className="px-3 py-1.5 font-medium">Claim</th>
                                 <th className="px-3 py-1.5 font-medium">Serial</th>
+                                <th className="px-3 py-1.5 font-medium">Payment</th>
                                 <th className="px-3 py-1.5 font-medium">PLSS</th>
                                 <th className="px-3 py-1.5 font-medium">Links</th>
                               </tr>
@@ -2936,14 +2999,26 @@ export function Areas() {
                             <tbody>
                               {claims.map((c, i) => {
                                 const nm = String(c.claim_name ?? c.CSE_NAME ?? "\u2014");
-                                const sn = String(c.serial_number ?? "\u2014");
+                                const sn = String(c.serial_number ?? c.CSE_NR ?? "\u2014");
                                 const plss = String(c.plss ?? c.CSE_META ?? "\u2014");
                                 const casePage = typeof c.case_page === "string" ? c.case_page : null;
                                 const pay = typeof c.payment_report === "string" ? c.payment_report : null;
+                                const payInfo = getClaimPaymentText(c);
+                                // Highlight unpaid claims (the "Maintenance fee payment was not received…" rows)
+                                // with a blue background so they pop in the table.
+                                const rowCls = payInfo.status === "unpaid"
+                                  ? "border-t border-blue-200 bg-blue-50"
+                                  : "border-t border-slate-100";
                                 return (
-                                  <tr key={`mlrs-${sn}-${i}`} className="border-t border-slate-100">
+                                  <tr key={`mlrs-${sn}-${i}`} className={rowCls}>
                                     <td className="px-3 py-1.5 text-slate-800">{nm}</td>
                                     <td className="px-3 py-1.5 font-mono text-slate-700">{sn}</td>
+                                    <td className="px-3 py-1.5">
+                                      <ClaimPaymentBadge status={payInfo.status} message={payInfo.message} />
+                                      {payInfo.status === "unpaid" && payInfo.message && (
+                                        <p className="mt-0.5 text-[10px] text-blue-900 leading-tight max-w-[18rem]">{payInfo.message}</p>
+                                      )}
+                                    </td>
                                     <td className="px-3 py-1.5 text-slate-600 max-w-[10rem] truncate" title={plss}>{plss}</td>
                                     <td className="px-3 py-1.5 space-x-2 whitespace-nowrap">
                                       {casePage && <a href={casePage} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">Case</a>}
@@ -2968,9 +3043,63 @@ export function Areas() {
                   const claims = (lr.claims ?? []) as Record<string, unknown>[];
                   return (
                     <div className="mt-3 border border-amber-200 rounded-lg overflow-hidden">
-                      <div className="px-3 py-2 bg-amber-50 flex items-center justify-between">
-                        <span className="text-xs font-semibold text-amber-900">Claim Records from LR2000 Pull</span>
-                        <button type="button" onClick={() => setRawJsonModal({ title: "LR2000 Pull \u2014 Raw JSON", data: lr })} className="text-[11px] text-amber-700 hover:underline">View Raw JSON</button>
+                      <div className="px-3 py-2 bg-amber-50 border-b border-amber-100">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="text-xs font-semibold text-amber-900 block">
+                              Claim Records from LR2000 Pull
+                            </span>
+                            <button
+                              type="button"
+                              disabled={clearLr2000SnapshotLoading}
+                              onClick={async () => {
+                                if (!selected?.id) return;
+                                if (
+                                  !window.confirm(
+                                    "Are you sure? This removes all stored LR2000 / Geographic Index claim records for this target."
+                                  )
+                                ) {
+                                  return;
+                                }
+                                setClearLr2000SnapshotLoading(true);
+                                setError(null);
+                                try {
+                                  const out = await api.areas.clearLr2000Snapshot(selected.id);
+                                  if (!out.ok && out.error) setError(out.error);
+                                  const full = await api.areas.get(selected.id);
+                                  setSelected(full);
+                                  const list = await api.areas.list({
+                                    mineral: mineralFilter || undefined,
+                                    status: statusFilter || undefined,
+                                    state_abbr: stateFilter || undefined,
+                                    claim_type: claimTypeFilter || undefined,
+                                    retrieval_type: retrievalTypeFilter || undefined,
+                                    township: townshipFilter.trim() || undefined,
+                                    range_val: rangeFilter.trim() || undefined,
+                                    sector: sectorFilter.trim() || undefined,
+                                    name: nameFilter.trim() || undefined,
+                                    limit: 500,
+                                  });
+                                  setAreas(list);
+                                } catch (e) {
+                                  setError(e instanceof Error ? e.message : "Clear failed");
+                                } finally {
+                                  setClearLr2000SnapshotLoading(false);
+                                }
+                              }}
+                              className="mt-1 block text-left text-[11px] text-slate-600 hover:text-red-700 underline underline-offset-2 disabled:opacity-50"
+                            >
+                              {clearLr2000SnapshotLoading ? "Clearing\u2026" : "Clear all stored LR2000 records for this target"}
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setRawJsonModal({ title: "LR2000 Pull \u2014 Raw JSON", data: lr })}
+                            className="text-[11px] text-amber-700 hover:underline shrink-0 pt-0.5"
+                          >
+                            View Raw JSON
+                          </button>
+                        </div>
                       </div>
                       <div className="px-3 py-2 space-y-1">
                         {lr.fetched_at && <p className="text-[11px] text-slate-500">Fetched: {new Date(lr.fetched_at).toLocaleString()}</p>}
@@ -2982,6 +3111,7 @@ export function Areas() {
                               <tr>
                                 <th className="px-3 py-1.5 font-medium">Claim</th>
                                 <th className="px-3 py-1.5 font-medium">Serial</th>
+                                <th className="px-3 py-1.5 font-medium">Payment</th>
                                 <th className="px-3 py-1.5 font-medium">PLSS</th>
                                 <th className="px-3 py-1.5 font-medium">Type</th>
                                 <th className="px-3 py-1.5 font-medium">Links</th>
@@ -2989,16 +3119,26 @@ export function Areas() {
                             </thead>
                             <tbody>
                               {claims.map((c, i) => {
-                                const nm = String(c.claim_name ?? "\u2014");
-                                const sn = String(c.serial_number ?? "\u2014");
-                                const plss = String(c.plss ?? "\u2014");
+                                const nm = String(c.claim_name ?? c.CSE_NAME ?? "\u2014");
+                                const sn = String(c.serial_number ?? c.CSE_NR ?? "\u2014");
+                                const plss = String(c.plss ?? c.CSE_META ?? "\u2014");
                                 const prod = c.BLM_PROD != null ? String(c.BLM_PROD) : "\u2014";
                                 const casePage = typeof c.case_page === "string" ? c.case_page : null;
                                 const pay = typeof c.payment_report === "string" ? c.payment_report : null;
+                                const payInfo = getClaimPaymentText(c);
+                                const rowCls = payInfo.status === "unpaid"
+                                  ? "border-t border-blue-200 bg-blue-50"
+                                  : "border-t border-slate-100";
                                 return (
-                                  <tr key={`lr-${sn}-${i}`} className="border-t border-slate-100">
+                                  <tr key={`lr-${sn}-${i}`} className={rowCls}>
                                     <td className="px-3 py-1.5 text-slate-800">{nm}</td>
                                     <td className="px-3 py-1.5 font-mono text-slate-700">{sn}</td>
+                                    <td className="px-3 py-1.5">
+                                      <ClaimPaymentBadge status={payInfo.status} message={payInfo.message} />
+                                      {payInfo.status === "unpaid" && payInfo.message && (
+                                        <p className="mt-0.5 text-[10px] text-blue-900 leading-tight max-w-[18rem]">{payInfo.message}</p>
+                                      )}
+                                    </td>
                                     <td className="px-3 py-1.5 text-slate-600 max-w-[10rem] truncate" title={plss}>{plss}</td>
                                     <td className="px-3 py-1.5 text-slate-600">{prod}</td>
                                     <td className="px-3 py-1.5 space-x-2 whitespace-nowrap">
@@ -3130,7 +3270,13 @@ export function Areas() {
                         }
                         if (result.error && !result.ok) setError(result.error);
                       } catch (e) {
-                        const msg = e instanceof ApiError && e.body?.detail ? e.body.detail : (e as Error).message;
+                        let msg =
+                          e instanceof ApiError && e.body?.detail
+                            ? String(e.body.detail)
+                            : (e as Error).message;
+                        if (e instanceof ApiError && e.body?.error === "client_timeout") {
+                          msg = e.message;
+                        }
                         // The script may have finished and saved data even if the browser timed out.
                         // Reload the area from the DB so the user can still view results.
                         try {

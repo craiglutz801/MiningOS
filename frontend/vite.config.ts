@@ -5,8 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    // Listen on IPv4 so http://127.0.0.1:5173 works (not only ::1 / "localhost")
-    host: "127.0.0.1",
+    // Dual-stack loopback: browsers often resolve `localhost` to ::1 first; binding only 127.0.0.1 breaks those requests ("Failed to fetch").
+    host: "::",
     proxy: {
       "/api": {
         target: "http://127.0.0.1:8000",

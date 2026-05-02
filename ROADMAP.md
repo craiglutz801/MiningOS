@@ -38,6 +38,9 @@ Items are checked off when completed, with the completion date noted.
 
 *Add new initiatives below. Prioritize by moving items up.*
 
+- [ ] **Fetch Claim Records: payment status enrichment on production (no Selenium)** — Localhost surfaces "Maintenance fee payment was not received and may result in the closing of the claim" via `BLM_ClaimAgent` + Selenium scraping `mlrs.blm.gov/s/blm-case`. Render has neither, so the built-in ArcGIS fallback returns claim metadata only and `payment_status` defaults to `unknown`. Need a Render-safe enrichment: probe Salesforce Aura RPC at `/s/sfsites/aura` for the public case record, or parse the RAS Serial Register Page once we have a stable URL/template. Until then, payment status is only authoritative when the localhost Fetch Claim Records run is propagated to prod (UI now displays `payment_status`/`payment_message` whenever present, including the "(unpaid)" banner with the maintenance-fee text).
+- [ ] **Idaho MRDS → targets (production)** — Run `python -m target_pipeline.mines_to_targets --states ID` against the production `DATABASE_URL` with the same flags Nevada used (`--workers 24 --pause 0 --fast-blm --fast-timeout 5`). After the first run writes `target_pipeline/data/mines_to_targets/raw/mrds_ID.json`, future re-runs can add `--use-cached-mrds`. Tee to `logs/id_import.log`.
+
 ---
 
 ## Ideas / Someday

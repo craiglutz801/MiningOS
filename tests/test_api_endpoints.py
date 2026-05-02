@@ -147,12 +147,15 @@ class TestFetchClaimRecordsEndpoint:
             "mining_os.services.fetch_claim_records._blm_agent_path",
             lambda: None,
         )
-        # Built-in API returns claims
+        # Built-in API returns claims (production path uses query_claims_by_plss_with_status)
         monkeypatch.setattr(
-            "mining_os.services.blm_plss.query_claims_by_plss",
-            lambda **kw: [
-                {"claim_name": "C1", "serial_number": "S1", "payment_status": "paid"}
-            ],
+            "mining_os.services.blm_plss.query_claims_by_plss_with_status",
+            lambda **kw: (
+                True,
+                [
+                    {"claim_name": "C1", "serial_number": "S1", "payment_status": "paid"}
+                ],
+            ),
         )
         monkeypatch.setattr(
             "mining_os.services.blm_plss.query_claims_by_coords",
@@ -180,6 +183,36 @@ class TestFetchClaimRecordsEndpoint:
         body = r.json()
         assert body["ok"] is False
         assert "Fetch Claim Records failed" in body["error"]
+
+
+class TestClearCharacteristicSnapshots:
+    """Stored MLRS / LR2000 JSON snapshots can be removed without touching the target row."""
+
+    def test_clear_claim_records_returns_200(self, client, monkeypatch, fake_area):
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.get_area",
+            lambda area_id: fake_area if area_id == 1 else None,
+        )
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.remove_area_characteristic_keys",
+            lambda area_id, keys: area_id == 1 and keys == ["claim_records"],
+        )
+        r = client.post("/api/areas-of-focus/1/clear-claim-records")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ok"] is True
+        assert body["removed"] == ["claim_records"]
+
+    def test_clear_lr2000_returns_200_when_missing_area(self, client, monkeypatch):
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.get_area",
+            lambda area_id: None,
+        )
+        r = client.post("/api/areas-of-focus/999/clear-lr2000-report")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ok"] is False
+        assert "not found" in (body.get("error") or "").lower()
 
 
 class TestLr2000Endpoint:

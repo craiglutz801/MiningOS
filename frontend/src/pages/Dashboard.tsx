@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, ApiError, type DiscoveryPrompt, type DiscoveryRunResult, type ReportTarget, type BatchRow } from "../api";
+import { api, ApiError, formatApiNetworkError, type DiscoveryPrompt, type DiscoveryRunResult, type ReportTarget, type BatchRow } from "../api";
 import { DEFAULT_SYSTEM_INSTRUCTION, DEFAULT_USER_PROMPT_TEMPLATE } from "../discoveryDefaultPrompts";
 
 /** Matches backend ``effective_plss_string`` / import gate. */
@@ -13,14 +13,10 @@ function batchPayloadHasPlss(t: Record<string, unknown>): boolean {
 }
 
 function formatBatchNetworkError(err: unknown): string {
-  const msg = err instanceof Error ? err.message : String(err);
   if (err instanceof Error && err.name === "AbortError") {
-    return "Request timed out. For large batch imports, try fewer rows or open the app at http://localhost:8000 (not the Vite dev port).";
+    return "Request timed out. For large batch imports, try fewer rows or open the app at http://127.0.0.1:8000 (not the Vite dev port).";
   }
-  if (msg === "Failed to fetch" || msg === "Load failed" || msg.includes("NetworkError")) {
-    return "Could not reach the API (connection dropped or refused). Keep uvicorn running on port 8000. If you use npm dev (port 5173), restart it after updating — large imports can take many minutes because each target may call BLM to geocode PLSS. Prefer http://localhost:8000 when importing dozens of targets.";
-  }
-  return msg;
+  return formatApiNetworkError(err);
 }
 
 export function Dashboard() {
@@ -252,10 +248,8 @@ export function Dashboard() {
       setRunLog(result.log ?? ["Done."]);
       api.areas.list({ limit: 500 }).then((r) => setAreaCount(r.length)).catch(() => {});
     } catch (e) {
-      let msg = e instanceof ApiError ? (e.body?.detail as string) || e.message : String(e);
-      if (msg === "Failed to fetch" || (e as Error).message === "Failed to fetch") {
-        msg = "Could not reach the API. Start backend and frontend: from repo root run bash scripts/dev.sh, then open http://localhost:5173. Or run bash scripts/start-backend.sh in one terminal and cd frontend && npm run dev in another. If discovery was running a long time, the request may have timed out—try again.";
-      }
+      const msg =
+        e instanceof ApiError ? ((e.body?.detail as string) || e.message) : formatApiNetworkError(e);
       setRunResult({ status: "error", message: msg });
       setRunLog((prev) => [...prev, `Error: ${msg}`]);
     } finally {

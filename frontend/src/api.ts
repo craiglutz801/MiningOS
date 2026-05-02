@@ -11,6 +11,20 @@ export class ApiError extends Error {
   }
 }
 
+/** Maps browser network failures to an actionable message (also see Vite `server.host`). */
+export function formatApiNetworkError(err: unknown): string {
+  if (err instanceof ApiError && err.status === 0 && err.body?.error === "network_error") {
+    return err.message;
+  }
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg === "Failed to fetch" || msg === "Load failed" || msg.includes("NetworkError")) {
+    return import.meta.env.DEV
+      ? "Could not reach the API. Keep uvicorn on port 8000 (.venv/bin/uvicorn mining_os.api.main:app --host 127.0.0.1 --port 8000). With npm run dev, try http://127.0.0.1:5173 if localhost fails."
+      : "Could not reach the API. Check that the server is running.";
+  }
+  return msg;
+}
+
 /** One row from batch fetch-claim-records / batch lr2000 endpoints. */
 export interface BatchAreaActionRow {
   id: number;
@@ -31,10 +45,17 @@ export interface BatchAreaActionResponse {
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const isForm = options?.body instanceof FormData;
-  const res = await fetch(`${BASE}${path}`, {
-    headers: isForm ? { ...options?.headers } : { "Content-Type": "application/json", ...options?.headers },
-    ...options,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      headers: isForm ? { ...options?.headers } : { "Content-Type": "application/json", ...options?.headers },
+      ...options,
+    });
+  } catch {
+    throw new ApiError(formatApiNetworkError(new TypeError("Failed to fetch")), 0, {
+      error: "network_error",
+    });
+  }
   const text = await res.text();
   if (!res.ok) {
     let body: { error?: string; detail?: string | unknown } | undefined;
@@ -234,17 +255,62 @@ export const api = {
         merged_names?: string[];
       }>("/areas-of-focus/import-csv", { method: "POST", body: form }),
     checkBlm: (id: number) => request<{ status?: string; claims_found?: number }>(`/areas-of-focus/${id}/check-blm`, { method: "POST" }),
-    fetchClaimRecords: async (id: number) => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10 * 60 * 1000); // 10 min
-      try {
-        return await request<{ ok: boolean; log: string; claims: unknown[]; error?: string; fetched_at?: string }>(
-          `/areas-of-focus/${id}/fetch-claim-records`,
-          { method: "POST", signal: controller.signal }
-        );
-      } finally {
-        clearTimeout(timer);
+    /**
+     * Fetch claim records via a background job + polling.
+     *
+     * The synchronous endpoint used to hold a single HTTP connection open for
+     * several minutes while Playwright scraped MLRS — that broke through Vite
+     * proxies, load balancers, and macOS keep-alive limits ("Failed to fetch"
+     * even though the server-side scrape was actually finishing).
+     *
+     * Now we POST to ``/start`` (returns immediately), then poll ``/jobs/{id}``
+     * every few seconds. Each request is tiny so nothing in the network path
+     * can time out. The scrape still saves results to the area's
+     * ``characteristics.claim_records`` so closing the tab is safe.
+     */
+    fetchClaimRecords: async (id: number, opts?: { onProgress?: (status: string) => void }) => {
+      type ClaimResult = { ok: boolean; log: string; claims: unknown[]; error?: string; fetched_at?: string };
+      const start = await request<{ ok: boolean; job_id: string }>(
+        `/areas-of-focus/${id}/fetch-claim-records/start`,
+        { method: "POST" },
+      );
+      const jobId = start.job_id;
+      const deadline = Date.now() + 90 * 60 * 1000;
+      let consecutiveErrors = 0;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 3000));
+        try {
+          const job = await request<{
+            status: "queued" | "running" | "done" | "error";
+            result?: ClaimResult;
+            error?: string;
+          }>(`/jobs/${jobId}`);
+          consecutiveErrors = 0;
+          opts?.onProgress?.(job.status);
+          if (job.status === "done") {
+            return job.result ?? { ok: true, log: "", claims: [] };
+          }
+          if (job.status === "error") {
+            throw new ApiError(job.error || "Fetch Claim Records failed", 500, {
+              error: "job_failed",
+              detail: job.error,
+            });
+          }
+        } catch (e) {
+          /* Tolerate a few transient poll failures (server reload, brief Wi-Fi drop). */
+          if (e instanceof ApiError && (e.status >= 500 || e.status === 0)) {
+            consecutiveErrors += 1;
+            if (consecutiveErrors >= 5) throw e;
+            continue;
+          }
+          throw e;
+        }
       }
+      throw new ApiError(
+        "Fetch did not complete within 90 minutes. The server may still be running — refresh the target to check.",
+        0,
+        { error: "client_timeout" },
+      );
     },
     /** Sequential batch (max 25 ids per request; caller may chunk larger sets). */
     batchFetchClaimRecords: async (ids: number[]) => {
@@ -290,6 +356,18 @@ export const api = {
         clearTimeout(timer);
       }
     },
+    /** Remove stored MLRS scrape snapshot from ``characteristics.claim_records``. */
+    clearClaimRecordsSnapshot: (id: number) =>
+      request<{ ok: boolean; error?: string | null; removed: string[] }>(
+        `/areas-of-focus/${id}/clear-claim-records`,
+        { method: "POST" }
+      ),
+    /** Remove stored LR2000 / Geographic Index snapshot from ``characteristics.lr2000_geographic_index``. */
+    clearLr2000Snapshot: (id: number) =>
+      request<{ ok: boolean; error?: string | null; removed: string[] }>(
+        `/areas-of-focus/${id}/clear-lr2000-report`,
+        { method: "POST" }
+      ),
     generateReport: async (id: number) => {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 120 * 1000); // 2 min

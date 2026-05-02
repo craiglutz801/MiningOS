@@ -1,0 +1,20 @@
+# Railway / Nixpacks: this repo is Python + a Vite frontend. If only "python"
+# is detected, npm is missing and `cd frontend && npm run build` fails —
+# "Deployment failed during build process" with npm: not found.
+# Explicit providers install Node alongside Python.
+
+providers = ["python", "node"]
+
+[phases.install]
+cmds = [
+  "pip install --upgrade pip && pip install -r requirements.txt",
+]
+
+[phases.build]
+cmds = [
+  "python -m playwright install chromium",
+  "cd frontend && npm ci && npm run build",
+]
+
+[variables]
+MINING_OS_MLRS_PAYMENT_HEADLESS = "1"
