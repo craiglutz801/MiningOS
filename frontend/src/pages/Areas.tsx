@@ -3191,8 +3191,8 @@ export function Areas() {
                               <tr>
                                 <th className="px-3 py-1.5 font-medium">Claim</th>
                                 <th className="px-3 py-1.5 font-medium">Serial</th>
-                                <th className="px-3 py-1.5 font-medium">Payment</th>
-                                <th className="px-3 py-1.5 font-medium">PLSS</th>
+                                <th className="px-3 py-1.5 font-medium w-24">Payment</th>
+                                <th className="px-3 py-1.5 font-medium min-w-[16rem]">PLSS</th>
                                 <th className="px-3 py-1.5 font-medium">Links</th>
                               </tr>
                             </thead>
@@ -3213,13 +3213,10 @@ export function Areas() {
                                   <tr key={`mlrs-${sn}-${i}`} className={rowCls}>
                                     <td className="px-3 py-1.5 text-slate-800">{nm}</td>
                                     <td className="px-3 py-1.5 font-mono text-slate-700">{sn}</td>
-                                    <td className="px-3 py-1.5">
+                                    <td className="px-3 py-1.5 whitespace-nowrap">
                                       <ClaimPaymentBadge status={payInfo.status} message={payInfo.message} />
-                                      {payInfo.status === "unpaid" && payInfo.message && (
-                                        <p className="mt-0.5 text-[10px] text-blue-900 leading-tight max-w-[18rem]">{payInfo.message}</p>
-                                      )}
                                     </td>
-                                    <td className="px-3 py-1.5 text-slate-600 max-w-[10rem] truncate" title={plss}>{plss}</td>
+                                    <td className="px-3 py-1.5 text-slate-600 min-w-[16rem] whitespace-normal break-words" title={plss}>{plss}</td>
                                     <td className="px-3 py-1.5 space-x-2 whitespace-nowrap">
                                       {casePage && <a href={casePage} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">Case</a>}
                                       {pay && <a href={pay} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">RAS</a>}
