@@ -1045,6 +1045,19 @@ def api_set_area_notes(area_id: int, body: AreaNotesBody = Body(...)) -> Dict[st
     return {"id": area_id, "notes": body.notes}
 
 
+class AreaMineralsBody(BaseModel):
+    minerals: List[str] = []
+
+
+@api_app.post("/areas-of-focus/{area_id}/minerals")
+def api_set_area_minerals(area_id: int, body: AreaMineralsBody = Body(...)) -> Dict[str, Any]:
+    from mining_os.services.areas_of_focus import update_area_minerals
+    ok = update_area_minerals(area_id, body.minerals)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Target not found")
+    return {"id": area_id, "minerals": body.minerals}
+
+
 class AreaNameBody(BaseModel):
     name: str
 
@@ -1743,6 +1756,15 @@ def set_area_notes_toplevel(area_id: int, body: AreaNotesBody = Body(...)) -> Di
     if not ok:
         raise HTTPException(status_code=404, detail="Target not found")
     return {"id": area_id, "notes": body.notes}
+
+
+@app.post("/api/areas-of-focus/{area_id}/minerals")
+def set_area_minerals_toplevel(area_id: int, body: AreaMineralsBody = Body(...)) -> Dict[str, Any]:
+    from mining_os.services.areas_of_focus import update_area_minerals
+    ok = update_area_minerals(area_id, body.minerals)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Target not found")
+    return {"id": area_id, "minerals": body.minerals}
 
 
 @app.post("/api/areas-of-focus/{area_id}/claim-type")

@@ -159,6 +159,11 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ notes }),
       }),
+    updateMinerals: (id: number, minerals: string[]) =>
+      request<{ id: number; minerals: string[] }>(`/areas-of-focus/${id}/minerals`, {
+        method: "POST",
+        body: JSON.stringify({ minerals }),
+      }),
     updateCoordinates: (id: number, latitude: number, longitude: number) =>
       request<{ id: number; latitude: number; longitude: number }>(`/areas-of-focus/${id}/coordinates`, {
         method: "POST",

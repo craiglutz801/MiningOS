@@ -215,6 +215,36 @@ class TestClearCharacteristicSnapshots:
         assert "not found" in (body.get("error") or "").lower()
 
 
+class TestAreaEditEndpoints:
+    def test_update_minerals_returns_200(self, client, monkeypatch):
+        captured: dict[str, object] = {}
+
+        def _update(area_id, minerals):
+            captured["area_id"] = area_id
+            captured["minerals"] = minerals
+            return True
+
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.update_area_minerals",
+            _update,
+        )
+        r = client.post("/api/areas-of-focus/1/minerals", json={"minerals": ["Gold", "Silver"]})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["id"] == 1
+        assert body["minerals"] == ["Gold", "Silver"]
+        assert captured == {"area_id": 1, "minerals": ["Gold", "Silver"]}
+
+    def test_update_minerals_returns_404_when_target_missing(self, client, monkeypatch):
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.update_area_minerals",
+            lambda area_id, minerals: False,
+        )
+        r = client.post("/api/areas-of-focus/999/minerals", json={"minerals": ["Gold"]})
+        assert r.status_code == 404
+        assert "Target not found" in r.text
+
+
 class TestLr2000Endpoint:
     def test_returns_200_when_area_missing(self, client, monkeypatch):
         monkeypatch.setattr(

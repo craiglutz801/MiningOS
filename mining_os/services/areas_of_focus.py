@@ -887,6 +887,18 @@ def update_area_claim_type(id: int, claim_type: str | None) -> bool:
     return r.rowcount > 0
 
 
+def update_area_minerals(id: int, minerals: List[str] | None) -> bool:
+    """Set the minerals field on a target. Returns True if row was updated."""
+    cleaned = _normalize_minerals(minerals or [])
+    eng = get_engine()
+    with eng.begin() as conn:
+        r = conn.execute(
+            text("UPDATE areas_of_focus SET minerals = :minerals, updated_at = now() WHERE id = :id"),
+            {"id": id, "minerals": cleaned},
+        )
+    return r.rowcount > 0
+
+
 def update_area_coordinates(area_id: int, latitude: float | None, longitude: float | None) -> bool:
     """Set WGS84 latitude/longitude on a target. Returns True if a row was updated."""
     eng = get_engine()

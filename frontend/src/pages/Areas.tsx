@@ -69,6 +69,20 @@ function areaMissingNormalizedPlss(a: Pick<Area, "plss_normalized"> | null | und
   return !String(a.plss_normalized ?? "").trim();
 }
 
+function dedupeMineralList(minerals: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const mineral of minerals) {
+    const trimmed = mineral.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
 function formatFetchClaimProgress(progress: FetchClaimRecordsProgress): string {
   const msg = progress.message?.trim();
   if (msg) return msg;
@@ -244,6 +258,12 @@ export function Areas() {
   const [notesEditing, setNotesEditing] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
   const [notesSaving, setNotesSaving] = useState(false);
+  const [mineralsEditing, setMineralsEditing] = useState(false);
+  const [mineralsDraft, setMineralsDraft] = useState<string[]>([]);
+  const [mineralDraftInput, setMineralDraftInput] = useState("");
+  const [mineralDraftDropdownOpen, setMineralDraftDropdownOpen] = useState(false);
+  const [mineralDraftInputFocused, setMineralDraftInputFocused] = useState(false);
+  const [mineralsSaving, setMineralsSaving] = useState(false);
   const [nameEditing, setNameEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [nameSaving, setNameSaving] = useState(false);
@@ -297,6 +317,11 @@ export function Areas() {
     setCoordsEditing(false);
     setCoordsLatDraft("");
     setCoordsLonDraft("");
+    setMineralsEditing(false);
+    setMineralsDraft([]);
+    setMineralDraftInput("");
+    setMineralDraftDropdownOpen(false);
+    setMineralDraftInputFocused(false);
   }, [selected?.id]);
 
   // Load distinct minerals for autocomplete (merge minerals of interest + minerals already on targets)
@@ -334,6 +359,20 @@ export function Areas() {
       return merged;
     });
   }, [areas]);
+
+  const addMineralDraft = (rawValue: string) => {
+    const trimmed = rawValue.trim().replace(/[;,]+$/, "");
+    if (!trimmed) return;
+    const canonical =
+      mineralSuggestions.find((m) => m.toLowerCase() === trimmed.toLowerCase()) ?? trimmed;
+    setMineralsDraft((prev) => dedupeMineralList([...prev, canonical]));
+    setMineralDraftInput("");
+    setMineralDraftDropdownOpen(false);
+  };
+
+  const removeMineralDraft = (mineral: string) => {
+    setMineralsDraft((prev) => prev.filter((m) => m.toLowerCase() !== mineral.toLowerCase()));
+  };
 
   const load = () => {
     setLoading(true);
@@ -2824,8 +2863,156 @@ export function Areas() {
                   </div>
                 </div>
                 <div>
-                  <span className="text-slate-500 block">Minerals</span>
-                  {(selected.minerals || []).length > 0 ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Minerals</span>
+                    {!mineralsEditing && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMineralsDraft(dedupeMineralList(selected.minerals || []));
+                          setMineralDraftInput("");
+                          setMineralDraftDropdownOpen(false);
+                          setMineralsEditing(true);
+                        }}
+                        className="text-xs text-primary-600 hover:underline"
+                      >
+                        {(selected.minerals || []).length > 0 ? "Edit" : "Add"}
+                      </button>
+                    )}
+                  </div>
+                  {mineralsEditing ? (
+                    <div className="mt-1 space-y-2">
+                      {mineralsDraft.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {mineralsDraft.map((m) => (
+                            <span
+                              key={m}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-100 text-primary-700 rounded text-xs font-medium"
+                            >
+                              {m}
+                              <button
+                                type="button"
+                                onClick={() => removeMineralDraft(m)}
+                                className="text-primary-700/80 hover:text-primary-900"
+                                aria-label={`Remove ${m}`}
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-slate-500">No minerals selected yet.</div>
+                      )}
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={mineralDraftInput}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setMineralDraftInput(value);
+                            setMineralDraftDropdownOpen(true);
+                            if (/[;,]$/.test(value)) addMineralDraft(value);
+                          }}
+                          onFocus={() => {
+                            setMineralDraftInputFocused(true);
+                            setMineralDraftDropdownOpen(true);
+                          }}
+                          onBlur={() => {
+                            setMineralDraftInputFocused(false);
+                            setTimeout(() => setMineralDraftDropdownOpen(false), 150);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === ",") {
+                              e.preventDefault();
+                              addMineralDraft(mineralDraftInput);
+                            } else if (
+                              e.key === "Backspace" &&
+                              !mineralDraftInput.trim() &&
+                              mineralsDraft.length > 0
+                            ) {
+                              e.preventDefault();
+                              setMineralsDraft((prev) => prev.slice(0, -1));
+                            }
+                          }}
+                          placeholder="Add mineral…"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          autoComplete="off"
+                        />
+                        {mineralDraftDropdownOpen && mineralDraftInputFocused && (
+                          <ul
+                            onMouseDown={(e) => e.preventDefault()}
+                            className="absolute z-[100] top-full left-0 mt-0.5 w-full max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg py-1 text-sm"
+                            role="listbox"
+                          >
+                            {(() => {
+                              const q = mineralDraftInput.trim().toLowerCase();
+                              const selectedMinerals = new Set(mineralsDraft.map((m) => m.toLowerCase()));
+                              const filtered = mineralSuggestions.filter((m) => {
+                                const lower = m.toLowerCase();
+                                if (selectedMinerals.has(lower)) return false;
+                                return q === "" ? true : lower.includes(q);
+                              });
+                              if (filtered.length === 0) {
+                                return (
+                                  <li className="px-3 py-2 text-slate-500" role="option">
+                                    No matching minerals. Keep typing to add a custom one.
+                                  </li>
+                                );
+                              }
+                              return filtered.map((m) => (
+                                <li
+                                  key={m}
+                                  role="option"
+                                  className="px-3 py-2 cursor-pointer hover:bg-primary-50 text-slate-800"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    addMineralDraft(m);
+                                  }}
+                                >
+                                  {m}
+                                </li>
+                              ));
+                            })()}
+                          </ul>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-500 leading-snug">
+                        Type to search from your mineral list. Press Enter or comma to add. Click × to remove quickly.
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={mineralsSaving}
+                          onClick={async () => {
+                            setMineralsSaving(true);
+                            setError(null);
+                            try {
+                              await api.areas.updateMinerals(selected.id, mineralsDraft);
+                              const full = await api.areas.get(selected.id);
+                              setSelected(full);
+                              setMineralsEditing(false);
+                              load();
+                            } catch (err) {
+                              setError(err instanceof Error ? err.message : "Failed to save minerals");
+                            } finally {
+                              setMineralsSaving(false);
+                            }
+                          }}
+                          className="px-3 py-1 bg-primary-600 text-white rounded text-xs font-medium hover:bg-primary-700 disabled:opacity-50"
+                        >
+                          {mineralsSaving ? "Saving…" : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMineralsEditing(false)}
+                          className="px-3 py-1 bg-slate-100 text-slate-600 rounded text-xs font-medium hover:bg-slate-200"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (selected.minerals || []).length > 0 ? (
                     <div className="flex flex-wrap gap-1 mt-0.5">
                       {selected.minerals!.map((m, i) => (
                         <span key={i} className="inline-block px-2 py-0.5 bg-primary-100 text-primary-700 rounded text-xs font-medium">{m}</span>
