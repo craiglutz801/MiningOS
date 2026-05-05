@@ -535,6 +535,7 @@ def _normalize_plss_filter_component(value: str | None, kind: str) -> str | None
 def list_areas(
     mineral: str | None = None,
     status: str | None = None,
+    target_status: str | None = None,
     state_abbr: str | None = None,
     claim_type: str | None = None,
     retrieval_type: str | None = None,
@@ -542,11 +543,19 @@ def list_areas(
     range_val: str | None = None,
     sector: str | None = None,
     name: str | None = None,
-    limit: int = 500,
+    limit: int = 5000,
 ) -> List[dict]:
     eng = get_engine()
     filters = ["1=1"]
     params: dict = {"limit": limit}
+    normalized_priority_sql = (
+        "CASE "
+        "WHEN COALESCE(a.priority, 'monitoring_low') = 'low' THEN 'monitoring_low' "
+        "WHEN COALESCE(a.priority, 'monitoring_low') = 'medium' THEN 'monitoring_med' "
+        "WHEN COALESCE(a.priority, 'monitoring_low') = 'high' THEN 'monitoring_high' "
+        "ELSE COALESCE(a.priority, 'monitoring_low') "
+        "END"
+    )
     if name:
         filters.append("name ILIKE :name_pat")
         params["name_pat"] = f"%{name.strip()}%"
@@ -556,6 +565,11 @@ def list_areas(
     if status:
         filters.append("status = :status")
         params["status"] = status.strip().lower()
+    if target_status and target_status.strip():
+        raw_target_status = target_status.strip().lower()
+        if raw_target_status in VALID_TARGET_STATUSES:
+            filters.append(f"{normalized_priority_sql} = :target_status")
+            params["target_status"] = _normalize_target_status(raw_target_status)
     if state_abbr:
         filters.append("(state_abbr = :state_abbr OR (state_abbr IS NULL AND :state_abbr = ''))")
         params["state_abbr"] = state_abbr.strip().upper()
@@ -665,6 +679,60 @@ def list_areas(
                     o["is_uploaded"] = False
                 return out
             log.exception("list_areas failed: %s", e)
+            raise
+
+
+def areas_summary() -> dict:
+    """Return uncapped dashboard counts for targets by normalized target status."""
+    eng = get_engine()
+    normalized_priority_sql = (
+        "CASE "
+        "WHEN COALESCE(a.priority, 'monitoring_low') = 'low' THEN 'monitoring_low' "
+        "WHEN COALESCE(a.priority, 'monitoring_low') = 'medium' THEN 'monitoring_med' "
+        "WHEN COALESCE(a.priority, 'monitoring_low') = 'high' THEN 'monitoring_high' "
+        "ELSE COALESCE(a.priority, 'monitoring_low') "
+        "END"
+    )
+    sql = f"""
+    SELECT
+      COUNT(*)::int AS total_count,
+      COUNT(*) FILTER (WHERE {normalized_priority_sql} = 'monitoring_high')::int AS monitoring_high,
+      COUNT(*) FILTER (WHERE {normalized_priority_sql} = 'monitoring_med')::int AS monitoring_med,
+      COUNT(*) FILTER (WHERE {normalized_priority_sql} = 'monitoring_low')::int AS monitoring_low,
+      COUNT(*) FILTER (WHERE {normalized_priority_sql} = 'negotiation')::int AS negotiation,
+      COUNT(*) FILTER (WHERE {normalized_priority_sql} = 'due_diligence')::int AS due_diligence,
+      COUNT(*) FILTER (WHERE {normalized_priority_sql} = 'ownership')::int AS ownership
+    FROM areas_of_focus a
+    """
+    with eng.begin() as conn:
+        try:
+            row = conn.execute(text(sql)).mappings().first() or {}
+            return {
+                "total_count": int(row.get("total_count") or 0),
+                "target_status_counts": {
+                    "monitoring_high": int(row.get("monitoring_high") or 0),
+                    "monitoring_med": int(row.get("monitoring_med") or 0),
+                    "monitoring_low": int(row.get("monitoring_low") or 0),
+                    "negotiation": int(row.get("negotiation") or 0),
+                    "due_diligence": int(row.get("due_diligence") or 0),
+                    "ownership": int(row.get("ownership") or 0),
+                },
+            }
+        except Exception as e:
+            err = str(e).lower()
+            if "priority" in err and ("column" in err or "does not exist" in err):
+                total = int(conn.execute(text("SELECT COUNT(*)::int FROM areas_of_focus")).scalar() or 0)
+                return {
+                    "total_count": total,
+                    "target_status_counts": {
+                        "monitoring_high": 0,
+                        "monitoring_med": 0,
+                        "monitoring_low": total,
+                        "negotiation": 0,
+                        "due_diligence": 0,
+                        "ownership": 0,
+                    },
+                }
             raise
 
 

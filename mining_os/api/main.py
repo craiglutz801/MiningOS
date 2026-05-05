@@ -664,6 +664,7 @@ def api_delete_mineral(mineral_id: int) -> Dict[str, str]:
 def api_list_areas(
     mineral: Optional[str] = None,
     status: Optional[str] = None,
+    target_status: Optional[str] = None,
     state_abbr: Optional[str] = None,
     claim_type: Optional[str] = None,
     retrieval_type: Optional[str] = None,
@@ -671,12 +672,13 @@ def api_list_areas(
     range_val: Optional[str] = None,
     sector: Optional[str] = None,
     name: Optional[str] = None,
-    limit: int = Query(500, ge=1, le=2000),
+    limit: int = Query(5000, ge=1, le=10000),
 ) -> List[Dict[str, Any]]:
     from mining_os.services.areas_of_focus import list_areas
     return list_areas(
         mineral=mineral,
         status=status,
+        target_status=target_status,
         state_abbr=state_abbr,
         claim_type=claim_type,
         retrieval_type=retrieval_type,
@@ -686,6 +688,12 @@ def api_list_areas(
         name=name,
         limit=limit,
     )
+
+
+@api_app.get("/areas-of-focus/summary")
+def api_areas_summary() -> Dict[str, Any]:
+    from mining_os.services.areas_of_focus import areas_summary
+    return areas_summary()
 
 
 class CreateAreaBody(BaseModel):

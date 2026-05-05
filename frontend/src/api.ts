@@ -51,6 +51,11 @@ export interface FetchClaimRecordsProgress {
   message?: string;
 }
 
+export interface AreasSummary {
+  total_count: number;
+  target_status_counts: Record<string, number>;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const isForm = options?.body instanceof FormData;
   let res: Response;
@@ -102,6 +107,7 @@ export const api = {
     list: (params?: {
       mineral?: string;
       status?: string;
+      target_status?: string;
       state_abbr?: string;
       claim_type?: string;
       retrieval_type?: string;
@@ -114,6 +120,7 @@ export const api = {
       const q = new URLSearchParams();
       if (params?.mineral) q.set("mineral", params.mineral);
       if (params?.status) q.set("status", params.status);
+      if (params?.target_status) q.set("target_status", params.target_status);
       if (params?.state_abbr) q.set("state_abbr", params.state_abbr);
       if (params?.claim_type) q.set("claim_type", params.claim_type);
       if (params?.retrieval_type) q.set("retrieval_type", params.retrieval_type);
@@ -125,6 +132,7 @@ export const api = {
       const query = q.toString();
       return request<Area[]>(`/areas-of-focus${query ? "?" + query : ""}`);
     },
+    summary: () => request<AreasSummary>("/areas-of-focus/summary"),
     get: (id: number) => request<Area>(`/areas-of-focus/${id}`),
     create: (body: {
       name: string;

@@ -8,6 +8,7 @@ import { ClaimPaymentBadge, getClaimPaymentText } from "../areas/claimPaymentBad
 
 /** Server-enforced max ids per batch POST. */
 const AREA_BATCH_MAX_CHUNK = 25;
+const AREA_LIST_LIMIT = 2000;
 
 const LS_BATCH_CHUNK = "mining_os_batch_chunk";
 const LS_BATCH_PAUSE = "mining_os_batch_pause_sec";
@@ -83,6 +84,24 @@ function dedupeMineralList(minerals: string[]): string[] {
   return out;
 }
 
+function formatApiDetail(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item) => formatApiDetail(item)).filter(Boolean).join("\n");
+  }
+  if (detail && typeof detail === "object") {
+    const obj = detail as Record<string, unknown>;
+    if (typeof obj.msg === "string" && obj.msg.trim()) return obj.msg;
+    try {
+      return JSON.stringify(detail);
+    } catch {
+      return String(detail);
+    }
+  }
+  if (detail == null) return "";
+  return String(detail);
+}
+
 function formatFetchClaimProgress(progress: FetchClaimRecordsProgress): string {
   const msg = progress.message?.trim();
   if (msg) return msg;
@@ -151,6 +170,7 @@ export function Areas() {
   const areaIdParam = searchParams.get("areaId");
   const mineralParam = searchParams.get("mineral") ?? "";
   const statusParam = searchParams.get("status") ?? "";
+  const targetStatusParam = searchParams.get("target_status") ?? "";
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -159,6 +179,7 @@ export function Areas() {
   const [nameInputFocused, setNameInputFocused] = useState(false);
   const [mineralFilter, setMineralFilter] = useState(mineralParam);
   const [statusFilter, setStatusFilter] = useState(statusParam);
+  const [targetStatusFilter, setTargetStatusFilter] = useState(targetStatusParam);
   const [stateFilter, setStateFilter] = useState("");
   const [claimTypeFilter, setClaimTypeFilter] = useState("");
   const [retrievalTypeFilter, setRetrievalTypeFilter] = useState("");
@@ -311,6 +332,7 @@ export function Areas() {
   useEffect(() => {
     setMineralFilter(searchParams.get("mineral") ?? "");
     setStatusFilter(searchParams.get("status") ?? "");
+    setTargetStatusFilter(searchParams.get("target_status") ?? "");
   }, [searchParams]);
 
   useEffect(() => {
@@ -381,6 +403,7 @@ export function Areas() {
       .list({
         mineral: mineralFilter || undefined,
         status: statusFilter || undefined,
+        target_status: targetStatusFilter || undefined,
         state_abbr: stateFilter || undefined,
         claim_type: claimTypeFilter || undefined,
         retrieval_type: retrievalTypeFilter || undefined,
@@ -388,7 +411,7 @@ export function Areas() {
         range_val: rangeFilter.trim() || undefined,
         sector: sectorFilter.trim() || undefined,
         name: nameFilter.trim() || undefined,
-        limit: 500,
+        limit: AREA_LIST_LIMIT,
       })
       .then((list) => {
         const rows = Array.isArray(list) ? list : [];
@@ -405,7 +428,8 @@ export function Areas() {
         if (e instanceof ApiError && e.status === 503 && e.body?.error === "database_unavailable") {
           setError("DB_SETUP");
         } else {
-          setError(e instanceof ApiError && e.body?.detail ? e.body.detail : (e as Error).message);
+          const detail = e instanceof ApiError ? formatApiDetail(e.body?.detail) : "";
+          setError(detail || (e as Error).message);
         }
       })
       .finally(() => setLoading(false));
@@ -523,7 +547,7 @@ export function Areas() {
 
   useEffect(
     () => load(),
-    [mineralFilter, statusFilter, stateFilter, claimTypeFilter, retrievalTypeFilter, townshipFilter, rangeFilter, sectorFilter, nameFilter]
+    [mineralFilter, statusFilter, targetStatusFilter, stateFilter, claimTypeFilter, retrievalTypeFilter, townshipFilter, rangeFilter, sectorFilter, nameFilter]
   );
 
   const refreshMineralSuggestions = async () => {
@@ -2146,6 +2170,22 @@ export function Areas() {
             )}
           </label>
           <label className="flex flex-col gap-1">
+            <span className="text-xs text-slate-500">Target Status</span>
+            <select
+              value={targetStatusFilter}
+              onChange={(e) => setTargetStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">All target statuses</option>
+              <option value="monitoring_high">Monitoring - High Priority</option>
+              <option value="monitoring_med">Monitoring - Med Priority</option>
+              <option value="monitoring_low">Monitoring - Low Priority</option>
+              <option value="negotiation">Negotiation</option>
+              <option value="due_diligence">Due Diligence</option>
+              <option value="ownership">Ownership</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
             <span className="text-xs text-slate-500">Claim Status</span>
             <select
               value={statusFilter}
@@ -2193,13 +2233,14 @@ export function Areas() {
               <option value="User Added">User Added</option>
             </select>
           </label>
-          {(nameFilter || mineralFilter || statusFilter || stateFilter || claimTypeFilter || retrievalTypeFilter || townshipFilter || rangeFilter || sectorFilter) && (
+          {(nameFilter || mineralFilter || statusFilter || targetStatusFilter || stateFilter || claimTypeFilter || retrievalTypeFilter || townshipFilter || rangeFilter || sectorFilter) && (
             <button
               type="button"
               onClick={() => {
                 setNameFilter("");
                 setMineralFilter("");
                 setStatusFilter("");
+                setTargetStatusFilter("");
                 setStateFilter("");
                 setClaimTypeFilter("");
                 setRetrievalTypeFilter("");
@@ -2493,6 +2534,7 @@ export function Areas() {
                         const list = await api.areas.list({
                           mineral: mineralFilter || undefined,
                           status: statusFilter || undefined,
+                          target_status: targetStatusFilter || undefined,
                           state_abbr: stateFilter || undefined,
                           claim_type: claimTypeFilter || undefined,
                           retrieval_type: retrievalTypeFilter || undefined,
@@ -2500,7 +2542,7 @@ export function Areas() {
                           range_val: rangeFilter.trim() || undefined,
                           sector: sectorFilter.trim() || undefined,
                           name: nameFilter.trim() || undefined,
-                          limit: 500,
+                          limit: AREA_LIST_LIMIT,
                         });
                         setAreas(list);
                         const updated = list.find((a) => a.id === id);
@@ -3150,6 +3192,7 @@ export function Areas() {
                                   const list = await api.areas.list({
                                     mineral: mineralFilter || undefined,
                                     status: statusFilter || undefined,
+                                    target_status: targetStatusFilter || undefined,
                                     state_abbr: stateFilter || undefined,
                                     claim_type: claimTypeFilter || undefined,
                                     retrieval_type: retrievalTypeFilter || undefined,
@@ -3157,7 +3200,7 @@ export function Areas() {
                                     range_val: rangeFilter.trim() || undefined,
                                     sector: sectorFilter.trim() || undefined,
                                     name: nameFilter.trim() || undefined,
-                                    limit: 500,
+                                    limit: AREA_LIST_LIMIT,
                                   });
                                   setAreas(list);
                                 } catch (e) {
@@ -3268,6 +3311,7 @@ export function Areas() {
                                   const list = await api.areas.list({
                                     mineral: mineralFilter || undefined,
                                     status: statusFilter || undefined,
+                                    target_status: targetStatusFilter || undefined,
                                     state_abbr: stateFilter || undefined,
                                     claim_type: claimTypeFilter || undefined,
                                     retrieval_type: retrievalTypeFilter || undefined,
@@ -3275,7 +3319,7 @@ export function Areas() {
                                     range_val: rangeFilter.trim() || undefined,
                                     sector: sectorFilter.trim() || undefined,
                                     name: nameFilter.trim() || undefined,
-                                    limit: 500,
+                                    limit: AREA_LIST_LIMIT,
                                   });
                                   setAreas(list);
                                 } catch (e) {
@@ -3454,6 +3498,7 @@ export function Areas() {
                             const list = await api.areas.list({
                               mineral: mineralFilter || undefined,
                               status: statusFilter || undefined,
+                              target_status: targetStatusFilter || undefined,
                               state_abbr: stateFilter || undefined,
                               claim_type: claimTypeFilter || undefined,
                               retrieval_type: retrievalTypeFilter || undefined,
@@ -3461,7 +3506,7 @@ export function Areas() {
                               range_val: rangeFilter.trim() || undefined,
                               sector: sectorFilter.trim() || undefined,
                               name: nameFilter.trim() || undefined,
-                              limit: 500,
+                              limit: AREA_LIST_LIMIT,
                             });
                             setAreas(list);
                             const full = await api.areas.get(selected.id);

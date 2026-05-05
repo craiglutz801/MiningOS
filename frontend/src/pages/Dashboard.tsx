@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, ApiError, formatApiNetworkError, type DiscoveryPrompt, type DiscoveryRunResult, type ReportTarget, type BatchRow } from "../api";
+import { api, ApiError, formatApiNetworkError, type DiscoveryPrompt, type DiscoveryRunResult, type ReportTarget, type BatchRow, type Area } from "../api";
 import { DEFAULT_SYSTEM_INSTRUCTION, DEFAULT_USER_PROMPT_TEMPLATE } from "../discoveryDefaultPrompts";
 
 /** Matches backend ``effective_plss_string`` / import gate. */
@@ -19,10 +19,64 @@ function formatBatchNetworkError(err: unknown): string {
   return formatApiNetworkError(err);
 }
 
+function normalizeTargetStatus(value: string | null | undefined): string {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (raw === "high") return "monitoring_high";
+  if (raw === "medium") return "monitoring_med";
+  if (raw === "low" || raw === "") return "monitoring_low";
+  return raw;
+}
+
+const TARGET_STATUS_TILES = [
+  {
+    key: "monitoring_high",
+    label: "High Priority",
+    description: "Closest targets to active pursuit",
+    href: "/areas?target_status=monitoring_high",
+    accentClass: "bg-rose-100 text-rose-700",
+  },
+  {
+    key: "monitoring_med",
+    label: "Medium Priority",
+    description: "Worth monitoring and qualifying",
+    href: "/areas?target_status=monitoring_med",
+    accentClass: "bg-amber-100 text-amber-700",
+  },
+  {
+    key: "monitoring_low",
+    label: "Low Priority",
+    description: "Early-stage targets to watch",
+    href: "/areas?target_status=monitoring_low",
+    accentClass: "bg-slate-100 text-slate-700",
+  },
+  {
+    key: "negotiation",
+    label: "Negotiation",
+    description: "Targets currently in outreach",
+    href: "/areas?target_status=negotiation",
+    accentClass: "bg-sky-100 text-sky-700",
+  },
+  {
+    key: "due_diligence",
+    label: "Due Diligence",
+    description: "Targets under active review",
+    href: "/areas?target_status=due_diligence",
+    accentClass: "bg-violet-100 text-violet-700",
+  },
+  {
+    key: "ownership",
+    label: "Ownership",
+    description: "Targets already controlled",
+    href: "/areas?target_status=ownership",
+    accentClass: "bg-emerald-100 text-emerald-700",
+  },
+] as const;
+
 export function Dashboard() {
   const [health, setHealth] = useState<"ok" | "error" | "db_unavailable" | null>(null);
   const [mineralCount, setMineralCount] = useState<number | null>(null);
   const [areaCount, setAreaCount] = useState<number | null>(null);
+  const [targetStatusCounts, setTargetStatusCounts] = useState<Record<string, number>>({});
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [prompts, setPrompts] = useState<DiscoveryPrompt[]>([]);
   const [selectedMineral, setSelectedMineral] = useState("");
@@ -92,6 +146,41 @@ export function Dashboard() {
     api.discovery.getPrompts().then(setPrompts).catch(() => setPrompts([]));
   }, []);
 
+  const applyFallbackTargetSummary = useCallback((rows: Area[]) => {
+    const counts: Record<string, number> = {
+      monitoring_high: 0,
+      monitoring_med: 0,
+      monitoring_low: 0,
+      negotiation: 0,
+      due_diligence: 0,
+      ownership: 0,
+    };
+    for (const row of rows) {
+      const key = normalizeTargetStatus(row.priority);
+      if (key in counts) counts[key] += 1;
+    }
+    setAreaCount(rows.length);
+    setTargetStatusCounts(counts);
+  }, []);
+
+  const loadTargetSummary = useCallback(() => {
+    api.areas
+      .summary()
+      .then((summary) => {
+        setAreaCount(summary.total_count);
+        setTargetStatusCounts(summary.target_status_counts ?? {});
+      })
+      .catch(async () => {
+        try {
+          const rows = await api.areas.list({ limit: 2000 });
+          applyFallbackTargetSummary(rows);
+        } catch {
+          setAreaCount(0);
+          setTargetStatusCounts({});
+        }
+      });
+  }, [applyFallbackTargetSummary]);
+
   useEffect(() => {
     api.health().then(() => setHealth("ok")).catch(() => setHealth("error"));
     api.minerals
@@ -104,9 +193,9 @@ export function Dashboard() {
           setMineralCount(0);
         }
       });
-    api.areas.list({ limit: 500 }).then((r) => setAreaCount(r.length)).catch(() => setAreaCount(0));
+    loadTargetSummary();
     loadPrompts();
-  }, [loadPrompts]);
+  }, [loadPrompts, loadTargetSummary]);
 
   useEffect(() => {
     if (discoveryOpen) {
@@ -187,7 +276,7 @@ export function Dashboard() {
       const result = await api.mineReport.importTargets(targets, reportPdfUrl, reportPdfFilename);
       setReportImportResult(result);
       setReportStep("done");
-      api.areas.list({ limit: 500 }).then((r) => setAreaCount(r.length)).catch(() => {});
+      loadTargetSummary();
     } catch (e) {
       const msg = e instanceof ApiError ? (e.body?.detail || e.message) : String(e);
       setReportError(typeof msg === "string" ? msg : JSON.stringify(msg));
@@ -246,7 +335,7 @@ export function Dashboard() {
       const result = await api.discovery.run(replaceOnRun);
       setRunResult(result);
       setRunLog(result.log ?? ["Done."]);
-      api.areas.list({ limit: 500 }).then((r) => setAreaCount(r.length)).catch(() => {});
+      loadTargetSummary();
     } catch (e) {
       const msg =
         e instanceof ApiError ? ((e.body?.detail as string) || e.message) : formatApiNetworkError(e);
@@ -315,7 +404,51 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mb-8">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Target summary</h2>
+            <p className="text-sm text-slate-500">Counts across every target in the system, grouped by target status.</p>
+          </div>
+          <Link to="/areas" className="text-sm font-medium text-primary-700 hover:text-primary-800">
+            Open Targets
+          </Link>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Link
+            to="/areas"
+            className="block p-5 bg-white rounded-xl border border-slate-200 shadow-card hover:shadow-card-hover hover:border-primary-200 transition-all"
+          >
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <span className="text-sm font-medium text-slate-600">Total Targets</span>
+              <span className="px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold">All</span>
+            </div>
+            <div className="text-3xl font-bold text-slate-900">{areaCount ?? "—"}</div>
+            <p className="mt-2 text-sm text-slate-500">Open the full target list with no filter applied.</p>
+          </Link>
+          {TARGET_STATUS_TILES.map((tile) => (
+            <Link
+              key={tile.key}
+              to={tile.href}
+              className="block p-5 bg-white rounded-xl border border-slate-200 shadow-card hover:shadow-card-hover hover:border-primary-200 transition-all"
+            >
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <span className="text-sm font-medium text-slate-600">{tile.label}</span>
+                <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${tile.accentClass}`}>Status</span>
+              </div>
+              <div className="text-3xl font-bold text-slate-900">{targetStatusCounts[tile.key] ?? 0}</div>
+              <p className="mt-2 text-sm text-slate-500">{tile.description}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-slate-900">Workspace</h2>
+          <p className="text-sm text-slate-500">Jump into minerals, mapping, and discovery workflows.</p>
+        </div>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <Link
           to="/minerals"
           className="block p-6 bg-white rounded-xl border border-slate-200 shadow-card hover:shadow-card-hover hover:border-primary-200 transition-all"
@@ -379,7 +512,8 @@ export function Dashboard() {
             </div>
           </div>
         </Link>
-      </div>
+        </div>
+      </section>
 
       {health === "ok" && (
         <div className="mt-8 p-4 bg-primary-50 border border-primary-200 rounded-lg text-primary-800 text-sm">

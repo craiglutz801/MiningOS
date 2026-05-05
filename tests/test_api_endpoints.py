@@ -67,6 +67,45 @@ class TestHealth:
         assert r.json()["status"] == "ok"
 
 
+class TestAreaSummaryRoutes:
+    def test_summary_returns_200(self, client, monkeypatch):
+        payload = {
+            "total_count": 642,
+            "target_status_counts": {
+                "monitoring_high": 12,
+                "monitoring_med": 34,
+                "monitoring_low": 501,
+                "negotiation": 41,
+                "due_diligence": 21,
+                "ownership": 33,
+            },
+        }
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.areas_summary",
+            lambda: payload,
+        )
+        r = client.get("/api/areas-of-focus/summary")
+        assert r.status_code == 200
+        assert r.json() == payload
+
+    def test_list_forwards_target_status(self, client, monkeypatch):
+        captured: dict[str, object] = {}
+
+        def _list_areas(**kwargs):
+            captured.update(kwargs)
+            return []
+
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.list_areas",
+            _list_areas,
+        )
+        r = client.get("/api/areas-of-focus?target_status=monitoring_high&limit=5000")
+        assert r.status_code == 200
+        assert r.json() == []
+        assert captured["target_status"] == "monitoring_high"
+        assert captured["limit"] == 5000
+
+
 class TestDiagnostics:
     """Production diagnostics — must always return 200 with useful JSON."""
 
