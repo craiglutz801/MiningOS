@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     API_HOST: str = "127.0.0.1"
     API_PORT: int = 8000
     DASHBOARD_PORT: int = 8501
+    SESSION_COOKIE_NAME: str = "mining_os_session"
+    SESSION_TTL_DAYS: int = 30
 
     # Business knobs (env: comma-separated; use .TARGET_STATES / .COMMODITIES in code)
     TARGET_STATES_STR: str = Field(default="UT,ID,NV,MT,WY", validation_alias="TARGET_STATES")

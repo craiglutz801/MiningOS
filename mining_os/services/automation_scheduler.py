@@ -38,7 +38,7 @@ def _tick() -> None:
         from mining_os.services.automation_engine import list_rules, execute_rule
 
         now = datetime.now(timezone.utc)
-        rules = list_rules()
+        rules = list_rules(all_accounts=True)
         for rule in rules:
             if not rule.get("enabled"):
                 continue
@@ -49,7 +49,7 @@ def _tick() -> None:
                 rule_id = rule["id"]
                 log.info("Scheduler: cron matched for rule #%d (%s), executing", rule_id, rule.get("name"))
                 try:
-                    execute_rule(rule_id, trigger_type="scheduled")
+                    execute_rule(rule_id, trigger_type="scheduled", account_id=rule.get("account_id"))
                 except Exception:
                     log.exception("Scheduler: rule #%d execution failed", rule_id)
     except Exception:

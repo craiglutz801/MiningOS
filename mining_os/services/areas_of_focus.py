@@ -14,10 +14,15 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 
 from mining_os.db import get_engine
+from mining_os.services.auth import current_account_id
 
 log = logging.getLogger("mining_os.areas_of_focus")
 
 DATA_FILES_DIR = Path(__file__).resolve().parents[2] / "data_files"
+
+
+def _effective_account_id(account_id: int | None = None) -> int:
+    return int(account_id or current_account_id())
 
 
 def _display_trs(val: str | None, kind: str = "tr") -> str | None:
@@ -407,7 +412,7 @@ def _parse_plss_to_components(location_plss: str | None, default_state: str = "U
         return None
 
 
-def backfill_plss_components() -> int:
+def backfill_plss_components(account_id: int | None = None) -> int:
     """
     Backfill state_abbr, township, range, section, meridian from location_plss for rows
     where township is null and location_plss is set. Returns number of rows updated.
@@ -416,13 +421,16 @@ def backfill_plss_components() -> int:
     updated = 0
     try:
         with eng.begin() as conn:
-            rows = conn.execute(
-                text("""
-                SELECT id, location_plss, state_abbr FROM areas_of_focus
+            sql = """
+                SELECT id, location_plss, state_abbr, account_id FROM areas_of_focus
                 WHERE location_plss IS NOT NULL AND TRIM(location_plss) != ''
                   AND (township IS NULL OR state_abbr IS NULL)
-                """),
-            ).mappings().all()
+            """
+            params: dict[str, Any] = {}
+            if account_id is not None:
+                sql += " AND account_id = :account_id"
+                params["account_id"] = int(account_id)
+            rows = conn.execute(text(sql), params).mappings().all()
             for row in rows:
                 comp = _parse_plss_to_components(row["location_plss"], default_state=(row.get("state_abbr") or "UT"))
                 if not comp:
@@ -432,10 +440,11 @@ def backfill_plss_components() -> int:
                     UPDATE areas_of_focus SET
                       state_abbr = :state_abbr, township = :township, "range" = :range_val, section = :section,
                       meridian = :meridian, updated_at = now()
-                    WHERE id = :id
+                    WHERE id = :id AND account_id = :account_id
                     """),
                     {
                         "id": row["id"],
+                        "account_id": row["account_id"],
                         "state_abbr": comp["state_abbr"],
                         "township": comp["township"],
                         "range_val": comp["range"],
@@ -487,7 +496,7 @@ def _condense_rows_by_plss(rows: List[dict]) -> List[dict]:
     return out
 
 
-def backfill_plss_normalized_to_section() -> int:
+def backfill_plss_normalized_to_section(account_id: int | None = None) -> int:
     """
     Update plss_normalized for all rows to section-level (sector) key. Call after 008 so
     uniqueness is at State+Township+Range+Section. Returns number of rows updated.
@@ -495,16 +504,25 @@ def backfill_plss_normalized_to_section() -> int:
     eng = get_engine()
     updated = 0
     with eng.begin() as conn:
-        rows = conn.execute(
-            text("SELECT id, location_plss FROM areas_of_focus WHERE location_plss IS NOT NULL AND TRIM(location_plss) != ''"),
-        ).mappings().all()
+        sql = (
+            "SELECT id, location_plss, account_id FROM areas_of_focus "
+            "WHERE location_plss IS NOT NULL AND TRIM(location_plss) != ''"
+        )
+        params: dict[str, Any] = {}
+        if account_id is not None:
+            sql += " AND account_id = :account_id"
+            params["account_id"] = int(account_id)
+        rows = conn.execute(text(sql), params).mappings().all()
         for row in rows:
             new_key = _normalize_plss(row["location_plss"])
             if new_key is None:
                 continue
             conn.execute(
-                text("UPDATE areas_of_focus SET plss_normalized = :key, updated_at = now() WHERE id = :id"),
-                {"key": new_key, "id": row["id"]},
+                text(
+                    "UPDATE areas_of_focus SET plss_normalized = :key, updated_at = now() "
+                    "WHERE id = :id AND account_id = :account_id"
+                ),
+                {"key": new_key, "id": row["id"], "account_id": row["account_id"]},
             )
             updated += 1
     if updated:
@@ -544,10 +562,12 @@ def list_areas(
     sector: str | None = None,
     name: str | None = None,
     limit: int = 5000,
+    account_id: int | None = None,
 ) -> List[dict]:
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
-    filters = ["1=1"]
-    params: dict = {"limit": limit}
+    filters = ["a.account_id = :account_id"]
+    params: dict = {"limit": limit, "account_id": account_id}
     normalized_priority_sql = (
         "CASE "
         "WHEN COALESCE(a.priority, 'monitoring_low') = 'low' THEN 'monitoring_low' "
@@ -557,13 +577,13 @@ def list_areas(
         "END"
     )
     if name:
-        filters.append("name ILIKE :name_pat")
+        filters.append("a.name ILIKE :name_pat")
         params["name_pat"] = f"%{name.strip()}%"
     if mineral:
-        filters.append(":mineral = ANY(minerals)")
+        filters.append(":mineral = ANY(a.minerals)")
         params["mineral"] = mineral.strip()
     if status:
-        filters.append("status = :status")
+        filters.append("a.status = :status")
         params["status"] = status.strip().lower()
     if target_status and target_status.strip():
         raw_target_status = target_status.strip().lower()
@@ -571,13 +591,13 @@ def list_areas(
             filters.append(f"{normalized_priority_sql} = :target_status")
             params["target_status"] = _normalize_target_status(raw_target_status)
     if state_abbr:
-        filters.append("(state_abbr = :state_abbr OR (state_abbr IS NULL AND :state_abbr = ''))")
+        filters.append("(a.state_abbr = :state_abbr OR (a.state_abbr IS NULL AND :state_abbr = ''))")
         params["state_abbr"] = state_abbr.strip().upper()
     if claim_type:
-        filters.append("(claim_type = :claim_type OR (claim_type IS NULL AND :claim_type = ''))")
+        filters.append("(a.claim_type = :claim_type OR (a.claim_type IS NULL AND :claim_type = ''))")
         params["claim_type"] = claim_type.strip().lower()
     if retrieval_type:
-        filters.append("COALESCE(retrieval_type, :retrieval_type_default) = :retrieval_type")
+        filters.append("COALESCE(a.retrieval_type, :retrieval_type_default) = :retrieval_type")
         params["retrieval_type"] = _normalize_retrieval_type(retrieval_type)
         params["retrieval_type_default"] = RETRIEVAL_TYPE_USER_ADDED
     # Advanced search: PLSS at section (sector) level. plss_normalized format: "STATE TWP RNG" or "STATE TWP RNG SEC"
@@ -684,6 +704,7 @@ def list_areas(
 
 def areas_summary() -> dict:
     """Return uncapped dashboard counts for targets by normalized target status."""
+    account_id = _effective_account_id()
     eng = get_engine()
     normalized_priority_sql = (
         "CASE "
@@ -703,10 +724,11 @@ def areas_summary() -> dict:
       COUNT(*) FILTER (WHERE {normalized_priority_sql} = 'due_diligence')::int AS due_diligence,
       COUNT(*) FILTER (WHERE {normalized_priority_sql} = 'ownership')::int AS ownership
     FROM areas_of_focus a
+    WHERE a.account_id = :account_id
     """
     with eng.begin() as conn:
         try:
-            row = conn.execute(text(sql)).mappings().first() or {}
+            row = conn.execute(text(sql), {"account_id": account_id}).mappings().first() or {}
             return {
                 "total_count": int(row.get("total_count") or 0),
                 "target_status_counts": {
@@ -721,7 +743,13 @@ def areas_summary() -> dict:
         except Exception as e:
             err = str(e).lower()
             if "priority" in err and ("column" in err or "does not exist" in err):
-                total = int(conn.execute(text("SELECT COUNT(*)::int FROM areas_of_focus")).scalar() or 0)
+                total = int(
+                    conn.execute(
+                        text("SELECT COUNT(*)::int FROM areas_of_focus WHERE account_id = :account_id"),
+                        {"account_id": account_id},
+                    ).scalar()
+                    or 0
+                )
                 return {
                     "total_count": total,
                     "target_status_counts": {
@@ -736,22 +764,26 @@ def areas_summary() -> dict:
             raise
 
 
-def list_distinct_minerals() -> List[str]:
+def list_distinct_minerals(account_id: int | None = None) -> List[str]:
     """Return sorted list of distinct mineral names that appear in any target (for autocomplete)."""
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
     with eng.begin() as conn:
         rows = conn.execute(
             text("""
             SELECT DISTINCT TRIM(unnest(minerals)) AS name
             FROM areas_of_focus
-            WHERE minerals IS NOT NULL AND array_length(minerals, 1) > 0
+            WHERE account_id = :account_id
+              AND minerals IS NOT NULL AND array_length(minerals, 1) > 0
             ORDER BY 1
             """),
+            {"account_id": account_id},
         ).fetchall()
     return [r[0] for r in rows if r[0]]
 
 
-def get_area(id: int) -> dict | None:
+def get_area(id: int, account_id: int | None = None) -> dict | None:
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
     with eng.begin() as conn:
         try:
@@ -763,9 +795,9 @@ def get_area(id: int) -> dict | None:
                        priority, roi_score, characteristics, state_abbr, meridian,
                        township, "range", section, COALESCE(is_uploaded, false) AS is_uploaded,
                        plss_normalized, claim_type, COALESCE(retrieval_type, 'User Added') AS retrieval_type, created_at, updated_at
-                FROM areas_of_focus WHERE id = :id
+                FROM areas_of_focus WHERE id = :id AND account_id = :account_id
                 """),
-                {"id": id},
+                {"id": id, "account_id": account_id},
             ).mappings().first()
         except Exception as e:
             err = str(e).lower()
@@ -777,9 +809,9 @@ def get_area(id: int) -> dict | None:
                            validity_notes, source, external_id, blm_case_url, blm_serial_number,
                            priority, roi_score, characteristics, state_abbr, meridian,
                            plss_normalized, claim_type, COALESCE(retrieval_type, 'User Added') AS retrieval_type, created_at, updated_at
-                    FROM areas_of_focus WHERE id = :id
+                    FROM areas_of_focus WHERE id = :id AND account_id = :account_id
                     """),
-                    {"id": id},
+                    {"id": id, "account_id": account_id},
                 ).mappings().first()
                 if row:
                     row = dict(row)
@@ -801,9 +833,9 @@ def get_area(id: int) -> dict | None:
                            minerals, status, status_checked_at, report_links, report_summary,
                            validity_notes, source, external_id, blm_case_url, blm_serial_number,
                            roi_score, created_at, updated_at
-                    FROM areas_of_focus WHERE id = :id
+                    FROM areas_of_focus WHERE id = :id AND account_id = :account_id
                     """),
-                    {"id": id},
+                    {"id": id, "account_id": account_id},
                 ).mappings().first()
                 if row:
                     row = dict(row)
@@ -825,9 +857,9 @@ def get_area(id: int) -> dict | None:
                            minerals, status, status_checked_at, report_links, report_summary,
                            validity_notes, source, external_id, blm_case_url, blm_serial_number,
                            priority, roi_score, created_at, updated_at
-                    FROM areas_of_focus WHERE id = :id
+                    FROM areas_of_focus WHERE id = :id AND account_id = :account_id
                     """),
-                    {"id": id},
+                    {"id": id, "account_id": account_id},
                 ).mappings().first()
                 if row:
                     row = dict(row)
@@ -853,8 +885,9 @@ def get_area(id: int) -> dict | None:
     return row
 
 
-def merge_area_characteristics(area_id: int, updates: Dict[str, Any]) -> bool:
+def merge_area_characteristics(area_id: int, updates: Dict[str, Any], account_id: int | None = None) -> bool:
     """Merge updates into areas_of_focus.characteristics (JSONB). Returns True if updated."""
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
     with eng.begin() as conn:
         try:
@@ -863,9 +896,9 @@ def merge_area_characteristics(area_id: int, updates: Dict[str, Any]) -> bool:
                 UPDATE areas_of_focus
                 SET characteristics = COALESCE(characteristics, '{}'::jsonb) || CAST(:updates AS jsonb),
                     updated_at = now()
-                WHERE id = :id
+                WHERE id = :id AND account_id = :account_id
                 """),
-                {"id": area_id, "updates": json.dumps(updates)},
+                {"id": area_id, "account_id": account_id, "updates": json.dumps(updates)},
             )
             return r.rowcount > 0
         except Exception as e:
@@ -878,11 +911,12 @@ def merge_area_characteristics(area_id: int, updates: Dict[str, Any]) -> bool:
 _REMOVABLE_CHARACTERISTIC_KEYS = frozenset({"claim_records", "lr2000_geographic_index"})
 
 
-def remove_area_characteristic_keys(area_id: int, keys: list[str]) -> bool:
+def remove_area_characteristic_keys(area_id: int, keys: list[str], account_id: int | None = None) -> bool:
     """
     Remove one or more top-level keys from ``characteristics`` using PostgreSQL jsonb ``-``.
     Only whitelisted keys are applied. Returns True if a row was updated.
     """
+    account_id = _effective_account_id(account_id)
     safe = [k for k in keys if k in _REMOVABLE_CHARACTERISTIC_KEYS]
     if not safe:
         return False
@@ -896,9 +930,9 @@ def remove_area_characteristic_keys(area_id: int, keys: list[str]) -> bool:
             UPDATE areas_of_focus
             SET characteristics = {expr},
                 updated_at = now()
-            WHERE id = :id
+            WHERE id = :id AND account_id = :account_id
             """),
-            {"id": area_id},
+            {"id": area_id, "account_id": account_id},
         )
         return r.rowcount > 0
 
@@ -919,82 +953,88 @@ def _normalize_target_status(val: str | None) -> str:
     return legacy_map.get(v, v) if v in legacy_map or v in VALID_TARGET_STATUSES else "monitoring_low"
 
 
-def update_area_priority(id: int, priority: str) -> bool:
+def update_area_priority(id: int, priority: str, account_id: int | None = None) -> bool:
     """Set target status (stored in priority column). Returns True if row was updated."""
     normalized = _normalize_target_status(priority)
     if normalized not in VALID_TARGET_STATUSES:
         return False
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
     with eng.begin() as conn:
         r = conn.execute(
-            text("UPDATE areas_of_focus SET priority = :priority, updated_at = now() WHERE id = :id"),
-            {"id": id, "priority": normalized},
+            text("UPDATE areas_of_focus SET priority = :priority, updated_at = now() WHERE id = :id AND account_id = :account_id"),
+            {"id": id, "priority": normalized, "account_id": account_id},
         )
     return r.rowcount > 0
 
 
-def update_area_notes(id: int, notes: str | None) -> bool:
+def update_area_notes(id: int, notes: str | None, account_id: int | None = None) -> bool:
     """Update the validity_notes (Notes) field on a target."""
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
     with eng.begin() as conn:
         r = conn.execute(
-            text("UPDATE areas_of_focus SET validity_notes = :notes, updated_at = now() WHERE id = :id"),
-            {"id": id, "notes": notes.strip() if notes else None},
+            text("UPDATE areas_of_focus SET validity_notes = :notes, updated_at = now() WHERE id = :id AND account_id = :account_id"),
+            {"id": id, "notes": notes.strip() if notes else None, "account_id": account_id},
         )
     return r.rowcount > 0
 
 
-def update_area_claim_type(id: int, claim_type: str | None) -> bool:
+def update_area_claim_type(id: int, claim_type: str | None, account_id: int | None = None) -> bool:
     """Set the claim_type field on a target. Returns True if row was updated."""
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
     with eng.begin() as conn:
         r = conn.execute(
-            text("UPDATE areas_of_focus SET claim_type = :claim_type, updated_at = now() WHERE id = :id"),
-            {"id": id, "claim_type": claim_type.strip() if claim_type else None},
+            text("UPDATE areas_of_focus SET claim_type = :claim_type, updated_at = now() WHERE id = :id AND account_id = :account_id"),
+            {"id": id, "claim_type": claim_type.strip() if claim_type else None, "account_id": account_id},
         )
     return r.rowcount > 0
 
 
-def update_area_minerals(id: int, minerals: List[str] | None) -> bool:
+def update_area_minerals(id: int, minerals: List[str] | None, account_id: int | None = None) -> bool:
     """Set the minerals field on a target. Returns True if row was updated."""
+    account_id = _effective_account_id(account_id)
     cleaned = _normalize_minerals(minerals or [])
     eng = get_engine()
     with eng.begin() as conn:
         r = conn.execute(
-            text("UPDATE areas_of_focus SET minerals = :minerals, updated_at = now() WHERE id = :id"),
-            {"id": id, "minerals": cleaned},
+            text("UPDATE areas_of_focus SET minerals = :minerals, updated_at = now() WHERE id = :id AND account_id = :account_id"),
+            {"id": id, "minerals": cleaned, "account_id": account_id},
         )
     return r.rowcount > 0
 
 
-def update_area_coordinates(area_id: int, latitude: float | None, longitude: float | None) -> bool:
+def update_area_coordinates(area_id: int, latitude: float | None, longitude: float | None, account_id: int | None = None) -> bool:
     """Set WGS84 latitude/longitude on a target. Returns True if a row was updated."""
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
     with eng.begin() as conn:
         r = conn.execute(
             text("""
             UPDATE areas_of_focus
             SET latitude = :lat, longitude = :lon, updated_at = now()
-            WHERE id = :id
+            WHERE id = :id AND account_id = :account_id
             """),
-            {"id": area_id, "lat": latitude, "lon": longitude},
+            {"id": area_id, "lat": latitude, "lon": longitude, "account_id": account_id},
         )
     return (r.rowcount or 0) > 0
 
 
-def update_area_name(area_id: int, name: str | None) -> bool:
+def update_area_name(area_id: int, name: str | None, account_id: int | None = None) -> bool:
     """
     Rename a target. Returns True when a row was updated. An empty or
     whitespace-only name is rejected (targets must always have a name).
     """
+    account_id = _effective_account_id(account_id)
     nm = (name or "").strip()
     if not nm:
         return False
     eng = get_engine()
     with eng.begin() as conn:
         r = conn.execute(
-            text("UPDATE areas_of_focus SET name = :name, updated_at = now() WHERE id = :id"),
-            {"id": area_id, "name": nm[:500]},
+            text("UPDATE areas_of_focus SET name = :name, updated_at = now() WHERE id = :id AND account_id = :account_id"),
+            {"id": area_id, "name": nm[:500], "account_id": account_id},
         )
     return (r.rowcount or 0) > 0
 
@@ -1004,6 +1044,7 @@ def update_area_plss(
     location_plss: str | None,
     *,
     regeocode_coordinates: bool = True,
+    account_id: int | None = None,
 ) -> dict[str, Any]:
     """
     User-initiated edit of a target's PLSS location.
@@ -1042,7 +1083,8 @@ def update_area_plss(
           "conflicting_name": str | None,
         }
     """
-    area = get_area(area_id)
+    account_id = _effective_account_id(account_id)
+    area = get_area(area_id, account_id=account_id)
     if not area:
         return {"ok": False, "error": "not_found"}
 
@@ -1062,9 +1104,9 @@ def update_area_plss(
                   section = NULL,
                   meridian = NULL,
                   updated_at = now()
-                WHERE id = :id
+                WHERE id = :id AND account_id = :account_id
                 """),
-                {"id": area_id},
+                {"id": area_id, "account_id": account_id},
             )
             if (r.rowcount or 0) == 0:
                 return {"ok": False, "error": "not_found"}
@@ -1117,8 +1159,11 @@ def update_area_plss(
 
     with eng.begin() as conn:
         conflict = conn.execute(
-            text("SELECT id, name FROM areas_of_focus WHERE plss_normalized = :k AND id <> :id LIMIT 1"),
-            {"k": plss_key, "id": area_id},
+            text(
+                "SELECT id, name FROM areas_of_focus "
+                "WHERE account_id = :account_id AND plss_normalized = :k AND id <> :id LIMIT 1"
+            ),
+            {"k": plss_key, "id": area_id, "account_id": account_id},
         ).mappings().first()
         if conflict:
             return {
@@ -1142,10 +1187,11 @@ def update_area_plss(
               latitude = :lat,
               longitude = :lon,
               updated_at = now()
-            WHERE id = :id
+            WHERE id = :id AND account_id = :account_id
             """),
             {
                 "id": area_id,
+                "account_id": account_id,
                 "location_plss": lp,
                 "plss_normalized": plss_key,
                 "state_abbr": st,
@@ -1183,6 +1229,7 @@ def update_area_plss_components(
     section: str | None,
     meridian: str | None = None,
     regeocode_coordinates: bool = True,
+    account_id: int | None = None,
 ) -> dict[str, Any]:
     """
     User-initiated edit of PLSS by *individual component* (Township, Range,
@@ -1205,7 +1252,8 @@ def update_area_plss_components(
     """
     from mining_os.services.blm_plss import normalize_plss_field
 
-    area = get_area(area_id)
+    account_id = _effective_account_id(account_id)
+    area = get_area(area_id, account_id=account_id)
     if not area:
         return {"ok": False, "error": "not_found"}
 
@@ -1257,8 +1305,11 @@ def update_area_plss_components(
     eng = get_engine()
     with eng.begin() as conn:
         conflict = conn.execute(
-            text("SELECT id, name FROM areas_of_focus WHERE plss_normalized = :k AND id <> :id LIMIT 1"),
-            {"k": plss_key, "id": area_id},
+            text(
+                "SELECT id, name FROM areas_of_focus "
+                "WHERE account_id = :account_id AND plss_normalized = :k AND id <> :id LIMIT 1"
+            ),
+            {"k": plss_key, "id": area_id, "account_id": account_id},
         ).mappings().first()
         if conflict:
             return {
@@ -1282,10 +1333,11 @@ def update_area_plss_components(
               latitude = :lat,
               longitude = :lon,
               updated_at = now()
-            WHERE id = :id
+            WHERE id = :id AND account_id = :account_id
             """),
             {
                 "id": area_id,
+                "account_id": account_id,
                 "location_plss": lp,
                 "plss_normalized": plss_key,
                 "state_abbr": st,
@@ -1315,6 +1367,7 @@ def update_area_plss_components(
 
 
 def update_area_status(id: int, status: str, blm_serial_number: str | None = None, blm_case_url: str | None = None) -> bool:
+    account_id = _effective_account_id()
     eng = get_engine()
     with eng.begin() as conn:
         r = conn.execute(
@@ -1323,9 +1376,9 @@ def update_area_status(id: int, status: str, blm_serial_number: str | None = Non
             SET status = :status, status_checked_at = now(), updated_at = now(),
                 blm_serial_number = COALESCE(:blm_serial_number, blm_serial_number),
                 blm_case_url = COALESCE(:blm_case_url, blm_case_url)
-            WHERE id = :id
+            WHERE id = :id AND account_id = :account_id
             """),
-            {"id": id, "status": status, "blm_serial_number": blm_serial_number or None, "blm_case_url": blm_case_url or None},
+            {"id": id, "status": status, "blm_serial_number": blm_serial_number or None, "blm_case_url": blm_case_url or None, "account_id": account_id},
         )
     return r.rowcount > 0
 
@@ -1355,6 +1408,7 @@ def plss_lookup_would_conflict(
     township: str | None = None,
     range_val: str | None = None,
     section: str | None = None,
+    account_id: int | None = None,
 ) -> dict[str, Any]:
     """
     Read-only: check whether saving this PLSS on area_id would hit duplicate plss_normalized.
@@ -1374,19 +1428,21 @@ def plss_lookup_would_conflict(
     plss_key = _normalize_plss(lp, default_state=st or "UT")
     if not plss_key:
         plss_key = re.sub(r"\s+", " ", lp).upper().strip()
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
     with eng.begin() as conn:
         row = conn.execute(
-            text("SELECT id FROM areas_of_focus WHERE id = :id"),
-            {"id": area_id},
+            text("SELECT id FROM areas_of_focus WHERE id = :id AND account_id = :account_id"),
+            {"id": area_id, "account_id": account_id},
         ).mappings().first()
         if not row:
             return {"ok": False, "reason": "not_found", "plss_key": plss_key, "conflicting_id": None, "conflicting_name": None}
         conflict = conn.execute(
             text(
-                "SELECT id, name FROM areas_of_focus WHERE plss_normalized = :k AND id <> :id LIMIT 1"
+                "SELECT id, name FROM areas_of_focus "
+                "WHERE account_id = :account_id AND plss_normalized = :k AND id <> :id LIMIT 1"
             ),
-            {"k": plss_key, "id": area_id},
+            {"k": plss_key, "id": area_id, "account_id": account_id},
         ).mappings().first()
         if conflict:
             return {
@@ -1411,6 +1467,7 @@ def apply_plss_lookup_result(
     longitude: float | None,
     notes_append: str | None,
     meridian: str | None = None,
+    account_id: int | None = None,
 ) -> ApplyPlssLookupResult:
     """Persist AI-inferred or reverse-geocoded PLSS (and optional lat/long) on a target."""
     lp = (location_plss or "").strip()
@@ -1427,12 +1484,13 @@ def apply_plss_lookup_result(
     plss_key = _normalize_plss(lp, default_state=st or "UT")
     if not plss_key:
         plss_key = re.sub(r"\s+", " ", lp).upper().strip()
+    account_id = _effective_account_id(account_id)
 
     eng = get_engine()
     with eng.begin() as conn:
         row = conn.execute(
-            text("SELECT validity_notes FROM areas_of_focus WHERE id = :id"),
-            {"id": area_id},
+            text("SELECT validity_notes FROM areas_of_focus WHERE id = :id AND account_id = :account_id"),
+            {"id": area_id, "account_id": account_id},
         ).mappings().first()
         if not row:
             return ApplyPlssLookupResult(False, "not_found")
@@ -1442,6 +1500,7 @@ def apply_plss_lookup_result(
         mer = (meridian or "").strip() or None
         params = {
             "id": area_id,
+            "account_id": account_id,
             "location_plss": lp,
             "plss_normalized": plss_key,
             "state_abbr": st,
@@ -1455,9 +1514,10 @@ def apply_plss_lookup_result(
         }
         conflict = conn.execute(
             text(
-                "SELECT id, name FROM areas_of_focus WHERE plss_normalized = :k AND id <> :id LIMIT 1"
+                "SELECT id, name FROM areas_of_focus "
+                "WHERE account_id = :account_id AND plss_normalized = :k AND id <> :id LIMIT 1"
             ),
-            {"k": plss_key, "id": area_id},
+            {"k": plss_key, "id": area_id, "account_id": account_id},
         ).mappings().first()
         def persist_duplicate_notes(other_id: int, other_name: str) -> ApplyPlssLookupResult:
             skip_note = (
@@ -1467,9 +1527,10 @@ def apply_plss_lookup_result(
             new_notes = (ai_block + skip_note).strip()
             conn.execute(
                 text(
-                    "UPDATE areas_of_focus SET validity_notes = :validity_notes, updated_at = now() WHERE id = :id"
+                    "UPDATE areas_of_focus SET validity_notes = :validity_notes, updated_at = now() "
+                    "WHERE id = :id AND account_id = :account_id"
                 ),
-                {"id": area_id, "validity_notes": new_notes},
+                {"id": area_id, "validity_notes": new_notes, "account_id": account_id},
             )
             return ApplyPlssLookupResult(False, "duplicate_plss", other_id, other_name)
 
@@ -1499,6 +1560,7 @@ def apply_plss_lookup_result(
                       validity_notes = :validity_notes,
                       updated_at = now()
                     WHERE id = :id
+                      AND account_id = :account_id
                     """),
                     params,
                 )
@@ -1514,9 +1576,10 @@ def apply_plss_lookup_result(
         if dup_race:
             conf2 = conn.execute(
                 text(
-                    "SELECT id, name FROM areas_of_focus WHERE plss_normalized = :k AND id <> :id LIMIT 1"
+                    "SELECT id, name FROM areas_of_focus "
+                    "WHERE account_id = :account_id AND plss_normalized = :k AND id <> :id LIMIT 1"
                 ),
-                {"k": plss_key, "id": area_id},
+                {"k": plss_key, "id": area_id, "account_id": account_id},
             ).mappings().first()
             if conf2:
                 return persist_duplicate_notes(
@@ -1536,9 +1599,11 @@ def apply_plss_lookup_result(
                   longitude = COALESCE(:lon, longitude),
                   updated_at = now()
                 WHERE id = :id
+                  AND account_id = :account_id
                 """),
                 {
                     "id": area_id,
+                    "account_id": account_id,
                     "location_plss": lp,
                     "validity_notes": ai_block,
                     "state_abbr": st,
@@ -1553,7 +1618,8 @@ def apply_plss_lookup_result(
 
 def reverse_plss_from_coordinates_for_area(area_id: int) -> dict[str, Any]:
     """Resolve PLSS from stored lat/lon via BLM Cadastral and persist. Preserves existing coordinates."""
-    area = get_area(area_id)
+    account_id = _effective_account_id()
+    area = get_area(area_id, account_id=account_id)
     if not area:
         return {"ok": False, "error": "not_found"}
     lat, lon = area.get("latitude"), area.get("longitude")
@@ -1587,6 +1653,7 @@ def reverse_plss_from_coordinates_for_area(area_id: int) -> dict[str, Any]:
         longitude=None,
         notes_append=None,
         meridian=rev.get("meridian"),
+        account_id=account_id,
     )
     if applied.applied:
         return {"ok": True, "location_plss": rev["location_plss"], "plssid": rev.get("plssid")}
@@ -1602,15 +1669,18 @@ def reverse_plss_from_coordinates_for_area(area_id: int) -> dict[str, Any]:
 
 def batch_reverse_plss_from_coordinates() -> dict[str, Any]:
     """For all targets with coordinates and no plss_normalized, resolve PLSS from BLM."""
+    account_id = _effective_account_id()
     eng = get_engine()
     with eng.begin() as conn:
         rows = conn.execute(
             text("""
             SELECT id FROM areas_of_focus
-            WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+            WHERE account_id = :account_id
+              AND latitude IS NOT NULL AND longitude IS NOT NULL
               AND (plss_normalized IS NULL OR TRIM(COALESCE(plss_normalized, '')) = '')
             ORDER BY id
             """),
+            {"account_id": account_id},
         ).fetchall()
 
     results: List[dict[str, Any]] = []
@@ -1624,8 +1694,14 @@ def batch_reverse_plss_from_coordinates() -> dict[str, Any]:
     return {"updated": updated, "total": len(rows), "results": results}
 
 
-def update_area_state_meridian(area_id: int, state_abbr: str, meridian: str) -> bool:
+def update_area_state_meridian(
+    area_id: int,
+    state_abbr: str,
+    meridian: str,
+    account_id: int | None = None,
+) -> bool:
     """Set state_abbr and meridian on a target. Returns True if updated."""
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
     with eng.begin() as conn:
         try:
@@ -1633,16 +1709,19 @@ def update_area_state_meridian(area_id: int, state_abbr: str, meridian: str) -> 
                 text("""
                 UPDATE areas_of_focus
                 SET state_abbr = :state_abbr, meridian = :meridian, updated_at = now()
-                WHERE id = :id
+                WHERE id = :id AND account_id = :account_id
                 """),
-                {"id": area_id, "state_abbr": state_abbr, "meridian": meridian},
+                {"id": area_id, "state_abbr": state_abbr, "meridian": meridian, "account_id": account_id},
             )
             return r.rowcount > 0
         except Exception as e:
             if "meridian" in str(e).lower() and "column" in str(e).lower():
                 r = conn.execute(
-                    text("UPDATE areas_of_focus SET state_abbr = :state_abbr, updated_at = now() WHERE id = :id"),
-                    {"id": area_id, "state_abbr": state_abbr},
+                    text(
+                        "UPDATE areas_of_focus SET state_abbr = :state_abbr, updated_at = now() "
+                        "WHERE id = :id AND account_id = :account_id"
+                    ),
+                    {"id": area_id, "state_abbr": state_abbr, "account_id": account_id},
                 )
                 return r.rowcount > 0
             raise
@@ -1650,17 +1729,25 @@ def update_area_state_meridian(area_id: int, state_abbr: str, meridian: str) -> 
 
 def delete_areas_by_source(source: str) -> int:
     """Delete all areas with the given source. Returns number of rows deleted."""
+    account_id = _effective_account_id()
     eng = get_engine()
     with eng.begin() as conn:
-        r = conn.execute(text("DELETE FROM areas_of_focus WHERE source = :source"), {"source": source})
+        r = conn.execute(
+            text("DELETE FROM areas_of_focus WHERE account_id = :account_id AND source = :source"),
+            {"source": source, "account_id": account_id},
+        )
     return r.rowcount
 
 
 def delete_area(area_id: int) -> bool:
     """Delete one target by id. Returns True if a row was deleted."""
+    account_id = _effective_account_id()
     eng = get_engine()
     with eng.begin() as conn:
-        r = conn.execute(text("DELETE FROM areas_of_focus WHERE id = :id"), {"id": area_id})
+        r = conn.execute(
+            text("DELETE FROM areas_of_focus WHERE id = :id AND account_id = :account_id"),
+            {"id": area_id, "account_id": account_id},
+        )
     return r.rowcount > 0
 
 
@@ -1671,6 +1758,7 @@ def get_clean_preview() -> Dict[str, Any]:
     """
     no_plss: List[dict] = []
     duplicates: List[Dict[str, Any]] = []
+    account_id = _effective_account_id()
     try:
         eng = get_engine()
         cols = (
@@ -1684,9 +1772,11 @@ def get_clean_preview() -> Dict[str, Any]:
                     text(f"""
                     SELECT {cols}
                     FROM areas_of_focus
-                    WHERE (plss_normalized IS NULL OR TRIM(COALESCE(plss_normalized, '')) = '')
+                    WHERE account_id = :account_id
+                      AND (plss_normalized IS NULL OR TRIM(COALESCE(plss_normalized, '')) = '')
                     ORDER BY name
                     """),
+                    {"account_id": account_id},
                 ).mappings().all()
                 no_plss = [dict(r) for r in rows]
             except Exception as e:
@@ -1697,9 +1787,11 @@ def get_clean_preview() -> Dict[str, Any]:
                         SELECT id, name, location_plss, plss_normalized, minerals, report_links, status,
                                state_abbr, validity_notes, latitude, longitude
                         FROM areas_of_focus
-                        WHERE (plss_normalized IS NULL OR TRIM(COALESCE(plss_normalized, '')) = '')
+                        WHERE account_id = :account_id
+                          AND (plss_normalized IS NULL OR TRIM(COALESCE(plss_normalized, '')) = '')
                         ORDER BY name
                         """),
+                        {"account_id": account_id},
                     ).mappings().all()
                     no_plss = [dict(r) for r in rows]
                     for a in no_plss:
@@ -1712,9 +1804,11 @@ def get_clean_preview() -> Dict[str, Any]:
                             SELECT id, name, location_plss, minerals, report_links, status,
                                    state_abbr, validity_notes
                             FROM areas_of_focus
-                            WHERE (location_plss IS NULL OR TRIM(COALESCE(location_plss, '')) = '')
+                            WHERE account_id = :account_id
+                              AND (location_plss IS NULL OR TRIM(COALESCE(location_plss, '')) = '')
                             ORDER BY name
                             """),
+                            {"account_id": account_id},
                         ).mappings().all()
                         no_plss = [dict(r) for r in rows]
                         for a in no_plss:
@@ -1732,10 +1826,12 @@ def get_clean_preview() -> Dict[str, Any]:
                     text("""
                     SELECT plss_normalized
                     FROM areas_of_focus
-                    WHERE plss_normalized IS NOT NULL AND TRIM(plss_normalized) != ''
+                    WHERE account_id = :account_id
+                      AND plss_normalized IS NOT NULL AND TRIM(plss_normalized) != ''
                     GROUP BY plss_normalized
                     HAVING COUNT(*) > 1
                     """),
+                    {"account_id": account_id},
                 ).fetchall()
             except Exception:
                 pass
@@ -1748,10 +1844,10 @@ def get_clean_preview() -> Dict[str, Any]:
                         text(f"""
                         SELECT {cols}
                         FROM areas_of_focus
-                        WHERE plss_normalized = :key
+                        WHERE account_id = :account_id AND plss_normalized = :key
                         ORDER BY id
                         """),
-                        {"key": plss_norm},
+                        {"key": plss_norm, "account_id": account_id},
                     ).mappings().all()
                 except Exception:
                     rows = conn.execute(
@@ -1759,10 +1855,10 @@ def get_clean_preview() -> Dict[str, Any]:
                         SELECT id, name, location_plss, plss_normalized, minerals, report_links, status,
                                state_abbr, validity_notes
                         FROM areas_of_focus
-                        WHERE plss_normalized = :key
+                        WHERE account_id = :account_id AND plss_normalized = :key
                         ORDER BY id
                         """),
-                        {"key": plss_norm},
+                        {"key": plss_norm, "account_id": account_id},
                     ).mappings().all()
                 targets = [dict(r) for r in rows]
                 for t in targets:
@@ -1795,8 +1891,9 @@ def consolidate_duplicates(keep_id: int, merge_ids: List[int]) -> Dict[str, Any]
         merge_ids = [i for i in merge_ids if i != keep_id]
     if not merge_ids:
         return {"kept": keep_id, "deleted": []}
+    account_id = _effective_account_id()
     eng = get_engine()
-    keep = get_area(keep_id)
+    keep = get_area(keep_id, account_id=account_id)
     if not keep:
         return {"kept": keep_id, "deleted": [], "error": "Target to keep not found"}
     all_ids = [keep_id] + merge_ids
@@ -1805,8 +1902,11 @@ def consolidate_duplicates(keep_id: int, merge_ids: List[int]) -> Dict[str, Any]
     with eng.begin() as conn:
         for mid in merge_ids:
             row = conn.execute(
-                text("SELECT minerals, report_links FROM areas_of_focus WHERE id = :id"),
-                {"id": mid},
+                text(
+                    "SELECT minerals, report_links FROM areas_of_focus "
+                    "WHERE id = :id AND account_id = :account_id"
+                ),
+                {"id": mid, "account_id": account_id},
             ).mappings().first()
             if row:
                 for m in row.get("minerals") or []:
@@ -1816,11 +1916,17 @@ def consolidate_duplicates(keep_id: int, merge_ids: List[int]) -> Dict[str, Any]
                     if r and r not in merged_links:
                         merged_links.append(r)
         conn.execute(
-            text("UPDATE areas_of_focus SET minerals = :minerals, report_links = :report_links, updated_at = now() WHERE id = :kid"),
-            {"minerals": merged_minerals, "report_links": merged_links, "kid": keep_id},
+            text(
+                "UPDATE areas_of_focus SET minerals = :minerals, report_links = :report_links, updated_at = now() "
+                "WHERE id = :kid AND account_id = :account_id"
+            ),
+            {"minerals": merged_minerals, "report_links": merged_links, "kid": keep_id, "account_id": account_id},
         )
         for mid in merge_ids:
-            conn.execute(text("DELETE FROM areas_of_focus WHERE id = :id"), {"id": mid})
+            conn.execute(
+                text("DELETE FROM areas_of_focus WHERE id = :id AND account_id = :account_id"),
+                {"id": mid, "account_id": account_id},
+            )
     return {"kept": keep_id, "deleted": merge_ids}
 
 
@@ -1849,8 +1955,10 @@ def upsert_area(
     is_uploaded: bool | None = None,
     retrieval_type: str | None = None,
     skip_plss_geocode: bool = False,
+    account_id: int | None = None,
 ) -> int:
     """Insert or update by PLSS (Target). Parses location_plss into state, township, range, section; sets is_uploaded when provided."""
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
     minerals = _normalize_minerals(",".join(minerals)) if minerals else []
     report_links = report_links or []
@@ -1899,8 +2007,11 @@ def upsert_area(
     with eng.begin() as conn:
         if plss_norm:
             existing = conn.execute(
-                text("SELECT id, minerals, report_links FROM areas_of_focus WHERE plss_normalized = :key"),
-                {"key": plss_norm},
+                text(
+                    "SELECT id, minerals, report_links FROM areas_of_focus "
+                    "WHERE account_id = :account_id AND plss_normalized = :key"
+                ),
+                {"key": plss_norm, "account_id": account_id},
             ).mappings().first()
             if existing:
                 existing_minerals = _normalize_minerals(existing.get("minerals") or [])
@@ -1934,9 +2045,11 @@ def upsert_area(
                       is_uploaded = CASE WHEN :is_uploaded IS TRUE THEN TRUE ELSE is_uploaded END,
                       updated_at = now()
                     WHERE id = :id
+                      AND account_id = :account_id
                     """),
                     {
                         "id": existing["id"],
+                        "account_id": account_id,
                         "name": name_trim,
                         "location_plss": location_plss,
                         "location_coords": location_coords,
@@ -1964,7 +2077,7 @@ def upsert_area(
                 if merged_minerals:
                     try:
                         from mining_os.services.minerals import ensure_minerals_exist
-                        ensure_minerals_exist(merged_minerals)
+                        ensure_minerals_exist(merged_minerals, account_id=account_id)
                     except Exception:
                         log.debug("ensure_minerals_exist failed for update of %r", name_trim, exc_info=True)
                 return existing["id"]
@@ -1974,12 +2087,12 @@ def upsert_area(
         row = conn.execute(
             text("""
             INSERT INTO areas_of_focus (
-              name, location_plss, location_coords, plss_normalized, latitude, longitude,
+              account_id, name, location_plss, location_coords, plss_normalized, latitude, longitude,
               minerals, status, report_links, report_summary, validity_notes,
               source, external_id, blm_case_url, blm_serial_number, roi_score, priority,
               state_abbr, township, "range", section, meridian, retrieval_type, is_uploaded
             ) VALUES (
-              :name, :location_plss, :location_coords, :plss_normalized, :lat, :lon,
+              :account_id, :name, :location_plss, :location_coords, :plss_normalized, :lat, :lon,
               :minerals, :status, :report_links, :report_summary, :validity_notes,
               :source, :external_id, :blm_case_url, :blm_serial_number, :roi_score, :priority,
               :state_abbr, :township, :range_val, :section, :meridian, :retrieval_type, :is_uploaded
@@ -1987,6 +2100,7 @@ def upsert_area(
             RETURNING id
             """),
             {
+                "account_id": account_id,
                 "name": name_trim,
                 "location_plss": location_plss,
                 "location_coords": location_coords,
@@ -2019,7 +2133,7 @@ def upsert_area(
     if minerals:
         try:
             from mining_os.services.minerals import ensure_minerals_exist
-            ensure_minerals_exist(minerals)
+            ensure_minerals_exist(minerals, account_id=account_id)
         except Exception:
             log.debug("ensure_minerals_exist failed for target %r", name_trim, exc_info=True)
     return row[0] if row else 0
@@ -2316,10 +2430,15 @@ def _csv_row_to_target(r: dict) -> tuple[dict | None, str | None]:
 
 def get_existing_plss_map() -> Dict[str, dict]:
     """Return dict of plss_normalized -> {id, name} for all targets with PLSS."""
+    account_id = _effective_account_id()
     eng = get_engine()
     with eng.begin() as conn:
         rows = conn.execute(
-            text("SELECT id, name, plss_normalized FROM areas_of_focus WHERE plss_normalized IS NOT NULL AND TRIM(plss_normalized) != ''"),
+            text(
+                "SELECT id, name, plss_normalized FROM areas_of_focus "
+                "WHERE account_id = :account_id AND plss_normalized IS NOT NULL AND TRIM(plss_normalized) != ''"
+            ),
+            {"account_id": account_id},
         ).mappings().all()
     return {r["plss_normalized"]: {"id": r["id"], "name": r["name"]} for r in rows}
 
@@ -2526,6 +2645,7 @@ def preview_csv_import(
     skipped = 0
     errors: List[str] = []
     existing = get_existing_plss_map()
+    account_id = _effective_account_id()
     if column_mapping is not None:
         errors.extend(validate_csv_column_mapping(column_mapping))
         if errors:
@@ -2688,6 +2808,7 @@ def apply_csv_import(
                           longitude = COALESCE(:lon, longitude),
                           is_uploaded = true, updated_at = now()
                         WHERE plss_normalized = :plss_norm
+                          AND account_id = :account_id
                         """),
                         {
                             "name": (row.get("name") or "Unknown")[:500],
@@ -2698,6 +2819,7 @@ def apply_csv_import(
                             "priority": priority,
                             "source": row.get("source") or "csv_import",
                             "plss_norm": plss_norm,
+                            "account_id": account_id,
                             "state_abbr": state_abbr,
                             "township": township,
                             "range_val": range_val,
