@@ -18,7 +18,12 @@ def _strip_geom(claims: list[dict[str, Any]]) -> None:
         c.pop("geometry", None)
 
 
-def run_lr2000_geographic_index_for_area(area_id: int, area: dict[str, Any]) -> dict[str, Any]:
+def run_lr2000_geographic_index_for_area(
+    area_id: int,
+    area: dict[str, Any],
+    *,
+    account_id: int | None = None,
+) -> dict[str, Any]:
     """
     Use target PLSS (+ spatial fallback) to query BLM MLRS mining claims.
     Persists snapshot under characteristics.lr2000_geographic_index.
@@ -27,7 +32,7 @@ def run_lr2000_geographic_index_for_area(area_id: int, area: dict[str, Any]) -> 
     response (`ok`, `error`, `claims`, ...) instead of an unhandled 500.
     """
     try:
-        return _run_lr2000_geographic_index_for_area(area_id, area)
+        return _run_lr2000_geographic_index_for_area(area_id, area, account_id=account_id)
     except Exception as e:
         log.exception("run_lr2000_geographic_index_for_area failed for area_id=%s: %s", area_id, e)
         return {
@@ -42,7 +47,12 @@ def run_lr2000_geographic_index_for_area(area_id: int, area: dict[str, Any]) -> 
         }
 
 
-def _run_lr2000_geographic_index_for_area(area_id: int, area: dict[str, Any]) -> dict[str, Any]:
+def _run_lr2000_geographic_index_for_area(
+    area_id: int,
+    area: dict[str, Any],
+    *,
+    account_id: int | None = None,
+) -> dict[str, Any]:
     from mining_os.services.areas_of_focus import merge_area_characteristics
     from mining_os.services.blm_plss import query_claims_by_coords, query_claims_by_plss
     from mining_os.services.fetch_claim_records import (
@@ -159,7 +169,11 @@ def _run_lr2000_geographic_index_for_area(area_id: int, area: dict[str, Any]) ->
     }
 
     try:
-        merge_area_characteristics(area_id, {"lr2000_geographic_index": payload})
+        merge_area_characteristics(
+            area_id,
+            {"lr2000_geographic_index": payload},
+            account_id=account_id,
+        )
     except Exception as merge_err:
         log.warning("LR2000: failed to persist characteristics for area %s: %s", area_id, merge_err)
         log_parts.append(f"warn: could not persist snapshot: {merge_err}")

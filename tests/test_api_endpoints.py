@@ -18,12 +18,24 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
+from mining_os.services.auth import AuthContext
 
 
-@pytest.fixture(scope="module")
-def client():
+@pytest.fixture
+def client(monkeypatch):
     # Import inside the fixture so monkeypatching modules works cleanly.
     from mining_os.api.main import app
+    fake_ctx = AuthContext(
+        user_id=1,
+        email="craig@example.com",
+        username="craig",
+        display_name="Craig",
+        is_system_admin=True,
+        active_account_id=1,
+        active_account_name="Craig",
+        session_id=1,
+    )
+    monkeypatch.setattr("mining_os.api.main.resolve_session", lambda token: fake_ctx)
     # No context manager → lifespan/startup events (e.g. automation
     # scheduler) are skipped so tests don't need a real DB.
     return TestClient(app)
@@ -48,11 +60,11 @@ def fake_area():
 def _patch_persist(monkeypatch):
     monkeypatch.setattr(
         "mining_os.services.areas_of_focus.merge_area_characteristics",
-        lambda area_id, updates: True,
+        lambda area_id, updates, **kwargs: True,
     )
     monkeypatch.setattr(
         "mining_os.services.areas_of_focus.update_area_state_meridian",
-        lambda area_id, state, meridian: True,
+        lambda area_id, state, meridian, **kwargs: True,
     )
     monkeypatch.setattr(
         "mining_os.services.areas_of_focus.update_area_status",

@@ -56,12 +56,59 @@ export interface AreasSummary {
   target_status_counts: Record<string, number>;
 }
 
+export interface AuthUser {
+  id: number;
+  email: string;
+  username: string;
+  display_name: string | null;
+  is_system_admin: boolean;
+}
+
+export interface AccountMembership {
+  account_id: number;
+  account_name: string;
+  role: string;
+}
+
+export interface AuthMe {
+  user: AuthUser;
+  active_account: {
+    id: number;
+    name: string;
+  };
+  memberships: AccountMembership[];
+}
+
+export interface AdminAccountSummary {
+  id: number;
+  name: string;
+  created_at: string;
+  member_count: number;
+  target_count: number;
+}
+
+export interface AdminCreateAccountResult {
+  account: {
+    id: number;
+    name: string;
+    created_at: string;
+  };
+  admin_user: {
+    id: number;
+    email: string;
+    username: string;
+    display_name: string | null;
+    created_at: string;
+  };
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const isForm = options?.body instanceof FormData;
   let res: Response;
   try {
     res = await fetch(`${BASE}${path}`, {
       headers: isForm ? { ...options?.headers } : { "Content-Type": "application/json", ...options?.headers },
+      credentials: "include",
       ...options,
     });
   } catch {
@@ -93,6 +140,39 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => request<{ status: string }>("/health"),
+
+  auth: {
+    bootstrapStatus: () => request<{ needs_bootstrap: boolean }>("/auth/bootstrap-status"),
+    bootstrapAdmin: (body: { email: string; username: string; password: string; display_name?: string }) =>
+      request<AuthMe>("/auth/bootstrap-admin", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    login: (body: { identifier: string; password: string }) =>
+      request<AuthMe>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST", body: JSON.stringify({}) }),
+    me: () => request<AuthMe>("/auth/me"),
+    switchAccount: (account_id: number) =>
+      request<AuthMe>("/auth/switch-account", {
+        method: "POST",
+        body: JSON.stringify({ account_id }),
+      }),
+    adminAccounts: () => request<{ accounts: AdminAccountSummary[] }>("/admin/accounts"),
+    createAdminAccount: (body: {
+      account_name: string;
+      admin_email: string;
+      admin_username: string;
+      admin_password: string;
+      admin_display_name?: string;
+    }) =>
+      request<AdminCreateAccountResult>("/admin/accounts", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  },
 
   minerals: {
     list: () => request<{ id: number; name: string; sort_order: number }[]>("/minerals"),

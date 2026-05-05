@@ -10,8 +10,13 @@ from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
 
 from mining_os.db import get_engine
+from mining_os.services.auth import current_account_id
 
 log = logging.getLogger(__name__)
+
+
+def _effective_account_id(account_id: int | None = None) -> int:
+    return int(account_id or current_account_id())
 
 
 def create_run(
@@ -26,10 +31,13 @@ def create_run(
     errors: Optional[List[str]] = None,
     locations_from_ai: Optional[List[Dict[str, Any]]] = None,
     urls_from_web_search: Optional[List[str]] = None,
+    account_id: int | None = None,
 ) -> int:
     """Insert a discovery run record; returns id. Works with or without 007 migration columns."""
+    account_id = _effective_account_id(account_id)
     engine = get_engine()
     params = {
+        "account_id": account_id,
         "replace": replace,
         "limit_per_mineral": limit_per_mineral,
         "status": status,
@@ -44,9 +52,9 @@ def create_run(
             row = conn.execute(
                 text("""
                     INSERT INTO discovery_runs
-                    (replace, limit_per_mineral, status, message, minerals_checked, areas_added, log, errors,
+                    (account_id, replace, limit_per_mineral, status, message, minerals_checked, areas_added, log, errors,
                      locations_from_ai, urls_from_web_search)
-                    VALUES (:replace, :limit_per_mineral, :status, :message, :minerals_checked, :areas_added, :log, :errors,
+                    VALUES (:account_id, :replace, :limit_per_mineral, :status, :message, :minerals_checked, :areas_added, :log, :errors,
                             :locations_from_ai::jsonb, :urls_from_web_search)
                     RETURNING id
                 """),
@@ -57,8 +65,8 @@ def create_run(
             row = conn.execute(
                 text("""
                     INSERT INTO discovery_runs
-                    (replace, limit_per_mineral, status, message, minerals_checked, areas_added, log, errors)
-                    VALUES (:replace, :limit_per_mineral, :status, :message, :minerals_checked, :areas_added, :log, :errors)
+                    (account_id, replace, limit_per_mineral, status, message, minerals_checked, areas_added, log, errors)
+                    VALUES (:account_id, :replace, :limit_per_mineral, :status, :message, :minerals_checked, :areas_added, :log, :errors)
                     RETURNING id
                 """),
                 params,
@@ -76,8 +84,9 @@ def _row_to_list_item(r: Any) -> Dict[str, Any]:
     return d
 
 
-def list_runs(limit: int = 50) -> List[Dict[str, Any]]:
+def list_runs(limit: int = 50, account_id: int | None = None) -> List[Dict[str, Any]]:
     """Return discovery runs newest first."""
+    account_id = _effective_account_id(account_id)
     engine = get_engine()
     with engine.connect() as conn:
         rows = conn.execute(
@@ -87,16 +96,18 @@ def list_runs(limit: int = 50) -> List[Dict[str, Any]]:
                        COALESCE(array_length(log, 1), 0) AS log_line_count,
                        COALESCE(array_length(errors, 1), 0) AS error_count
                 FROM discovery_runs
+                WHERE account_id = :account_id
                 ORDER BY created_at DESC
                 LIMIT :limit
             """),
-            {"limit": limit},
+            {"account_id": account_id, "limit": limit},
         ).mappings().all()
         return [_row_to_list_item(r) for r in rows]
 
 
-def get_run(run_id: int) -> Optional[Dict[str, Any]]:
+def get_run(run_id: int, account_id: int | None = None) -> Optional[Dict[str, Any]]:
     """Return full discovery run by id. Works with or without 007 migration columns."""
+    account_id = _effective_account_id(account_id)
     engine = get_engine()
     with engine.connect() as conn:
         try:
@@ -106,9 +117,9 @@ def get_run(run_id: int) -> Optional[Dict[str, Any]]:
                            minerals_checked, areas_added, log, errors,
                            locations_from_ai, urls_from_web_search
                     FROM discovery_runs
-                    WHERE id = :id
+                    WHERE id = :id AND account_id = :account_id
                 """),
-                {"id": run_id},
+                {"id": run_id, "account_id": account_id},
             ).mappings().first()
         except ProgrammingError:
             log.debug("discovery_runs table missing 007 columns; returning run without locations_from_ai/urls_from_web_search")
@@ -117,9 +128,9 @@ def get_run(run_id: int) -> Optional[Dict[str, Any]]:
                     SELECT id, created_at, replace, limit_per_mineral, status, message,
                            minerals_checked, areas_added, log, errors
                     FROM discovery_runs
-                    WHERE id = :id
+                    WHERE id = :id AND account_id = :account_id
                 """),
-                {"id": run_id},
+                {"id": run_id, "account_id": account_id},
             ).mappings().first()
         if not row:
             return None

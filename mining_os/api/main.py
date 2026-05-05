@@ -18,19 +18,110 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import Body, FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
+from mining_os.config import settings
 from mining_os.db import get_engine
 from mining_os.logging_setup import setup_logging
+from mining_os.services.auth import (
+    AuthContext,
+    bootstrap_first_admin,
+    create_account_with_admin,
+    current_account_id,
+    list_accounts_for_admin,
+    logout,
+    me_payload,
+    needs_bootstrap,
+    reset_auth_context,
+    resolve_session,
+    set_auth_context,
+    switch_account,
+    login as auth_login,
+)
 
 setup_logging("INFO")
 log = logging.getLogger("mining_os.api")
 
 api_app = FastAPI(title="Mining_OS API", version="0.1.0")
+
+_PUBLIC_API_PATHS = {
+    "/api/health",
+    "/api/debug/routes",
+    "/api/auth/bootstrap-status",
+    "/api/auth/bootstrap-admin",
+    "/api/auth/login",
+}
+_PUBLIC_API_PREFIXES = (
+    "/api/diag/",
+    "/api/auth/",
+)
+
+
+def _is_public_api_path(path: str) -> bool:
+    if path in _PUBLIC_API_PATHS:
+        return True
+    return any(path.startswith(prefix) for prefix in _PUBLIC_API_PREFIXES)
+
+
+def _session_cookie_value(request: Request) -> str | None:
+    return request.cookies.get(settings.SESSION_COOKIE_NAME)
+
+
+def _cookie_should_be_secure(request: Request) -> bool:
+    forwarded_proto = request.headers.get("x-forwarded-proto", "")
+    if "https" in forwarded_proto.lower():
+        return True
+    return request.url.scheme == "https"
+
+
+def _set_session_cookie(response: Response, request: Request, token: str) -> None:
+    response.set_cookie(
+        key=settings.SESSION_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=_cookie_should_be_secure(request),
+        samesite="lax",
+        max_age=max(1, settings.SESSION_TTL_DAYS) * 24 * 60 * 60,
+        path="/",
+    )
+
+
+def _clear_session_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=settings.SESSION_COOKIE_NAME,
+        httponly=True,
+        samesite="lax",
+        path="/",
+    )
+
+
+def _client_ip(request: Request) -> str | None:
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        first = forwarded_for.split(",", 1)[0].strip()
+        if first:
+            return first
+    if request.client and request.client.host:
+        return request.client.host
+    return None
+
+
+def _require_auth(request: Request) -> AuthContext:
+    ctx = getattr(request.state, "auth_context", None)
+    if ctx is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return ctx
+
+
+def _require_system_admin(request: Request) -> AuthContext:
+    ctx = _require_auth(request)
+    if not ctx.is_system_admin:
+        raise HTTPException(status_code=403, detail="System admin access required")
+    return ctx
 
 
 def _is_db_connection_error(exc: BaseException) -> bool:
@@ -56,6 +147,118 @@ def handle_db_unavailable(request, exc):
 @api_app.get("/health")
 def health() -> Dict[str, str]:
     return {"status": "ok"}
+
+
+class BootstrapAdminBody(BaseModel):
+    email: str
+    username: str
+    password: str
+    display_name: str | None = None
+
+
+class LoginBody(BaseModel):
+    identifier: str
+    password: str
+
+
+class SwitchAccountBody(BaseModel):
+    account_id: int
+
+
+class CreateAccountAdminBody(BaseModel):
+    account_name: str
+    admin_email: str
+    admin_username: str
+    admin_password: str
+    admin_display_name: str | None = None
+
+
+@api_app.get("/auth/bootstrap-status")
+def auth_bootstrap_status() -> Dict[str, Any]:
+    return {"needs_bootstrap": needs_bootstrap()}
+
+
+@api_app.post("/auth/bootstrap-admin")
+def auth_bootstrap_admin(body: BootstrapAdminBody, request: Request, response: Response) -> Dict[str, Any]:
+    try:
+        session_token, payload = bootstrap_first_admin(
+            email=body.email,
+            username=body.username,
+            password=body.password,
+            display_name=body.display_name,
+            user_agent=request.headers.get("user-agent"),
+            ip_address=_client_ip(request),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    _set_session_cookie(response, request, session_token)
+    return payload
+
+
+@api_app.post("/auth/login")
+def auth_login_route(body: LoginBody, request: Request, response: Response) -> Dict[str, Any]:
+    try:
+        session_token, payload = auth_login(
+            identifier=body.identifier,
+            password=body.password,
+            user_agent=request.headers.get("user-agent"),
+            ip_address=_client_ip(request),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    _set_session_cookie(response, request, session_token)
+    return payload
+
+
+@api_app.post("/auth/logout")
+def auth_logout_route(request: Request, response: Response) -> Dict[str, Any]:
+    logout(_session_cookie_value(request))
+    _clear_session_cookie(response)
+    return {"ok": True}
+
+
+@api_app.get("/auth/me")
+def auth_me_route(request: Request) -> Dict[str, Any]:
+    payload = me_payload(_session_cookie_value(request))
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return payload
+
+
+@api_app.post("/auth/switch-account")
+def auth_switch_account_route(body: SwitchAccountBody, request: Request) -> Dict[str, Any]:
+    token = _session_cookie_value(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    try:
+        return switch_account(token, body.account_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@api_app.get("/admin/accounts")
+def admin_list_accounts_route(request: Request) -> Dict[str, Any]:
+    _require_system_admin(request)
+    return {"accounts": list_accounts_for_admin()}
+
+
+@api_app.post("/admin/accounts")
+def admin_create_account_route(
+    body: CreateAccountAdminBody,
+    request: Request,
+) -> Dict[str, Any]:
+    ctx = _require_system_admin(request)
+    try:
+        return create_account_with_admin(
+            requester_user_id=ctx.user_id,
+            account_name=body.account_name,
+            admin_email=body.admin_email,
+            admin_username=body.admin_username,
+            admin_password=body.admin_password,
+            admin_display_name=body.admin_display_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @api_app.get("/diag/environment")
@@ -288,7 +491,7 @@ def diag_check_payment(case_url: str) -> Dict[str, Any]:
         return {"ok": False, "case_url": case_url, "error": str(e)}
 
 
-def _safe_fetch_claim_records(area_id: int, progress_cb=None) -> Dict[str, Any]:
+def _safe_fetch_claim_records(area_id: int, progress_cb=None, account_id: int | None = None) -> Dict[str, Any]:
     """
     Safe wrapper for the BLM Fetch Claim Records action.
 
@@ -301,7 +504,13 @@ def _safe_fetch_claim_records(area_id: int, progress_cb=None) -> Dict[str, Any]:
         from mining_os.services.areas_of_focus import get_area
         from mining_os.services.fetch_claim_records import fetch_claim_records_for_area
 
-        area = get_area(area_id)
+        try:
+            area = get_area(area_id, account_id=account_id) if account_id is not None else get_area(area_id)
+        except TypeError as exc:
+            if account_id is not None and "account_id" in str(exc):
+                area = get_area(area_id)
+            else:
+                raise
         if not area:
             log.warning("fetch_claim_records: area_id=%s not found", area_id)
             return {
@@ -317,19 +526,24 @@ def _safe_fetch_claim_records(area_id: int, progress_cb=None) -> Dict[str, Any]:
             area.get("township"), area.get("range"), area.get("section"),
             area.get("latitude"), area.get("longitude"),
         )
+        fetch_kwargs = {
+            "state_abbr": area.get("state_abbr"),
+            "meridian": area.get("meridian"),
+            "township": area.get("township"),
+            "range_val": area.get("range"),
+            "section": area.get("section"),
+            "latitude": area.get("latitude"),
+            "longitude": area.get("longitude"),
+            "previous_claim_records": (area.get("characteristics") or {}).get("claim_records"),
+            "progress_cb": progress_cb,
+        }
+        if account_id is not None:
+            fetch_kwargs["account_id"] = account_id
         return fetch_claim_records_for_area(
             area_id,
             area.get("name") or "",
             area.get("location_plss"),
-            state_abbr=area.get("state_abbr"),
-            meridian=area.get("meridian"),
-            township=area.get("township"),
-            range_val=area.get("range"),
-            section=area.get("section"),
-            latitude=area.get("latitude"),
-            longitude=area.get("longitude"),
-            previous_claim_records=(area.get("characteristics") or {}).get("claim_records"),
-            progress_cb=progress_cb,
+            **fetch_kwargs,
         )
     except Exception as e:
         log.exception("safe_fetch_claim_records failed for area_id=%s: %s", area_id, e)
@@ -426,15 +640,35 @@ def _run_job(job_id: str, fn, *args, **kwargs) -> None:
     threading.Thread(target=_worker, name=f"job-{job_id[:8]}", daemon=True).start()
 
 
-def _safe_clear_characteristic_keys(area_id: int, keys: list[str]) -> Dict[str, Any]:
+def _safe_clear_characteristic_keys(
+    area_id: int,
+    keys: list[str],
+    account_id: int | None = None,
+) -> Dict[str, Any]:
     """Remove known snapshot keys from ``characteristics`` — never raises."""
     try:
         from mining_os.services.areas_of_focus import get_area, remove_area_characteristic_keys
 
-        area = get_area(area_id)
+        try:
+            area = get_area(area_id, account_id=account_id) if account_id is not None else get_area(area_id)
+        except TypeError as exc:
+            if account_id is not None and "account_id" in str(exc):
+                area = get_area(area_id)
+            else:
+                raise
         if not area:
             return {"ok": False, "error": "Area not found.", "removed": []}
-        ok = remove_area_characteristic_keys(area_id, keys)
+        try:
+            ok = (
+                remove_area_characteristic_keys(area_id, keys, account_id=account_id)
+                if account_id is not None
+                else remove_area_characteristic_keys(area_id, keys)
+            )
+        except TypeError as exc:
+            if account_id is not None and "account_id" in str(exc):
+                ok = remove_area_characteristic_keys(area_id, keys)
+            else:
+                raise
         removed = [k for k in keys if k in ("claim_records", "lr2000_geographic_index")]
         return {
             "ok": bool(ok),
@@ -446,14 +680,20 @@ def _safe_clear_characteristic_keys(area_id: int, keys: list[str]) -> Dict[str, 
         return {"ok": False, "removed": [], "error": str(e)}
 
 
-def _safe_lr2000_report(area_id: int) -> Dict[str, Any]:
+def _safe_lr2000_report(area_id: int, account_id: int | None = None) -> Dict[str, Any]:
     """Safe wrapper for the LR2000 / MLRS Geographic Index report (always structured JSON)."""
     log.info("safe_lr2000_report CALLED area_id=%s", area_id)
     try:
         from mining_os.services.areas_of_focus import get_area
         from mining_os.services.mlrs_geographic_index import run_lr2000_geographic_index_for_area
 
-        area = get_area(area_id)
+        try:
+            area = get_area(area_id, account_id=account_id) if account_id is not None else get_area(area_id)
+        except TypeError as exc:
+            if account_id is not None and "account_id" in str(exc):
+                area = get_area(area_id)
+            else:
+                raise
         if not area:
             return {
                 "ok": False,
@@ -465,7 +705,14 @@ def _safe_lr2000_report(area_id: int) -> Dict[str, Any]:
                 "input": {},
                 "source": None,
             }
-        return run_lr2000_geographic_index_for_area(area_id, area)
+        try:
+            if account_id is not None:
+                return run_lr2000_geographic_index_for_area(area_id, area, account_id=account_id)
+            return run_lr2000_geographic_index_for_area(area_id, area)
+        except TypeError as exc:
+            if account_id is not None and "account_id" in str(exc):
+                return run_lr2000_geographic_index_for_area(area_id, area)
+            raise
     except Exception as e:
         log.exception("safe_lr2000_report failed for area_id=%s: %s", area_id, e)
         return {
@@ -1184,13 +1431,14 @@ def api_check_blm(area_id: int) -> Dict[str, Any]:
 @api_app.post("/areas-of-focus/{area_id}/fetch-claim-records")
 def api_fetch_claim_records(area_id: int) -> Dict[str, Any]:
     """Run BLM claim search using stored PLSS fields + spatial fallback. Returns 200 with error in body when area not found."""
-    return _safe_fetch_claim_records(area_id)
+    return _safe_fetch_claim_records(area_id, account_id=current_account_id())
 
 
 @api_app.post("/areas-of-focus/{area_id}/fetch-claim-records/start")
 def api_fetch_claim_records_start(area_id: int) -> Dict[str, Any]:
     """Start the BLM claim search on a background thread. Returns ``{job_id}`` so the client can poll ``/jobs/{job_id}``."""
-    job_id = _new_job("fetch_claim_records", area_id=area_id)
+    account_id = current_account_id()
+    job_id = _new_job("fetch_claim_records", area_id=area_id, account_id=account_id)
     _set_job(
         job_id,
         progress={
@@ -1202,7 +1450,7 @@ def api_fetch_claim_records_start(area_id: int) -> Dict[str, Any]:
     def _job_progress(payload: Dict[str, Any]) -> None:
         _set_job(job_id, progress=payload)
 
-    _run_job(job_id, _safe_fetch_claim_records, area_id, progress_cb=_job_progress)
+    _run_job(job_id, _safe_fetch_claim_records, area_id, progress_cb=_job_progress, account_id=account_id)
     return {"ok": True, "job_id": job_id}
 
 
@@ -1210,7 +1458,7 @@ def api_fetch_claim_records_start(area_id: int) -> Dict[str, Any]:
 def api_get_job(job_id: str) -> Dict[str, Any]:
     """Poll endpoint for background jobs (Fetch Claim Records, LR2000, etc.)."""
     job = _get_job(job_id)
-    if not job:
+    if not job or int(job.get("account_id") or 0) != current_account_id():
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
@@ -1218,19 +1466,23 @@ def api_get_job(job_id: str) -> Dict[str, Any]:
 @api_app.post("/areas-of-focus/{area_id}/lr2000-geographic-report")
 def api_lr2000_geographic_report(area_id: int) -> Dict[str, Any]:
     """MLRS geographic mining-claims query (same national layer as BLM report 104), in-app — no browser."""
-    return _safe_lr2000_report(area_id)
+    return _safe_lr2000_report(area_id, account_id=current_account_id())
 
 
 @api_app.post("/areas-of-focus/{area_id}/clear-claim-records")
 def api_clear_claim_records_snapshot(area_id: int) -> Dict[str, Any]:
     """Remove stored ``characteristics.claim_records`` snapshot for this target."""
-    return _safe_clear_characteristic_keys(area_id, ["claim_records"])
+    return _safe_clear_characteristic_keys(area_id, ["claim_records"], account_id=current_account_id())
 
 
 @api_app.post("/areas-of-focus/{area_id}/clear-lr2000-report")
 def api_clear_lr2000_snapshot(area_id: int) -> Dict[str, Any]:
     """Remove stored ``characteristics.lr2000_geographic_index`` snapshot for this target."""
-    return _safe_clear_characteristic_keys(area_id, ["lr2000_geographic_index"])
+    return _safe_clear_characteristic_keys(
+        area_id,
+        ["lr2000_geographic_index"],
+        account_id=current_account_id(),
+    )
 
 
 @api_app.post("/areas-of-focus/{area_id}/generate-report")
@@ -1519,13 +1771,30 @@ async def log_requests(request, call_next):
             pass
 
     _write(f"REQUEST {method} {path}\n")
+    session_token = _session_cookie_value(request)
+    auth_ctx = resolve_session(session_token)
+    request.state.auth_context = auth_ctx
+    auth_token = set_auth_context(auth_ctx) if auth_ctx is not None else None
     try:
+        if path.startswith("/api") and not _is_public_api_path(path) and auth_ctx is None:
+            response = JSONResponse(status_code=401, content={"detail": "Authentication required"})
+            if session_token:
+                _clear_session_cookie(response)
+            status = response.status_code
+            log.info("RESPONSE %s %s -> %s", method, path, status)
+            _write(f"RESPONSE {method} {path} -> {status}\n")
+            return response
         response = await call_next(request)
     except Exception as e:
         log.exception("Request failed: %s %s", method, path)
         _write(f"RESPONSE {method} {path} -> 500 (exception)\n")
         raise
+    finally:
+        if auth_token is not None:
+            reset_auth_context(auth_token)
     status = response.status_code
+    if session_token and auth_ctx is None:
+        _clear_session_cookie(response)
     log.info("RESPONSE %s %s -> %s", method, path, status)
     _write(f"RESPONSE {method} {path} -> {status}\n")
     return response
@@ -1847,7 +2116,7 @@ def set_area_plss_components_toplevel(
 @app.post("/api/areas-of-focus/{area_id}/fetch-claim-records")
 def fetch_claim_records_toplevel(area_id: int) -> Dict[str, Any]:
     """Run BLM claim search using stored PLSS fields + spatial fallback. Explicit route so request is not 404."""
-    return _safe_fetch_claim_records(area_id)
+    return _safe_fetch_claim_records(area_id, account_id=current_account_id())
 
 
 @app.post("/api/areas-of-focus/{area_id}/fetch-claim-records/start")
@@ -1864,17 +2133,21 @@ def get_job_toplevel(job_id: str) -> Dict[str, Any]:
 
 @app.post("/api/areas-of-focus/{area_id}/lr2000-geographic-report")
 def lr2000_geographic_report_toplevel(area_id: int) -> Dict[str, Any]:
-    return _safe_lr2000_report(area_id)
+    return _safe_lr2000_report(area_id, account_id=current_account_id())
 
 
 @app.post("/api/areas-of-focus/{area_id}/clear-claim-records")
 def clear_claim_records_snapshot_toplevel(area_id: int) -> Dict[str, Any]:
-    return _safe_clear_characteristic_keys(area_id, ["claim_records"])
+    return _safe_clear_characteristic_keys(area_id, ["claim_records"], account_id=current_account_id())
 
 
 @app.post("/api/areas-of-focus/{area_id}/clear-lr2000-report")
 def clear_lr2000_snapshot_toplevel(area_id: int) -> Dict[str, Any]:
-    return _safe_clear_characteristic_keys(area_id, ["lr2000_geographic_index"])
+    return _safe_clear_characteristic_keys(
+        area_id,
+        ["lr2000_geographic_index"],
+        account_id=current_account_id(),
+    )
 
 
 @app.get("/api/diag/check-payment")

@@ -14,6 +14,7 @@ from sqlalchemy import text
 
 from mining_os.config import settings
 from mining_os.db import get_engine
+from mining_os.services.auth import current_account_id, get_auth_context
 
 log = logging.getLogger("mining_os.automation_engine")
 
@@ -45,6 +46,10 @@ FILTER_KEYS = [
 
 MAX_TARGETS_CAP = 200
 PAUSE_BETWEEN_TARGETS_SEC = 0.3
+
+
+def _effective_account_id(account_id: int | None = None) -> int:
+    return int(account_id or current_account_id())
 
 
 # ---------------------------------------------------------------------------
@@ -90,24 +95,40 @@ def _row_to_dict(row: Any) -> dict[str, Any]:
     return d
 
 
-def list_rules() -> list[dict[str, Any]]:
+def list_rules(account_id: int | None = None, *, all_accounts: bool = False) -> list[dict[str, Any]]:
     _ensure_tables()
+    ctx = get_auth_context()
+    scoped_account_id = int(account_id) if account_id is not None else (ctx.active_account_id if ctx else None)
     eng = get_engine()
     with eng.begin() as conn:
-        rows = conn.execute(
-            text("SELECT * FROM automation_rules ORDER BY created_at DESC")
-        ).mappings().all()
+        if all_accounts or scoped_account_id is None:
+            rows = conn.execute(
+                text("SELECT * FROM automation_rules ORDER BY created_at DESC")
+            ).mappings().all()
+        else:
+            rows = conn.execute(
+                text("SELECT * FROM automation_rules WHERE account_id = :account_id ORDER BY created_at DESC"),
+                {"account_id": scoped_account_id},
+            ).mappings().all()
         return [_row_to_dict(r) for r in rows]
 
 
-def get_rule(rule_id: int) -> dict[str, Any] | None:
+def get_rule(rule_id: int, account_id: int | None = None) -> dict[str, Any] | None:
     _ensure_tables()
+    ctx = get_auth_context()
+    scoped_account_id = int(account_id) if account_id is not None else (ctx.active_account_id if ctx else None)
     eng = get_engine()
     with eng.begin() as conn:
-        row = conn.execute(
-            text("SELECT * FROM automation_rules WHERE id = :id"),
-            {"id": rule_id},
-        ).mappings().first()
+        if scoped_account_id is None:
+            row = conn.execute(
+                text("SELECT * FROM automation_rules WHERE id = :id"),
+                {"id": rule_id},
+            ).mappings().first()
+        else:
+            row = conn.execute(
+                text("SELECT * FROM automation_rules WHERE id = :id AND account_id = :account_id"),
+                {"id": rule_id, "account_id": scoped_account_id},
+            ).mappings().first()
         return _row_to_dict(row) if row else None
 
 
@@ -119,8 +140,10 @@ def create_rule(
     schedule_cron: str | None = None,
     max_targets: int = 50,
     enabled: bool = True,
+    account_id: int | None = None,
 ) -> dict[str, Any]:
     _ensure_tables()
+    account_id = _effective_account_id(account_id)
     if action_type not in ACTION_TYPES:
         raise ValueError(f"action_type must be one of {ACTION_TYPES}")
     if outcome_type not in OUTCOME_TYPES:
@@ -132,12 +155,13 @@ def create_rule(
         row = conn.execute(
             text("""
             INSERT INTO automation_rules
-                (name, enabled, filter_config, action_type, outcome_type, schedule_cron, max_targets)
+                (account_id, name, enabled, filter_config, action_type, outcome_type, schedule_cron, max_targets)
             VALUES
-                (:name, :enabled, CAST(:fc AS jsonb), :action_type, :outcome_type, :schedule_cron, :max_targets)
+                (:account_id, :name, :enabled, CAST(:fc AS jsonb), :action_type, :outcome_type, :schedule_cron, :max_targets)
             RETURNING *
             """),
             {
+                "account_id": account_id,
                 "name": name.strip(),
                 "enabled": enabled,
                 "fc": fc,
@@ -150,14 +174,15 @@ def create_rule(
         return _row_to_dict(row) if row else {}
 
 
-def update_rule(rule_id: int, **kwargs: Any) -> dict[str, Any] | None:
+def update_rule(rule_id: int, account_id: int | None = None, **kwargs: Any) -> dict[str, Any] | None:
     _ensure_tables()
+    account_id = _effective_account_id(account_id)
     allowed = {
         "name", "enabled", "filter_config", "action_type",
         "outcome_type", "schedule_cron", "max_targets",
     }
     sets = []
-    params: dict[str, Any] = {"id": rule_id}
+    params: dict[str, Any] = {"id": rule_id, "account_id": account_id}
     for k, v in kwargs.items():
         if k not in allowed:
             continue
@@ -186,19 +211,20 @@ def update_rule(rule_id: int, **kwargs: Any) -> dict[str, Any] | None:
     eng = get_engine()
     with eng.begin() as conn:
         row = conn.execute(
-            text(f"UPDATE automation_rules SET {', '.join(sets)} WHERE id = :id RETURNING *"),
+            text(f"UPDATE automation_rules SET {', '.join(sets)} WHERE id = :id AND account_id = :account_id RETURNING *"),
             params,
         ).mappings().first()
         return _row_to_dict(row) if row else None
 
 
-def delete_rule(rule_id: int) -> bool:
+def delete_rule(rule_id: int, account_id: int | None = None) -> bool:
     _ensure_tables()
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
     with eng.begin() as conn:
         r = conn.execute(
-            text("DELETE FROM automation_rules WHERE id = :id"),
-            {"id": rule_id},
+            text("DELETE FROM automation_rules WHERE id = :id AND account_id = :account_id"),
+            {"id": rule_id, "account_id": account_id},
         )
         return (r.rowcount or 0) > 0
 
@@ -211,12 +237,15 @@ def list_runs(
     rule_id: int | None = None,
     limit: int = 100,
     offset: int = 0,
+    account_id: int | None = None,
 ) -> list[dict[str, Any]]:
     _ensure_tables()
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
-    where = "WHERE r.rule_id = :rule_id" if rule_id else ""
-    params: dict[str, Any] = {"limit": min(limit, 500), "offset": max(offset, 0)}
+    where = "WHERE ar.account_id = :account_id"
+    params: dict[str, Any] = {"account_id": account_id, "limit": min(limit, 500), "offset": max(offset, 0)}
     if rule_id:
+        where += " AND r.rule_id = :rule_id"
         params["rule_id"] = rule_id
     with eng.begin() as conn:
         rows = conn.execute(
@@ -233,8 +262,9 @@ def list_runs(
         return [_row_to_dict(r) for r in rows]
 
 
-def get_run(run_id: int) -> dict[str, Any] | None:
+def get_run(run_id: int, account_id: int | None = None) -> dict[str, Any] | None:
     _ensure_tables()
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
     with eng.begin() as conn:
         row = conn.execute(
@@ -242,9 +272,9 @@ def get_run(run_id: int) -> dict[str, Any] | None:
             SELECT r.*, ar.name AS rule_name, ar.action_type
             FROM automation_run_log r
             LEFT JOIN automation_rules ar ON ar.id = r.rule_id
-            WHERE r.id = :id
+            WHERE r.id = :id AND ar.account_id = :account_id
             """),
-            {"id": run_id},
+            {"id": run_id, "account_id": account_id},
         ).mappings().first()
         return _row_to_dict(row) if row else None
 
@@ -312,7 +342,12 @@ def _finish_run_log(
 # Action executors
 # ---------------------------------------------------------------------------
 
-def _run_action_on_target(action_type: str, area: dict[str, Any]) -> dict[str, Any]:
+def _run_action_on_target(
+    action_type: str,
+    area: dict[str, Any],
+    *,
+    account_id: int | None = None,
+) -> dict[str, Any]:
     """Run one action on one target. Returns {ok, changed, claims_count?, status?, error?}."""
     aid = area["id"]
     name = area.get("name") or ""
@@ -326,6 +361,7 @@ def _run_action_on_target(action_type: str, area: dict[str, Any]) -> dict[str, A
                 aid,
                 name,
                 area.get("location_plss"),
+                account_id=account_id,
                 state_abbr=area.get("state_abbr"),
                 meridian=area.get("meridian"),
                 township=area.get("township"),
@@ -345,7 +381,7 @@ def _run_action_on_target(action_type: str, area: dict[str, Any]) -> dict[str, A
         old_chars = area.get("characteristics") or {}
         old_count = len((old_chars.get("lr2000_geographic_index") or {}).get("claims") or [])
         try:
-            res = run_lr2000_geographic_index_for_area(aid, area)
+            res = run_lr2000_geographic_index_for_area(aid, area, account_id=account_id)
             new_count = res.get("claims_count", 0)
             changed = new_count != old_count
             return {"ok": True, "changed": changed, "claims_count": new_count}
@@ -372,7 +408,7 @@ def _run_action_on_target(action_type: str, area: dict[str, Any]) -> dict[str, A
     if action_type == "generate_report":
         from mining_os.services.areas_of_focus import get_area
         try:
-            full = get_area(aid)
+            full = get_area(aid, account_id=account_id)
             if not full:
                 return {"ok": False, "error": "Target not found"}
             return {"ok": True, "changed": False, "note": "Report generation logged"}
@@ -386,7 +422,12 @@ def _run_action_on_target(action_type: str, area: dict[str, Any]) -> dict[str, A
 # Filter targets
 # ---------------------------------------------------------------------------
 
-def _filter_targets(filter_config: dict[str, Any], max_targets: int) -> list[dict[str, Any]]:
+def _filter_targets(
+    filter_config: dict[str, Any],
+    max_targets: int,
+    *,
+    account_id: int | None = None,
+) -> list[dict[str, Any]]:
     from mining_os.services.areas_of_focus import list_areas
 
     params: dict[str, Any] = {}
@@ -411,6 +452,7 @@ def _filter_targets(filter_config: dict[str, Any], max_targets: int) -> list[dic
         sector=params.get("sector"),
         name=params.get("name"),
         limit=limit * 5,
+        account_id=account_id,
     )
 
     if priority:
@@ -487,9 +529,13 @@ def _send_outcome_email(
 # Main executor
 # ---------------------------------------------------------------------------
 
-def execute_rule(rule_id: int, trigger_type: str = "manual") -> dict[str, Any]:
+def execute_rule(
+    rule_id: int,
+    trigger_type: str = "manual",
+    account_id: int | None = None,
+) -> dict[str, Any]:
     """Run one automation rule now. Returns the run log summary."""
-    rule = get_rule(rule_id)
+    rule = get_rule(rule_id, account_id=account_id)
     if not rule:
         return {"ok": False, "error": "Rule not found"}
     if not rule.get("enabled") and trigger_type == "scheduled":
@@ -499,6 +545,7 @@ def execute_rule(rule_id: int, trigger_type: str = "manual") -> dict[str, Any]:
     outcome_type = rule.get("outcome_type", "log_only")
     filter_config = rule.get("filter_config") or {}
     max_targets = rule.get("max_targets", 50)
+    rule_account_id = int(rule["account_id"])
 
     run_id = _create_run_log(rule_id, trigger_type)
     log.info(
@@ -507,7 +554,7 @@ def execute_rule(rule_id: int, trigger_type: str = "manual") -> dict[str, Any]:
     )
 
     try:
-        areas = _filter_targets(filter_config, max_targets)
+        areas = _filter_targets(filter_config, max_targets, account_id=rule_account_id)
     except Exception as e:
         log.exception("Automation run #%d filter failed", run_id)
         _finish_run_log(
@@ -530,7 +577,7 @@ def execute_rule(rule_id: int, trigger_type: str = "manual") -> dict[str, Any]:
         aid = area["id"]
         name = area.get("name") or f"#{aid}"
         try:
-            res = _run_action_on_target(action_type, area)
+            res = _run_action_on_target(action_type, area, account_id=rule_account_id)
         except Exception as e:
             res = {"ok": False, "error": str(e)}
 

@@ -285,6 +285,7 @@ def fetch_claim_records_for_area(
     longitude: float | None = None,
     previous_claim_records: dict[str, Any] | None = None,
     progress_cb: Callable[[dict[str, Any]], None] | None = None,
+    account_id: int | None = None,
 ) -> dict[str, Any]:
     """
     Query BLM for mining claims.  Strategy:
@@ -529,10 +530,15 @@ def fetch_claim_records_for_area(
             payload["ok"] = False
 
         from mining_os.services.areas_of_focus import merge_area_characteristics, update_area_status
-        merge_area_characteristics(area_id, {"claim_records": payload})
+        merge_area_characteristics(area_id, {"claim_records": payload}, account_id=account_id)
 
         from mining_os.services.areas_of_focus import update_area_state_meridian
-        update_area_state_meridian(area_id, plss_row["State"], plss_row["Meridian"])
+        update_area_state_meridian(
+            area_id,
+            plss_row["State"],
+            plss_row["Meridian"],
+            account_id=account_id,
+        )
 
         if claims:
             statuses = {(c.get("payment_status") or "unknown").lower() for c in claims}
@@ -549,9 +555,9 @@ def fetch_claim_records_for_area(
                 if (c.get("BLM_PROD") or "").strip()
             })
 
-            update_area_status(area_id, status=derived_status)
+            update_area_status(area_id, status=derived_status, account_id=account_id)
             if blm_prod_types:
-                merge_area_characteristics(area_id, {"blm_prod_types": blm_prod_types})
+                merge_area_characteristics(area_id, {"blm_prod_types": blm_prod_types}, account_id=account_id)
 
         return {
             "ok": payload["ok"],
