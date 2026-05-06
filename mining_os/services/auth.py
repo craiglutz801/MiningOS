@@ -123,6 +123,22 @@ def current_account_id() -> int:
 def has_any_users() -> bool:
     eng = get_engine()
     with eng.begin() as conn:
+        users_table_exists = bool(
+            conn.execute(
+                text(
+                    """
+                    SELECT EXISTS (
+                      SELECT 1
+                      FROM information_schema.tables
+                      WHERE table_schema = 'public'
+                        AND table_name = 'users'
+                    )
+                    """
+                )
+            ).scalar()
+        )
+        if not users_table_exists:
+            return False
         count = conn.execute(text("SELECT COUNT(*)::int FROM users")).scalar() or 0
     return bool(count)
 
