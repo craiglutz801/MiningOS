@@ -79,6 +79,14 @@ class TestHealth:
         assert r.json()["status"] == "ok"
 
 
+class TestAuthBootstrap:
+    def test_bootstrap_status_returns_200(self, client, monkeypatch):
+        monkeypatch.setattr("mining_os.api.main.needs_bootstrap", lambda: True)
+        r = client.get("/api/auth/bootstrap-status")
+        assert r.status_code == 200
+        assert r.json() == {"needs_bootstrap": True}
+
+
 class TestAreaSummaryRoutes:
     def test_summary_returns_200(self, client, monkeypatch):
         payload = {

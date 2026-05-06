@@ -7,7 +7,7 @@
 #
 # Dashboard manual overrides should match:
 #   Build Command:  pip install … && python -m playwright install chromium && cd frontend && npm ci && npm run build
-#   Start Command:  uvicorn mining_os.api.main:app --host 0.0.0.0 --port $PORT
+#   Start Command:  python -m mining_os.pipelines.run_all --init-db && uvicorn mining_os.api.main:app --host 0.0.0.0 --port $PORT
 #
 # Playwright Chromium is required so Fetch Claim Records can read the MLRS Lightning SPA
 # (maintenance-fee banner). Without ``python -m playwright install chromium`` the API runs but
@@ -19,7 +19,7 @@ services:
     runtime: python
     plan: starter
     buildCommand: "pip install --upgrade pip && pip install -r requirements.txt && python -m playwright install chromium && cd frontend && npm ci && npm run build"
-    startCommand: "uvicorn mining_os.api.main:app --host 0.0.0.0 --port $PORT"
+    startCommand: "python -m mining_os.pipelines.run_all --init-db && uvicorn mining_os.api.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
