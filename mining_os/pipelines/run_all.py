@@ -48,6 +48,25 @@ def _auth_schema_present() -> bool:
         )
 
 
+def _base_app_schema_present() -> bool:
+    eng = get_engine()
+    with eng.begin() as conn:
+        return bool(
+            conn.execute(
+                text(
+                    """
+                    SELECT EXISTS (
+                      SELECT 1
+                      FROM information_schema.tables
+                      WHERE table_schema = 'public'
+                        AND table_name = 'areas_of_focus'
+                    )
+                    """
+                )
+            ).scalar()
+        )
+
+
 def init_db() -> None:
     sql_dir = Path(__file__).resolve().parents[1] / "sql"
     pre_auth_sql = [
@@ -76,13 +95,17 @@ def init_db() -> None:
         "019_accounts_auth.sql",
     ]
     auth_present = _auth_schema_present()
-    sql_sequence = auth_safe_sql if auth_present else pre_auth_sql
+    base_schema_present = _base_app_schema_present()
+    # Existing production databases should skip the legacy bootstrap path.
+    # That path re-runs older heavyweight migrations (notably 008) and can
+    # time out before newer account/auth migrations are applied.
+    sql_sequence = auth_safe_sql if (auth_present or base_schema_present) else pre_auth_sql
     for name in sql_sequence:
         sql_path = sql_dir / name
         if sql_path.exists():
             exec_sql(sql_path.read_text())
             log.info("DB initialised from %s", sql_path)
-    if not auth_present:
+    if not auth_present and not base_schema_present:
         # Section-level (sector) PLSS: backfill plss_normalized then re-merge duplicates
         try:
             from mining_os.services.areas_of_focus import backfill_plss_normalized_to_section
