@@ -31,11 +31,11 @@ def patched_persist(monkeypatch):
     """Stub out the DB writers so unit tests don't touch Postgres."""
     monkeypatch.setattr(
         "mining_os.services.areas_of_focus.merge_area_characteristics",
-        lambda area_id, updates: True,
+        lambda area_id, updates, **kwargs: True,
     )
     monkeypatch.setattr(
         "mining_os.services.areas_of_focus.update_area_state_meridian",
-        lambda area_id, state, meridian: True,
+        lambda area_id, state, meridian, **kwargs: True,
     )
     monkeypatch.setattr(
         "mining_os.services.areas_of_focus.update_area_status",
@@ -50,9 +50,11 @@ class TestFallbackWhenAgentMissing:
         monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
 
         api_called = {"plss": 0, "coords": 0}
+        seen_sections: list[str | None] = []
 
         def fake_query_by_plss_with_status(**kwargs):
             api_called["plss"] += 1
+            seen_sections.append(kwargs.get("section"))
             return (
                 True,
                 [
@@ -95,6 +97,7 @@ class TestFallbackWhenAgentMissing:
         assert len(result["claims"]) == 1
         assert result["claims"][0]["claim_name"] == "TEST CLAIM"
         assert api_called["plss"] >= 1, "built-in PLSS API should have been queried"
+        assert seen_sections == ["23"]
 
     def test_no_agent_no_results_returns_clean_error(self, monkeypatch, patched_persist):
         monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
@@ -160,6 +163,50 @@ class TestFallbackWhenAgentMissing:
         assert len(result["claims"]) == 1
         assert result["claims"][0]["claim_name"] == "SPATIAL HIT"
         assert spatial_called, "spatial fallback should have been invoked"
+
+    def test_no_agent_broadens_only_after_empty_section_query(self, monkeypatch, patched_persist):
+        monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
+
+        seen_sections: list[str | None] = []
+
+        def fake_query_by_plss_with_status(**kwargs):
+            seen_sections.append(kwargs.get("section"))
+            if kwargs.get("section") == "23":
+                return True, []
+            return True, [
+                {
+                    "claim_name": "BROAD HIT",
+                    "serial_number": "UMC999",
+                    "payment_status": "paid",
+                }
+            ]
+
+        monkeypatch.setattr(
+            "mining_os.services.blm_plss.query_claims_by_plss_with_status",
+            fake_query_by_plss_with_status,
+        )
+        monkeypatch.setattr(
+            "mining_os.services.blm_plss.query_claims_by_coords",
+            lambda *a, **kw: [],
+        )
+
+        result = fcr.fetch_claim_records_for_area(
+            area_id=8,
+            area_name="Broaden me",
+            location_plss=None,
+            state_abbr="UT",
+            meridian="26",
+            township="12S",
+            range_val="14E",
+            section="23",
+            latitude=38.5,
+            longitude=-110.5,
+        )
+
+        assert result["ok"] is True
+        assert len(result["claims"]) == 1
+        assert result["claims"][0]["claim_name"] == "BROAD HIT"
+        assert seen_sections == ["23", None]
 
 
 class TestNormalizeClaims:

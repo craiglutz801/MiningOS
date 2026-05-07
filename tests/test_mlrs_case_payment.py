@@ -169,3 +169,24 @@ def test_enrich_reports_progress(monkeypatch):
     assert [c["payment_status"] for c in out] == ["paid", "paid"]
     assert any((evt.get("phase") == "payment_cache") for evt in progress_events)
     assert any((evt.get("phase") == "payment_enrich" and evt.get("current") == 2) for evt in progress_events)
+
+
+def test_enrich_skips_large_batches_to_protect_service(monkeypatch):
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_SELENIUM", "0")
+    monkeypatch.setenv("MINING_OS_MLRS_ENRICH_INPROC", "1")
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_MAX_CLAIMS", "1")
+    with mcp._PAYMENT_CACHE_LOCK:
+        mcp._PAYMENT_CACHE.clear()
+
+    progress_events: list[dict[str, object]] = []
+    claims = [
+        {"serial_number": "A", "payment_status": "unknown", "case_page": "https://mlrs.blm.gov/s/blm-case/a/a"},
+        {"serial_number": "B", "payment_status": "unknown", "case_page": "https://mlrs.blm.gov/s/blm-case/a/b"},
+    ]
+
+    with patch("mining_os.services.mlrs_case_payment.requests.get") as mock_get:
+        out = mcp.enrich_claims_from_mlrs_case_pages(claims, progress_cb=progress_events.append)
+
+    assert [c["payment_status"] for c in out] == ["unknown", "unknown"]
+    assert not mock_get.called
+    assert any("Skipping payment-status browser checks" in str(evt.get("message")) for evt in progress_events)

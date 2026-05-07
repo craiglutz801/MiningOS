@@ -422,20 +422,61 @@ def fetch_claim_records_for_area(
             log.info("fetch_claim_records [api]: trying built-in PLSS API query")
             try:
                 from mining_os.services.blm_plss import query_claims_by_plss_with_status
+
+                section_filter = plss_row["Section"] or None
                 queried_ok, api_claims = query_claims_by_plss_with_status(
                     state=plss_row["State"],
                     township=plss_row["Township"],
                     range_val=plss_row["Range"],
-                    section=None,
+                    section=section_filter,
                     meridian=plss_row["Meridian"],
                 )
                 built_in_api_queried_ok = queried_ok
                 if api_claims:
                     claims = _normalize_claims(api_claims)
                     query_method = "built_in_api"
-                    log_text += f"\n[built-in API] Found {len(claims)} claim(s) via direct query (no section filter)"
+                    if section_filter:
+                        log_text += (
+                            f"\n[built-in API] Found {len(claims)} claim(s) via direct query "
+                            f"for section {section_filter}."
+                        )
+                    else:
+                        log_text += (
+                            f"\n[built-in API] Found {len(claims)} claim(s) via direct query "
+                            "(no section filter)."
+                        )
                 elif queried_ok:
-                    log_text += "\n[built-in API] BLM responded successfully with 0 claims for this PLSS."
+                    if section_filter:
+                        log.info(
+                            "fetch_claim_records [api]: section-level returned 0 — broadening to full T/R"
+                        )
+                        queried_ok, api_claims = query_claims_by_plss_with_status(
+                            state=plss_row["State"],
+                            township=plss_row["Township"],
+                            range_val=plss_row["Range"],
+                            section=None,
+                            meridian=plss_row["Meridian"],
+                        )
+                        built_in_api_queried_ok = queried_ok
+                        if api_claims:
+                            claims = _normalize_claims(api_claims)
+                            query_method = "built_in_api_broadened"
+                            log_text += (
+                                f"\n[built-in API] Section {section_filter} returned 0 claims; "
+                                f"broadened to township/range and found {len(claims)} claim(s)."
+                            )
+                        elif queried_ok:
+                            log_text += (
+                                f"\n[built-in API] Section {section_filter} returned 0 claims. "
+                                "Township/range broadening also returned 0 claims."
+                            )
+                        else:
+                            log_text += (
+                                f"\n[built-in API] Section {section_filter} returned 0 claims, "
+                                "then the broadened township/range query did not respond successfully."
+                            )
+                    else:
+                        log_text += "\n[built-in API] BLM responded successfully with 0 claims for this PLSS."
                 else:
                     log_text += "\n[built-in API] BLM MLRS service did not respond successfully."
             except ModuleNotFoundError as e:

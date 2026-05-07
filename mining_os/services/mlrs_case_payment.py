@@ -75,6 +75,16 @@ def _resolve_parallel_workers() -> int:
     return max(1, min(workers, 4))
 
 
+def _resolve_payment_max_claims() -> int:
+    default_limit = "60" if _paas_host() else "200"
+    raw = (os.getenv("MINING_OS_MLRS_PAYMENT_MAX_CLAIMS") or default_limit).strip()
+    try:
+        limit = int(raw)
+    except ValueError:
+        limit = int(default_limit)
+    return max(1, limit)
+
+
 def _resolve_cache_ttl_seconds() -> int:
     raw = (os.getenv("MINING_OS_MLRS_PAYMENT_CACHE_TTL_HOURS") or "24").strip()
     try:
@@ -627,6 +637,24 @@ def enrich_claims_from_mlrs_case_pages(
                 }
             )
     if not candidates:
+        return claims
+
+    max_claims = _resolve_payment_max_claims()
+    if len(candidates) > max_claims:
+        message = (
+            f"Skipping payment-status browser checks for {len(candidates)} claim(s) "
+            f"(limit {max_claims}); leaving payment_status as unknown to keep the fetch reliable."
+        )
+        log.warning("mlrs payment enrich: %s", message)
+        if progress_cb:
+            progress_cb(
+                {
+                    "phase": "payment_enrich",
+                    "current": cache_hits,
+                    "total": total,
+                    "message": message,
+                }
+            )
         return claims
 
     subset = [claim for _, claim in candidates]
