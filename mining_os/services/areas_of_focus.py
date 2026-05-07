@@ -1366,8 +1366,14 @@ def update_area_plss_components(
     }
 
 
-def update_area_status(id: int, status: str, blm_serial_number: str | None = None, blm_case_url: str | None = None) -> bool:
-    account_id = _effective_account_id()
+def update_area_status(
+    id: int,
+    status: str,
+    blm_serial_number: str | None = None,
+    blm_case_url: str | None = None,
+    account_id: int | None = None,
+) -> bool:
+    account_id = _effective_account_id(account_id)
     eng = get_engine()
     with eng.begin() as conn:
         r = conn.execute(
