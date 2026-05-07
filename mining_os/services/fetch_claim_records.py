@@ -271,6 +271,43 @@ def _normalize_claims(claims: list[dict]) -> list[dict]:
     return normalized
 
 
+def _claim_identity_key(claim: dict[str, Any]) -> str | None:
+    serial = str(claim.get("serial_number") or claim.get("CSE_NR") or "").strip().upper()
+    if serial:
+        return f"serial:{serial}"
+    case_page = str(claim.get("case_page") or "").strip()
+    if case_page:
+        return f"case:{case_page}"
+    name = str(claim.get("claim_name") or claim.get("CSE_NAME") or "").strip().upper()
+    plss = str(claim.get("plss") or claim.get("CSE_META") or "").strip().upper()
+    if name:
+        return f"name:{name}|plss:{plss}"
+    return None
+
+
+def _merge_claim_lists(*claim_groups: list[dict]) -> list[dict]:
+    merged: list[dict] = []
+    seen: dict[str, dict[str, Any]] = {}
+
+    for group in claim_groups:
+        for claim in _normalize_claims(group):
+            if not isinstance(claim, dict):
+                continue
+            key = _claim_identity_key(claim)
+            if not key:
+                merged.append(claim)
+                continue
+            existing = seen.get(key)
+            if existing is None:
+                seen[key] = claim
+                merged.append(claim)
+                continue
+            for field, value in claim.items():
+                if existing.get(field) in (None, "", [], {}) and value not in (None, "", [], {}):
+                    existing[field] = value
+    return merged
+
+
 def fetch_claim_records_for_area(
     area_id: int,
     area_name: str,
@@ -291,8 +328,9 @@ def fetch_claim_records_for_area(
     Query BLM for mining claims.  Strategy:
       1. Run BLM_ClaimAgent script with section.
       2. If 0 claims and section was set, re-run without section (whole township/range).
-      3. If still 0 and lat/lon available, try spatial query.
-      4. If still 0, try built-in direct API query.
+      3. If still 0, try built-in direct PLSS API query.
+      4. If lat/lon is available, augment with nearby spatial claims so the result
+         reflects the broader mine area rather than only the saved section.
     """
     # Prefer already-parsed DB fields over re-parsing the PLSS string
     if state_abbr and township and range_val:
@@ -390,29 +428,7 @@ def fetch_claim_records_for_area(
         # so we can surface it instead of the generic "no claims" message.
         fatal_env_error: str | None = None
 
-        # ── Pass 3: spatial fallback via lat/lon ──
-        if not claims and latitude is not None and longitude is not None:
-            _progress(progress_cb, phase="spatial_query", message="Trying nearby-coordinate claim search…")
-            log.info("fetch_claim_records [spatial]: trying coords (%.5f, %.5f)", latitude, longitude)
-            try:
-                from mining_os.services.blm_plss import query_claims_by_coords
-                spatial = query_claims_by_coords(latitude, longitude, radius_meters=2000)
-                if spatial:
-                    claims = _normalize_claims(spatial)
-                    query_method = "spatial"
-                    log_text += f"\n[spatial] Found {len(claims)} claim(s) within 2 km of ({latitude}, {longitude})"
-            except ModuleNotFoundError as e:
-                fatal_env_error = (
-                    f"Server dependency missing: {e.name!r}. "
-                    "Re-deploy with all runtime dependencies installed "
-                    "(see requirements.txt)."
-                )
-                log.error("fetch_claim_records: spatial import failed: %s", e)
-            except Exception as e:
-                log.warning("fetch_claim_records: spatial fallback failed: %s", e)
-                log_text += f"\n[spatial] error: {e}"
-
-        # ── Pass 4: built-in direct API (last resort) ──
+        # ── Pass 3: built-in direct API ──
         # Track whether the built-in API actually got a successful response from BLM
         # (vs. a network/service failure). "Successful query, 0 claims" is a valid
         # answer and should NOT be reported as an error.
@@ -491,6 +507,50 @@ def fetch_claim_records_for_area(
                 built_in_api_queried_ok = False
                 log.warning("fetch_claim_records: built-in API failed: %s", e)
                 log_text += f"\n[built-in API] error: {e}"
+
+        # ── Pass 4: spatial augmentation / fallback via lat/lon ──
+        if latitude is not None and longitude is not None:
+            progress_message = (
+                "Augmenting with nearby-coordinate claim search…"
+                if claims
+                else "Trying nearby-coordinate claim search…"
+            )
+            _progress(progress_cb, phase="spatial_query", message=progress_message)
+            log.info("fetch_claim_records [spatial]: trying coords (%.5f, %.5f)", latitude, longitude)
+            try:
+                from mining_os.services.blm_plss import query_claims_by_coords
+                spatial = query_claims_by_coords(latitude, longitude, radius_meters=2000)
+                if spatial:
+                    spatial_claims = _normalize_claims(spatial)
+                    if claims:
+                        merged_claims = _merge_claim_lists(claims, spatial_claims)
+                        added = len(merged_claims) - len(claims)
+                        claims = merged_claims
+                        if added > 0:
+                            query_method = f"{query_method}_plus_spatial"
+                            log_text += (
+                                f"\n[spatial] Added {added} nearby claim(s) within 2 km of "
+                                f"({latitude}, {longitude}); total claims now {len(claims)}."
+                            )
+                        else:
+                            log_text += (
+                                f"\n[spatial] Nearby-coordinate query found only claims already present "
+                                f"in the PLSS result set ({len(claims)} total)."
+                            )
+                    else:
+                        claims = spatial_claims
+                        query_method = "spatial"
+                        log_text += f"\n[spatial] Found {len(claims)} claim(s) within 2 km of ({latitude}, {longitude})"
+            except ModuleNotFoundError as e:
+                fatal_env_error = (
+                    f"Server dependency missing: {e.name!r}. "
+                    "Re-deploy with all runtime dependencies installed "
+                    "(see requirements.txt)."
+                )
+                log.error("fetch_claim_records: spatial import failed: %s", e)
+            except Exception as e:
+                log.warning("fetch_claim_records: spatial fallback failed: %s", e)
+                log_text += f"\n[spatial] error: {e}"
 
         # ── Step 3 (same as BLM_ClaimAgent get_mlrs_from_PLSS): MLRS case-page banner ──
         # ArcGIS does not include payment text; scrape case_page for the maintenance-fee message.

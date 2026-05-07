@@ -85,6 +85,16 @@ def _resolve_payment_max_claims() -> int:
     return max(1, limit)
 
 
+def _resolve_large_batch_chunk_size() -> int:
+    default_size = "20" if _paas_host() else "30"
+    raw = (os.getenv("MINING_OS_MLRS_PAYMENT_LARGE_BATCH_CHUNK_SIZE") or default_size).strip()
+    try:
+        size = int(raw)
+    except ValueError:
+        size = int(default_size)
+    return max(1, min(size, 100))
+
+
 def _resolve_cache_ttl_seconds() -> int:
     raw = (os.getenv("MINING_OS_MLRS_PAYMENT_CACHE_TTL_HOURS") or "24").strip()
     try:
@@ -641,9 +651,10 @@ def enrich_claims_from_mlrs_case_pages(
 
     max_claims = _resolve_payment_max_claims()
     if len(candidates) > max_claims:
+        chunk_size = _resolve_large_batch_chunk_size()
         message = (
-            f"Skipping payment-status browser checks for {len(candidates)} claim(s) "
-            f"(limit {max_claims}); leaving payment_status as unknown to keep the fetch reliable."
+            f"Large batch detected: {len(candidates)} claim(s) exceeds fast-path limit {max_claims}. "
+            f"Processing payment checks in sequential chunk(s) of {chunk_size} to keep the fetch reliable."
         )
         log.warning("mlrs payment enrich: %s", message)
         if progress_cb:
@@ -655,6 +666,31 @@ def enrich_claims_from_mlrs_case_pages(
                     "message": message,
                 }
             )
+        for offset in range(0, len(candidates), chunk_size):
+            batch = candidates[offset : offset + chunk_size]
+            subset = [claim for _, claim in batch]
+
+            def _batch_progress(payload: dict[str, Any], *, offset: int = offset) -> None:
+                if not progress_cb:
+                    return
+                done = cache_hits + offset + int(payload.get("done") or 0)
+                progress_cb(
+                    {
+                        "phase": "payment_enrich",
+                        "current": done,
+                        "total": total,
+                        "message": payload.get("message")
+                        or f"Checked {done} of {total} claim page(s)…",
+                    }
+                )
+
+            enriched_subset = _run_enrich_subprocess_chunk(
+                subset,
+                chunk_id=offset // chunk_size,
+                progress_cb=_batch_progress,
+            )
+            for (idx, _), enriched in zip(batch, enriched_subset):
+                claims[idx] = enriched
         return claims
 
     subset = [claim for _, claim in candidates]

@@ -171,10 +171,10 @@ def test_enrich_reports_progress(monkeypatch):
     assert any((evt.get("phase") == "payment_enrich" and evt.get("current") == 2) for evt in progress_events)
 
 
-def test_enrich_skips_large_batches_to_protect_service(monkeypatch):
+def test_enrich_processes_large_batches_in_sequential_chunks(monkeypatch):
     monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_SELENIUM", "0")
-    monkeypatch.setenv("MINING_OS_MLRS_ENRICH_INPROC", "1")
     monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_MAX_CLAIMS", "1")
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_LARGE_BATCH_CHUNK_SIZE", "1")
     with mcp._PAYMENT_CACHE_LOCK:
         mcp._PAYMENT_CACHE.clear()
 
@@ -184,9 +184,24 @@ def test_enrich_skips_large_batches_to_protect_service(monkeypatch):
         {"serial_number": "B", "payment_status": "unknown", "case_page": "https://mlrs.blm.gov/s/blm-case/a/b"},
     ]
 
-    with patch("mining_os.services.mlrs_case_payment.requests.get") as mock_get:
-        out = mcp.enrich_claims_from_mlrs_case_pages(claims, progress_cb=progress_events.append)
+    seen_batches: list[list[str]] = []
 
-    assert [c["payment_status"] for c in out] == ["unknown", "unknown"]
-    assert not mock_get.called
-    assert any("Skipping payment-status browser checks" in str(evt.get("message")) for evt in progress_events)
+    def fake_chunk(batch, chunk_id=0, progress_cb=None):
+        seen_batches.append([str(c.get("serial_number")) for c in batch])
+        enriched = []
+        for i, claim in enumerate(batch, start=1):
+            row = dict(claim)
+            row["payment_status"] = "paid"
+            row["payment_check_source"] = "test_chunk"
+            enriched.append(row)
+            if progress_cb:
+                progress_cb({"done": i, "total": len(batch), "message": f"chunk {chunk_id} row {i}"})
+        return enriched
+
+    monkeypatch.setattr(mcp, "_run_enrich_subprocess_chunk", fake_chunk)
+
+    out = mcp.enrich_claims_from_mlrs_case_pages(claims, progress_cb=progress_events.append)
+
+    assert [c["payment_status"] for c in out] == ["paid", "paid"]
+    assert seen_batches == [["A"], ["B"]]
+    assert any("Large batch detected" in str(evt.get("message")) for evt in progress_events)
