@@ -61,6 +61,11 @@ def test_ras_iframe_detects_unpaid():
     assert out["payment_check_source"] == "ras_http_iframe"
 
 
+def test_loaded_case_heuristic_detects_real_detail_page():
+    body = "BLM Case UT101426602 Serial Number Case Disposition Related Records Case Customers"
+    assert mcp._body_looks_like_loaded_case(body.lower()) is True
+
+
 def test_enrich_sets_unpaid_from_http(monkeypatch):
     monkeypatch.delenv("RENDER", raising=False)
     monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
@@ -205,3 +210,27 @@ def test_enrich_processes_large_batches_in_sequential_chunks(monkeypatch):
     assert [c["payment_status"] for c in out] == ["paid", "paid"]
     assert seen_batches == [["A"], ["B"]]
     assert any("Large batch detected" in str(evt.get("message")) for evt in progress_events)
+
+
+def test_check_payment_for_url_uses_enriched_row(monkeypatch):
+    def fake_enrich(rows, progress_cb=None):
+        return [
+            {
+                **rows[0],
+                "payment_status": "paid",
+                "payment_check_source": "mlrs_case_playwright",
+            }
+        ]
+
+    monkeypatch.setattr(mcp, "enrich_claims_from_mlrs_case_pages", fake_enrich)
+    out = mcp.check_payment_for_url("https://mlrs.blm.gov/s/blm-case/x/y")
+    assert out["payment_status"] == "paid"
+    assert out["payment_check_source"] == "mlrs_case_playwright"
+
+
+def test_merge_payment_fields_clears_stale_error_on_paid():
+    dst = {"payment_check_error": "old error", "payment_status": "unknown"}
+    src = {"payment_status": "paid", "payment_check_source": "mlrs_case_playwright"}
+    mcp._merge_payment_fields(dst, src)
+    assert dst["payment_status"] == "paid"
+    assert "payment_check_error" not in dst
