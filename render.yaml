@@ -28,6 +28,8 @@ services:
         value: "1"
       - key: MINING_OS_MLRS_PARALLELISM
         value: "1"
+      - key: MINING_OS_MLRS_PAYMENT_MAX_CLAIMS
+        value: "60"
       - key: DATABASE_URL
         sync: false
       - key: OPENAI_API_KEY
