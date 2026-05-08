@@ -645,7 +645,7 @@ def fetch_claim_records_for_area(
             statuses = {(c.get("payment_status") or "unknown").lower() for c in claims}
             if "unpaid" in statuses:
                 derived_status = "unpaid"
-            elif statuses == {"paid"}:
+            elif "paid" in statuses:
                 derived_status = "paid"
             else:
                 derived_status = "unknown"
