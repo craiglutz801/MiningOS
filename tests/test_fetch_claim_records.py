@@ -88,8 +88,8 @@ class TestFallbackWhenAgentMissing:
             township="12S",
             range_val="14E",
             section="23",
-            latitude=39.0,
-            longitude=-111.0,
+            latitude=None,
+            longitude=None,
         )
 
         assert result["ok"] is True
@@ -98,6 +98,7 @@ class TestFallbackWhenAgentMissing:
         assert result["claims"][0]["claim_name"] == "TEST CLAIM"
         assert api_called["plss"] >= 1, "built-in PLSS API should have been queried"
         assert seen_sections == ["23"]
+        assert api_called["coords"] == 0, "spatial query should not run when no coordinates were supplied"
 
     def test_no_agent_no_results_returns_clean_error(self, monkeypatch, patched_persist):
         monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
@@ -164,6 +165,65 @@ class TestFallbackWhenAgentMissing:
         assert result["claims"][0]["claim_name"] == "SPATIAL HIT"
         assert spatial_called, "spatial fallback should have been invoked"
 
+    def test_no_agent_augments_plss_results_with_spatial(self, monkeypatch, patched_persist):
+        monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
+
+        calls: list[str] = []
+
+        def fake_query_by_plss_with_status(**kwargs):
+            calls.append("plss")
+            return True, [
+                {
+                    "claim_name": "SECTION HIT",
+                    "serial_number": "UMC777",
+                    "payment_status": "paid",
+                    "plss": "UT 12S 12W Sec 35",
+                }
+            ]
+
+        def fake_query_by_coords(*args, **kwargs):
+            calls.append("coords")
+            return [
+                {
+                    "claim_name": "SECTION HIT",
+                    "serial_number": "UMC777",
+                    "payment_status": "paid",
+                    "plss": "UT 12S 12W Sec 35",
+                },
+                {
+                    "claim_name": "SPATIAL HIT",
+                    "serial_number": "S1",
+                    "payment_status": "paid",
+                    "plss": "UT 13S 12W Sec 03",
+                },
+            ]
+
+        monkeypatch.setattr(
+            "mining_os.services.blm_plss.query_claims_by_plss_with_status",
+            fake_query_by_plss_with_status,
+        )
+        monkeypatch.setattr(
+            "mining_os.services.blm_plss.query_claims_by_coords", fake_query_by_coords
+        )
+
+        result = fcr.fetch_claim_records_for_area(
+            area_id=70,
+            area_name="Prefer section",
+            location_plss=None,
+            state_abbr="UT",
+            meridian="26",
+            township="12S",
+            range_val="12W",
+            section="35",
+            latitude=39.7,
+            longitude=-113.1,
+        )
+
+        assert result["ok"] is True
+        assert len(result["claims"]) == 2
+        assert [claim["claim_name"] for claim in result["claims"]] == ["SECTION HIT", "SPATIAL HIT"]
+        assert "Added 1 nearby claim" in (result["log"] or "")
+        assert calls == ["plss", "coords"]
     def test_no_agent_broadens_only_after_empty_section_query(self, monkeypatch, patched_persist):
         monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
 

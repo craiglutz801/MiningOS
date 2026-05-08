@@ -61,6 +61,11 @@ def test_ras_iframe_detects_unpaid():
     assert out["payment_check_source"] == "ras_http_iframe"
 
 
+def test_loaded_case_heuristic_detects_real_detail_page():
+    body = "BLM Case UT101426602 Serial Number Case Disposition Related Records Case Customers"
+    assert mcp._body_looks_like_loaded_case(body.lower()) is True
+
+
 def test_enrich_sets_unpaid_from_http(monkeypatch):
     monkeypatch.delenv("RENDER", raising=False)
     monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
@@ -171,10 +176,10 @@ def test_enrich_reports_progress(monkeypatch):
     assert any((evt.get("phase") == "payment_enrich" and evt.get("current") == 2) for evt in progress_events)
 
 
-def test_enrich_skips_large_batches_to_protect_service(monkeypatch):
+def test_enrich_processes_large_batches_in_sequential_chunks(monkeypatch):
     monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_SELENIUM", "0")
-    monkeypatch.setenv("MINING_OS_MLRS_ENRICH_INPROC", "1")
     monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_MAX_CLAIMS", "1")
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_LARGE_BATCH_CHUNK_SIZE", "1")
     with mcp._PAYMENT_CACHE_LOCK:
         mcp._PAYMENT_CACHE.clear()
 
@@ -184,9 +189,51 @@ def test_enrich_skips_large_batches_to_protect_service(monkeypatch):
         {"serial_number": "B", "payment_status": "unknown", "case_page": "https://mlrs.blm.gov/s/blm-case/a/b"},
     ]
 
-    with patch("mining_os.services.mlrs_case_payment.requests.get") as mock_get:
-        out = mcp.enrich_claims_from_mlrs_case_pages(claims, progress_cb=progress_events.append)
+    seen_batches: list[list[str]] = []
 
-    assert [c["payment_status"] for c in out] == ["unknown", "unknown"]
-    assert not mock_get.called
-    assert any("Skipping payment-status browser checks" in str(evt.get("message")) for evt in progress_events)
+    def fake_chunk(batch, chunk_id=0, progress_cb=None):
+        seen_batches.append([str(c.get("serial_number")) for c in batch])
+        enriched = []
+        for i, claim in enumerate(batch, start=1):
+            row = dict(claim)
+            row["payment_status"] = "paid"
+            row["payment_check_source"] = "test_chunk"
+            enriched.append(row)
+            if progress_cb:
+                progress_cb({"done": i, "total": len(batch), "message": f"chunk {chunk_id} row {i}"})
+        return enriched
+
+    monkeypatch.setattr(mcp, "_run_enrich_subprocess_chunk", fake_chunk)
+
+    out = mcp.enrich_claims_from_mlrs_case_pages(claims, progress_cb=progress_events.append)
+
+    assert [c["payment_status"] for c in out] == ["paid", "paid"]
+    assert seen_batches == [["A"], ["B"]]
+    assert any("Large batch detected" in str(evt.get("message")) for evt in progress_events)
+    enrich_events = [evt for evt in progress_events if evt.get("phase") == "payment_enrich" and evt.get("current")]
+    assert any(evt.get("message") == "Checked 1 of 2 claim page(s)…" for evt in enrich_events)
+    assert any(evt.get("message") == "Checked 2 of 2 claim page(s)…" for evt in enrich_events)
+
+
+def test_check_payment_for_url_uses_enriched_row(monkeypatch):
+    def fake_enrich(rows, progress_cb=None):
+        return [
+            {
+                **rows[0],
+                "payment_status": "paid",
+                "payment_check_source": "mlrs_case_playwright",
+            }
+        ]
+
+    monkeypatch.setattr(mcp, "enrich_claims_from_mlrs_case_pages", fake_enrich)
+    out = mcp.check_payment_for_url("https://mlrs.blm.gov/s/blm-case/x/y")
+    assert out["payment_status"] == "paid"
+    assert out["payment_check_source"] == "mlrs_case_playwright"
+
+
+def test_merge_payment_fields_clears_stale_error_on_paid():
+    dst = {"payment_check_error": "old error", "payment_status": "unknown"}
+    src = {"payment_status": "paid", "payment_check_source": "mlrs_case_playwright"}
+    mcp._merge_payment_fields(dst, src)
+    assert dst["payment_status"] == "paid"
+    assert "payment_check_error" not in dst

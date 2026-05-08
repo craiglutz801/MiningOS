@@ -56,6 +56,10 @@ _PAYMENT_CACHE_LOCK = threading.Lock()
 _PAYMENT_CACHE: dict[str, dict[str, Any]] = {}
 
 
+def _env_truthy(name: str) -> bool:
+    return (os.getenv(name) or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _resolve_playwright_max_ms() -> int:
     raw = (os.getenv("MINING_OS_MLRS_PLAYWRIGHT_MAX_MS") or "30000").strip()
     try:
@@ -85,6 +89,14 @@ def _resolve_payment_max_claims() -> int:
     return max(1, limit)
 
 
+def _resolve_large_batch_chunk_size() -> int:
+    default_size = "20" if _paas_host() else "30"
+    raw = (os.getenv("MINING_OS_MLRS_PAYMENT_LARGE_BATCH_CHUNK_SIZE") or default_size).strip()
+    try:
+        size = int(raw)
+    except ValueError:
+        size = int(default_size)
+    return max(1, min(size, 100))
 def _resolve_cache_ttl_seconds() -> int:
     raw = (os.getenv("MINING_OS_MLRS_PAYMENT_CACHE_TTL_HOURS") or "24").strip()
     try:
@@ -92,6 +104,39 @@ def _resolve_cache_ttl_seconds() -> int:
     except ValueError:
         hours = 24.0
     return max(0, int(hours * 3600))
+
+
+def _resolve_http_timeout() -> float:
+    raw = (os.getenv("MINING_OS_MLRS_PAYMENT_HTTP_TIMEOUT_SEC") or "8").strip()
+    try:
+        seconds = float(raw)
+    except ValueError:
+        seconds = 8.0
+    return max(2.0, min(seconds, 20.0))
+
+
+def _resolve_ras_timeout() -> float:
+    raw = (os.getenv("MINING_OS_MLRS_PAYMENT_RAS_TIMEOUT_SEC") or "6").strip()
+    try:
+        seconds = float(raw)
+    except ValueError:
+        seconds = 6.0
+    return max(2.0, min(seconds, 20.0))
+
+
+def _resolve_selenium_timeout() -> int:
+    raw = (os.getenv("MINING_OS_MLRS_PAYMENT_SELENIUM_TIMEOUT_SEC") or "18").strip()
+    try:
+        seconds = int(raw)
+    except ValueError:
+        seconds = 18
+    return max(6, min(seconds, 45))
+
+
+def _should_try_ras_http() -> bool:
+    # Plain HTTP access to the public RAS report often redirects to the BLM index page,
+    # so keep it off by default and allow opt-in for troubleshooting.
+    return _env_truthy("MINING_OS_MLRS_PAYMENT_TRY_RAS_HTTP")
 
 
 def _cache_key_variants(claim: dict[str, Any]) -> list[str]:
@@ -208,7 +253,7 @@ def _merge_payment_fields(dst: dict[str, Any], src: dict[str, Any]) -> None:
     ):
         if key in src and src[key] is not None:
             dst[key] = src[key]
-    if (src.get("payment_status") or "").strip().lower() == "unpaid":
+    if (src.get("payment_status") or "").strip().lower() in {"paid", "unpaid"} and not src.get("payment_check_error"):
         dst.pop("payment_check_error", None)
 
 _BROWSER_HEADERS = {
@@ -241,7 +286,9 @@ def _should_try_headless() -> bool:
     return not _paas_host()
 
 
-def _payment_from_http(case_url: str, timeout: float = 28.0) -> dict[str, Any]:
+def _payment_from_http(case_url: str, timeout: float | None = None) -> dict[str, Any]:
+    if timeout is None:
+        timeout = _resolve_http_timeout()
     try:
         r = requests.get(case_url, timeout=timeout, headers=_BROWSER_HEADERS)
         r.raise_for_status()
@@ -267,6 +314,18 @@ def _body_implies_unpaid(body_lower: str) -> bool:
     return False
 
 
+def _body_looks_like_loaded_case(body_lower: str) -> bool:
+    markers = (
+        "blm case",
+        "serial number",
+        "case disposition",
+        "case customers",
+        "related records",
+    )
+    hits = sum(1 for marker in markers if marker in (body_lower or ""))
+    return hits >= 3
+
+
 _IFRAME_SRC_RE = re.compile(r'<iframe[^>]+src\s*=\s*["\']([^"\']+)["\']', re.IGNORECASE)
 
 
@@ -277,13 +336,16 @@ def _extract_iframe_srcs(html: str) -> list[str]:
 def _payment_from_ras_http(
     report_url: str,
     serial_number: str | None = None,
-    timeout: float = 35.0,
+    timeout: float | None = None,
 ) -> dict[str, Any]:
     """
     BLM Serial Register (RAS). The ``report.cfm`` wrapper often embeds the real register in an
     iframe (e.g. ``/iReport/RAS/1/?serial_number=…``). We fetch wrapper + iframe bodies using one
     session (cookies) and scan for the same overdue phrases as the MLRS case banner.
     """
+    if timeout is None:
+        timeout = _resolve_ras_timeout()
+
     session = requests.Session()
     session.headers.update(_BROWSER_HEADERS)
 
@@ -427,6 +489,15 @@ def _evaluate_playwright_case_page(page: Any, case_url: str, timeout_ms: int | N
                 }
             except Exception:
                 pass
+
+            elapsed = (timeout_ms / 1000.0) - max(0.0, deadline - time.monotonic())
+            if elapsed >= 5.0 and _body_looks_like_loaded_case(last_combined):
+                log.info("mlrs payment: paid (playwright details loaded, no overdue banner) %s", case_url[:80])
+                return {
+                    "payment_status": "paid",
+                    "payment_message": None,
+                    "payment_check_source": "mlrs_case_playwright",
+                }
         except Exception as e:
             log.debug("mlrs playwright poll tick: %s", e)
 
@@ -508,18 +579,40 @@ def _payment_from_playwright(case_url: str, timeout_ms: int | None = None) -> di
         }
 
 
-def _payment_from_selenium(case_url: str, timeout: int = 35) -> dict[str, Any]:
-    """Fallback for environments that have Selenium + ChromeDriver but not Playwright."""
+def _selenium_fatal_error(message: str | None) -> bool:
+    text = (message or "").lower()
+    return any(
+        frag in text
+        for frag in (
+            "unable to obtain driver",
+            "chrome not reachable",
+            "invalid session id",
+            "session deleted as the browser has closed the connection",
+            "disconnected: unable to receive message from renderer",
+            "cannot find chrome binary",
+            "session not created",
+        )
+    )
+
+
+def _selenium_launch_error_payload(message: str) -> dict[str, Any]:
+    return {
+        "payment_status": "unknown",
+        "payment_message": None,
+        "payment_check_error": message,
+        "payment_check_source": "mlrs_case_selenium",
+    }
+
+
+def _launch_selenium_driver(timeout: int | None = None) -> tuple[Any | None, str | None]:
+    """Launch one reusable Selenium driver for a batch."""
+    if timeout is None:
+        timeout = _resolve_selenium_timeout()
     try:
         from selenium import webdriver
         from selenium.webdriver.chrome.options import Options
-    except ImportError:
-        return {
-            "payment_status": "unknown",
-            "payment_message": None,
-            "payment_check_error": "selenium not installed",
-            "payment_check_source": "mlrs_case_selenium",
-        }
+    except ImportError as e:
+        return None, f"selenium not installed: {e}"
 
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")
@@ -529,12 +622,30 @@ def _payment_from_selenium(case_url: str, timeout: int = 35) -> dict[str, Any]:
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument(f"user-agent={_BROWSER_HEADERS['User-Agent']}")
 
-    driver = None
     try:
         driver = webdriver.Chrome(options=chrome_options)
         driver.set_page_load_timeout(timeout)
+        return driver, None
+    except Exception as e:
+        return None, str(e)
+
+
+def _close_selenium_driver(driver: Any | None) -> None:
+    if driver is None:
+        return
+    try:
+        driver.quit()
+    except Exception:
+        pass
+
+
+def _payment_from_selenium_driver(driver: Any, case_url: str, timeout: int | None = None) -> dict[str, Any]:
+    if timeout is None:
+        timeout = _resolve_selenium_timeout()
+    try:
+        driver.set_page_load_timeout(timeout)
         driver.get(case_url)
-        time.sleep(5)
+        time.sleep(min(4, max(2, timeout // 4)))
         page_text = (driver.page_source or "").lower()
         if _UNPAID_LOWER in page_text:
             return {
@@ -549,18 +660,18 @@ def _payment_from_selenium(case_url: str, timeout: int = 35) -> dict[str, Any]:
         }
     except Exception as e:
         log.warning("mlrs case selenium failed for %s: %s", case_url, e)
-        return {
-            "payment_status": "unknown",
-            "payment_message": None,
-            "payment_check_error": str(e),
-            "payment_check_source": "mlrs_case_selenium",
-        }
+        return _selenium_launch_error_payload(str(e))
+
+
+def _payment_from_selenium(case_url: str, timeout: int | None = None) -> dict[str, Any]:
+    """Fallback for environments that have Selenium + ChromeDriver but not Playwright."""
+    driver, error = _launch_selenium_driver(timeout=timeout)
+    if driver is None:
+        return _selenium_launch_error_payload(error or "selenium driver unavailable")
+    try:
+        return _payment_from_selenium_driver(driver, case_url, timeout=timeout)
     finally:
-        if driver is not None:
-            try:
-                driver.quit()
-            except Exception:
-                pass
+        _close_selenium_driver(driver)
 
 
 def _close_playwright_batch(st: dict[str, Any]) -> None:
@@ -580,6 +691,11 @@ def _close_playwright_batch(st: dict[str, Any]) -> None:
                 pass
     finally:
         st.clear()
+
+
+def _close_selenium_batch(st: dict[str, Any]) -> None:
+    _close_selenium_driver(st.get("driver"))
+    st.clear()
 
 
 def _claim_needs_payment_enrichment(claim: dict[str, Any]) -> bool:
@@ -641,9 +757,10 @@ def enrich_claims_from_mlrs_case_pages(
 
     max_claims = _resolve_payment_max_claims()
     if len(candidates) > max_claims:
+        chunk_size = _resolve_large_batch_chunk_size()
         message = (
-            f"Skipping payment-status browser checks for {len(candidates)} claim(s) "
-            f"(limit {max_claims}); leaving payment_status as unknown to keep the fetch reliable."
+            f"Large batch detected: {len(candidates)} claim(s) exceeds fast-path limit {max_claims}. "
+            f"Processing payment checks in sequential chunk(s) of {chunk_size} to keep the fetch reliable."
         )
         log.warning("mlrs payment enrich: %s", message)
         if progress_cb:
@@ -655,6 +772,30 @@ def enrich_claims_from_mlrs_case_pages(
                     "message": message,
                 }
             )
+        for offset in range(0, len(candidates), chunk_size):
+            batch = candidates[offset : offset + chunk_size]
+            subset = [claim for _, claim in batch]
+
+            def _batch_progress(payload: dict[str, Any], *, offset: int = offset) -> None:
+                if not progress_cb:
+                    return
+                done = cache_hits + offset + int(payload.get("done") or 0)
+                progress_cb(
+                    {
+                        "phase": "payment_enrich",
+                        "current": done,
+                        "total": total,
+                        "message": f"Checked {done} of {total} claim page(s)…",
+                    }
+                )
+
+            enriched_subset = _run_enrich_subprocess_chunk(
+                subset,
+                chunk_id=offset // chunk_size,
+                progress_cb=_batch_progress,
+            )
+            for (idx, _), enriched in zip(batch, enriched_subset):
+                claims[idx] = enriched
         return claims
 
     subset = [claim for _, claim in candidates]
@@ -668,8 +809,7 @@ def enrich_claims_from_mlrs_case_pages(
                 "phase": "payment_enrich",
                 "current": done,
                 "total": total,
-                "message": payload.get("message")
-                or f"Checked {done} of {total} claim page(s)…",
+                "message": f"Checked {done} of {total} claim page(s)…",
             }
         )
 
@@ -896,6 +1036,7 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
         try_headless,
     )
     pw_batch: dict[str, Any] = {}
+    sel_batch: dict[str, Any] = {}
     pw_launch_logged = False
 
     def _playwright_page_or_none():
@@ -925,6 +1066,32 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
             pw_batch["launch_error"] = str(e)
             log.warning("mlrs payment: playwright chromium launch failed: %s", e)
             return None
+
+    def _selenium_driver_or_none():
+        if sel_batch.get("launch_failed"):
+            return None
+        if sel_batch.get("driver") is not None:
+            return sel_batch["driver"]
+        driver, error = _launch_selenium_driver(timeout=_resolve_selenium_timeout())
+        if driver is None:
+            sel_batch["launch_failed"] = True
+            sel_batch["launch_error"] = error or "selenium driver unavailable"
+            log.warning("mlrs payment: selenium launch failed: %s", sel_batch["launch_error"])
+            return None
+        sel_batch["driver"] = driver
+        log.info("mlrs payment: selenium driver launched (shared across claims in this fetch)")
+        return driver
+
+    def _selenium_shared_check(case_url: str) -> dict[str, Any]:
+        driver = _selenium_driver_or_none()
+        if driver is None:
+            return _selenium_launch_error_payload(sel_batch.get("launch_error") or "selenium driver unavailable")
+        result = _payment_from_selenium_driver(driver, case_url, timeout=_resolve_selenium_timeout())
+        if _selenium_fatal_error(result.get("payment_check_error")):
+            _close_selenium_driver(sel_batch.pop("driver", None))
+            sel_batch["launch_failed"] = True
+            sel_batch["launch_error"] = result.get("payment_check_error") or "selenium driver unavailable"
+        return result
 
     total = len(claims)
     done = 0
@@ -975,7 +1142,8 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
 
             report_u = c.get("payment_report")
             if (
-                (c.get("payment_status") or "unknown").strip().lower() == "unknown"
+                _should_try_ras_http()
+                and (c.get("payment_status") or "unknown").strip().lower() == "unknown"
                 and report_u
                 and isinstance(report_u, str)
                 and report_u.strip().startswith("http")
@@ -995,17 +1163,7 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
                 continue
 
             if try_headless and (c.get("payment_status") or "unknown").strip().lower() == "unknown":
-                prefer_sel = (os.getenv("MINING_OS_MLRS_PAYMENT_PREFER_SELENIUM") or "").strip().lower() in (
-                    "1",
-                    "true",
-                    "yes",
-                    "on",
-                )
                 pw_ms = _resolve_playwright_max_ms()
-
-                if prefer_sel:
-                    sel_first = _payment_from_selenium(url.strip())
-                    _merge_payment_fields(c, sel_first)
 
                 if (c.get("payment_status") or "unknown").strip().lower() == "unknown":
                     pg = _playwright_page_or_none()
@@ -1022,11 +1180,8 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
                             },
                         )
 
-                if (
-                    not prefer_sel
-                    and (c.get("payment_status") or "unknown").strip().lower() == "unknown"
-                ):
-                    sel_info = _payment_from_selenium(url.strip())
+                if (c.get("payment_status") or "unknown").strip().lower() == "unknown":
+                    sel_info = _selenium_shared_check(url.strip())
                     _merge_payment_fields(c, sel_info)
                 time.sleep(0.35)
 
@@ -1038,6 +1193,7 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
         return claims
     finally:
         _close_playwright_batch(pw_batch)
+        _close_selenium_batch(sel_batch)
 
 
 def check_payment_for_url(case_url: str) -> dict[str, Any]:
@@ -1051,12 +1207,13 @@ def check_payment_for_url(case_url: str) -> dict[str, Any]:
         "payment_report": None,
         "payment_status": "unknown",
     }
-    enrich_claims_from_mlrs_case_pages([fake])
+    enriched = enrich_claims_from_mlrs_case_pages([fake])
+    row = enriched[0] if enriched else fake
     return {
-        "payment_status": fake.get("payment_status"),
-        "payment_message": fake.get("payment_message"),
-        "payment_check_source": fake.get("payment_check_source"),
-        "payment_check_error": fake.get("payment_check_error"),
+        "payment_status": row.get("payment_status"),
+        "payment_message": row.get("payment_message"),
+        "payment_check_source": row.get("payment_check_source"),
+        "payment_check_error": row.get("payment_check_error"),
     }
 
 

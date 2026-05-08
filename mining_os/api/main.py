@@ -380,16 +380,29 @@ def diag_environment() -> Dict[str, Any]:
         from mining_os.services.mlrs_case_payment import _should_try_headless
 
         pw_import_ok = False
+        pw_browser_launchable = False
+        pw_executable_path = None
+        pw_launch_error = None
         try:
-            import playwright  # noqa: F401
-
+            from playwright.sync_api import sync_playwright
             pw_import_ok = True
+            with sync_playwright() as p:
+                pw_executable_path = p.chromium.executable_path
+                try:
+                    browser = p.chromium.launch(headless=True)
+                    pw_browser_launchable = True
+                    browser.close()
+                except Exception as e:
+                    pw_launch_error = str(e)
         except ImportError:
             pass
         result["mlrs_payment"] = {
             "headless_will_run": _should_try_headless(),
             "MINING_OS_MLRS_PAYMENT_HEADLESS": os.getenv("MINING_OS_MLRS_PAYMENT_HEADLESS"),
             "playwright_package_installed": pw_import_ok,
+            "playwright_executable_path": pw_executable_path,
+            "playwright_browser_launchable": pw_browser_launchable,
+            "playwright_launch_error": pw_launch_error,
             "note": (
                 "For UNPAID/PAID from MLRS case pages, build must run "
                 "`python -m playwright install chromium` and set MINING_OS_MLRS_PAYMENT_HEADLESS=1 "
