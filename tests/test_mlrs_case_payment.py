@@ -210,6 +210,9 @@ def test_enrich_processes_large_batches_in_sequential_chunks(monkeypatch):
     assert [c["payment_status"] for c in out] == ["paid", "paid"]
     assert seen_batches == [["A"], ["B"]]
     assert any("Large batch detected" in str(evt.get("message")) for evt in progress_events)
+    enrich_events = [evt for evt in progress_events if evt.get("phase") == "payment_enrich" and evt.get("current")]
+    assert any(evt.get("message") == "Checked 1 of 2 claim page(s)…" for evt in enrich_events)
+    assert any(evt.get("message") == "Checked 2 of 2 claim page(s)…" for evt in enrich_events)
 
 
 def test_check_payment_for_url_uses_enriched_row(monkeypatch):

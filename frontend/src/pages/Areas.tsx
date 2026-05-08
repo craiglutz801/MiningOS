@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
 import { api, ApiError, type Area, type BatchAreaActionRow, type FetchClaimRecordsProgress } from "../api";
@@ -166,6 +166,7 @@ const MAPPING_FIELDS: readonly { key: string; label: string; required: boolean; 
 ] as const;
 
 export function Areas() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const areaIdParam = searchParams.get("areaId");
   const mineralParam = searchParams.get("mineral") ?? "";
@@ -327,6 +328,17 @@ export function Areas() {
     plssEdits: Record<number, string>;
   }>(null);
   const [plssAiApplying, setPlssAiApplying] = useState(false);
+
+  const closeSelected = () => {
+    setSelected(null);
+    if (!areaIdParam) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("areaId");
+    navigate(
+      { search: next.toString() ? `?${next.toString()}` : "" },
+      { replace: true },
+    );
+  };
 
   // Sync URL params into filter state when they change (e.g. landing from Minerals "Locations" link)
   useEffect(() => {
@@ -2454,7 +2466,20 @@ export function Areas() {
 
         {selected && (
         <div className="sticky top-20 self-start max-h-[calc(100vh-5.5rem)] flex flex-col bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-          <div className="p-4 border-b border-slate-100 font-semibold text-slate-900 shrink-0 bg-white">Detail</div>
+          <div className="p-4 border-b border-slate-100 shrink-0 bg-white flex items-center justify-between gap-3">
+            <div className="font-semibold text-slate-900">Detail</div>
+            <button
+              type="button"
+              onClick={closeSelected}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              aria-label="Close target detail"
+              title="Close"
+            >
+              <span className="text-lg leading-none" aria-hidden="true">
+                ×
+              </span>
+            </button>
+          </div>
           <div className="p-4 overflow-y-auto flex-1 min-h-0">
               <div className="space-y-3 text-sm">
                 <div>

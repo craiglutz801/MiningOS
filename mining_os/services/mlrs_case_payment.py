@@ -787,8 +787,7 @@ def enrich_claims_from_mlrs_case_pages(
                         "phase": "payment_enrich",
                         "current": done,
                         "total": total,
-                        "message": payload.get("message")
-                        or f"Checked {done} of {total} claim page(s)…",
+                        "message": f"Checked {done} of {total} claim page(s)…",
                     }
                 )
 
@@ -812,8 +811,7 @@ def enrich_claims_from_mlrs_case_pages(
                 "phase": "payment_enrich",
                 "current": done,
                 "total": total,
-                "message": payload.get("message")
-                or f"Checked {done} of {total} claim page(s)…",
+                "message": f"Checked {done} of {total} claim page(s)…",
             }
         )
 
