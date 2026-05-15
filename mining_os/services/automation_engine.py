@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -46,6 +47,10 @@ FILTER_KEYS = [
 
 MAX_TARGETS_CAP = 200
 PAUSE_BETWEEN_TARGETS_SEC = 0.3
+RUN_STATUS_RUNNING = "running"
+RUN_STATUS_COMPLETED = "completed"
+RUN_STATUS_FAILED = "failed"
+FETCH_CLAIM_RECORDS_INCLUDE_EXISTING_KEY = "include_targets_with_claim_status"
 
 
 def _effective_account_id(account_id: int | None = None) -> int:
@@ -233,6 +238,9 @@ def delete_rule(rule_id: int, account_id: int | None = None) -> bool:
 # Run log helpers
 # ---------------------------------------------------------------------------
 
+def _json_dumps(value: Any) -> str:
+    return json.dumps(value)
+
 def list_runs(
     rule_id: int | None = None,
     limit: int = 100,
@@ -285,12 +293,70 @@ def _create_run_log(rule_id: int, trigger_type: str) -> int:
         row = conn.execute(
             text("""
             INSERT INTO automation_run_log (rule_id, trigger_type, status)
-            VALUES (:rule_id, :trigger_type, 'running')
+            VALUES (:rule_id, :trigger_type, :status)
             RETURNING id
             """),
-            {"rule_id": rule_id, "trigger_type": trigger_type},
+            {"rule_id": rule_id, "trigger_type": trigger_type, "status": RUN_STATUS_RUNNING},
         ).scalar()
         return int(row)
+
+
+def _update_run_log(
+    run_id: int,
+    *,
+    status: str | None = None,
+    finished: bool = False,
+    targets_total: int | None = None,
+    targets_ok: int | None = None,
+    targets_err: int | None = None,
+    changes_found: int | None = None,
+    email_sent: bool | None = None,
+    error_message: str | None = None,
+    results: list[dict[str, Any]] | None = None,
+    summary: str | None = None,
+) -> None:
+    sets = []
+    params: dict[str, Any] = {"id": run_id}
+
+    if finished:
+        sets.append("finished_at = now()")
+    if status is not None:
+        sets.append("status = :status")
+        params["status"] = status
+    if targets_total is not None:
+        sets.append("targets_total = :targets_total")
+        params["targets_total"] = targets_total
+    if targets_ok is not None:
+        sets.append("targets_ok = :targets_ok")
+        params["targets_ok"] = targets_ok
+    if targets_err is not None:
+        sets.append("targets_err = :targets_err")
+        params["targets_err"] = targets_err
+    if changes_found is not None:
+        sets.append("changes_found = :changes_found")
+        params["changes_found"] = changes_found
+    if email_sent is not None:
+        sets.append("email_sent = :email_sent")
+        params["email_sent"] = email_sent
+    if error_message is not None:
+        sets.append("error_message = :error_message")
+        params["error_message"] = error_message
+    if results is not None:
+        sets.append("results = CAST(:results AS jsonb)")
+        params["results"] = _json_dumps(results)
+    if summary is not None:
+        sets.append("summary = :summary")
+        params["summary"] = summary
+
+    if not sets:
+        return
+
+    eng = get_engine()
+    with eng.begin() as conn:
+        conn.execute(
+            text(f"UPDATE automation_run_log SET {', '.join(sets)} WHERE id = :id"),
+            params,
+        )
 
 
 def _finish_run_log(
@@ -306,36 +372,36 @@ def _finish_run_log(
     results: list[dict],
     summary: str | None,
 ) -> None:
+    _update_run_log(
+        run_id,
+        finished=True,
+        status=status,
+        targets_total=targets_total,
+        targets_ok=targets_ok,
+        targets_err=targets_err,
+        changes_found=changes_found,
+        email_sent=email_sent,
+        error_message=error_message,
+        results=results,
+        summary=summary,
+    )
+
+
+def _find_running_run(rule_id: int) -> dict[str, Any] | None:
     eng = get_engine()
     with eng.begin() as conn:
-        conn.execute(
+        row = conn.execute(
             text("""
-            UPDATE automation_run_log SET
-                finished_at = now(),
-                status = :status,
-                targets_total = :targets_total,
-                targets_ok = :targets_ok,
-                targets_err = :targets_err,
-                changes_found = :changes_found,
-                email_sent = :email_sent,
-                error_message = :error_message,
-                results = CAST(:results AS jsonb),
-                summary = :summary
-            WHERE id = :id
+            SELECT r.*, ar.name AS rule_name, ar.action_type
+            FROM automation_run_log r
+            LEFT JOIN automation_rules ar ON ar.id = r.rule_id
+            WHERE r.rule_id = :rule_id AND r.status = :status
+            ORDER BY r.started_at DESC
+            LIMIT 1
             """),
-            {
-                "id": run_id,
-                "status": status,
-                "targets_total": targets_total,
-                "targets_ok": targets_ok,
-                "targets_err": targets_err,
-                "changes_found": changes_found,
-                "email_sent": email_sent,
-                "error_message": error_message,
-                "results": json.dumps(results),
-                "summary": summary,
-            },
-        )
+            {"rule_id": rule_id, "status": RUN_STATUS_RUNNING},
+        ).mappings().first()
+        return _row_to_dict(row) if row else None
 
 
 # ---------------------------------------------------------------------------
@@ -353,40 +419,34 @@ def _run_action_on_target(
     name = area.get("name") or ""
 
     if action_type == "fetch_claim_records":
-        from mining_os.services.fetch_claim_records import fetch_claim_records_for_area
+        from mining_os.services.fetch_claim_records import run_fetch_claim_records_for_area_id
         old_chars = area.get("characteristics") or {}
         old_count = len((old_chars.get("claim_records") or {}).get("claims") or [])
-        try:
-            res = fetch_claim_records_for_area(
-                aid,
-                name,
-                area.get("location_plss"),
-                account_id=account_id,
-                state_abbr=area.get("state_abbr"),
-                meridian=area.get("meridian"),
-                township=area.get("township"),
-                range_val=area.get("range"),
-                section=area.get("section"),
-                latitude=area.get("latitude"),
-                longitude=area.get("longitude"),
-            )
-            new_count = res.get("claims_count", 0)
-            changed = new_count != old_count
-            return {"ok": True, "changed": changed, "claims_count": new_count}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        res = run_fetch_claim_records_for_area_id(aid, account_id=account_id)
+        claims = res.get("claims") or []
+        new_count = len(claims) if isinstance(claims, list) else int(res.get("claims_count") or 0)
+        changed = new_count != old_count
+        return {
+            "ok": bool(res.get("ok")),
+            "changed": changed if res.get("ok") else False,
+            "claims_count": new_count,
+            "error": res.get("error"),
+        }
 
     if action_type == "lr2000_report":
         from mining_os.services.mlrs_geographic_index import run_lr2000_geographic_index_for_area
         old_chars = area.get("characteristics") or {}
         old_count = len((old_chars.get("lr2000_geographic_index") or {}).get("claims") or [])
-        try:
-            res = run_lr2000_geographic_index_for_area(aid, area, account_id=account_id)
-            new_count = res.get("claims_count", 0)
-            changed = new_count != old_count
-            return {"ok": True, "changed": changed, "claims_count": new_count}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        res = run_lr2000_geographic_index_for_area(aid, area, account_id=account_id)
+        claims = res.get("claims") or []
+        new_count = len(claims) if isinstance(claims, list) else int(res.get("claims_count") or 0)
+        changed = new_count != old_count
+        return {
+            "ok": bool(res.get("ok")),
+            "changed": changed if res.get("ok") else False,
+            "claims_count": new_count,
+            "error": res.get("error"),
+        }
 
     if action_type == "check_blm_status":
         from mining_os.services.blm_check import check_area_by_coords
@@ -460,6 +520,45 @@ def _filter_targets(
         areas = [a for a in areas if (a.get("priority") or "").lower() == p]
 
     return areas[:limit]
+
+
+def _claim_status_already_set(area: dict[str, Any]) -> bool:
+    status = str(area.get("status") or "").strip().lower()
+    return status in {"paid", "unpaid"}
+
+
+def _should_skip_fetch_claim_records(area: dict[str, Any], filter_config: dict[str, Any]) -> bool:
+    include_existing = bool(filter_config.get(FETCH_CLAIM_RECORDS_INCLUDE_EXISTING_KEY))
+    return (not include_existing) and _claim_status_already_set(area)
+
+
+def _build_skip_result(area: dict[str, Any]) -> dict[str, Any]:
+    status = str(area.get("status") or "").strip().lower() or "unknown"
+    return {
+        "ok": True,
+        "changed": False,
+        "skipped": True,
+        "skip_reason": (
+            f"Skipped Fetch Claim Records because this target already has claim status '{status}'. "
+            "Enable the include-existing-claim-status option on the rule to process it anyway."
+        ),
+    }
+
+
+def _summary_line(
+    *,
+    action_type: str,
+    total: int,
+    processed: int,
+    ok_count: int,
+    err_count: int,
+    skipped_count: int,
+    changes: int,
+) -> str:
+    return (
+        f"{ok_count} ok, {err_count} errors, {skipped_count} skipped, {changes} changes "
+        f"({processed}/{total} handled, action={action_type})"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -548,6 +647,21 @@ def execute_rule(
     rule_account_id = int(rule["account_id"])
 
     run_id = _create_run_log(rule_id, trigger_type)
+    return _execute_rule_run(rule, run_id, trigger_type=trigger_type)
+
+
+def _execute_rule_run(
+    rule: dict[str, Any],
+    run_id: int,
+    *,
+    trigger_type: str,
+) -> dict[str, Any]:
+    action_type = rule["action_type"]
+    outcome_type = rule.get("outcome_type", "log_only")
+    filter_config = rule.get("filter_config") or {}
+    max_targets = rule.get("max_targets", 50)
+    rule_account_id = int(rule["account_id"])
+
     log.info(
         "Automation run #%d started: rule=%s action=%s trigger=%s",
         run_id, rule.get("name"), action_type, trigger_type,
@@ -569,6 +683,26 @@ def execute_rule(
     ok_count = 0
     err_count = 0
     changes = 0
+    skipped_count = 0
+    total = len(areas)
+
+    _update_run_log(
+        run_id,
+        targets_total=total,
+        targets_ok=0,
+        targets_err=0,
+        changes_found=0,
+        results=[],
+        summary=_summary_line(
+            action_type=action_type,
+            total=total,
+            processed=0,
+            ok_count=0,
+            err_count=0,
+            skipped_count=0,
+            changes=0,
+        ),
+    )
 
     for i, area in enumerate(areas):
         if i > 0 and PAUSE_BETWEEN_TARGETS_SEC > 0:
@@ -576,20 +710,43 @@ def execute_rule(
 
         aid = area["id"]
         name = area.get("name") or f"#{aid}"
-        try:
-            res = _run_action_on_target(action_type, area, account_id=rule_account_id)
-        except Exception as e:
-            res = {"ok": False, "error": str(e)}
+        if action_type == "fetch_claim_records" and _should_skip_fetch_claim_records(area, filter_config):
+            res = _build_skip_result(area)
+        else:
+            try:
+                res = _run_action_on_target(action_type, area, account_id=rule_account_id)
+            except Exception as e:
+                res = {"ok": False, "error": str(e)}
 
         row = {"id": aid, "name": name, **res}
         results.append(row)
 
-        if res.get("ok"):
+        if res.get("skipped"):
+            skipped_count += 1
+        elif res.get("ok"):
             ok_count += 1
         else:
             err_count += 1
         if res.get("changed"):
             changes += 1
+
+        _update_run_log(
+            run_id,
+            targets_total=total,
+            targets_ok=ok_count,
+            targets_err=err_count,
+            changes_found=changes,
+            results=results,
+            summary=_summary_line(
+                action_type=action_type,
+                total=total,
+                processed=len(results),
+                ok_count=ok_count,
+                err_count=err_count,
+                skipped_count=skipped_count,
+                changes=changes,
+            ),
+        )
 
     email_sent = False
     if outcome_type == "email_always":
@@ -599,15 +756,20 @@ def execute_rule(
     elif outcome_type == "email_on_error" and err_count > 0:
         email_sent = _send_outcome_email(rule, results, changes, ok_count, err_count)
 
-    summary = (
-        f"{ok_count} ok, {err_count} errors, {changes} changes"
-        f" ({len(areas)} targets, action={action_type})"
+    summary = _summary_line(
+        action_type=action_type,
+        total=total,
+        processed=len(results),
+        ok_count=ok_count,
+        err_count=err_count,
+        skipped_count=skipped_count,
+        changes=changes,
     )
 
     _finish_run_log(
         run_id,
-        status="completed",
-        targets_total=len(areas),
+        status=RUN_STATUS_COMPLETED,
+        targets_total=total,
         targets_ok=ok_count,
         targets_err=err_count,
         changes_found=changes,
@@ -622,10 +784,67 @@ def execute_rule(
     return {
         "ok": True,
         "run_id": run_id,
-        "targets_total": len(areas),
+        "targets_total": total,
         "targets_ok": ok_count,
         "targets_err": err_count,
         "changes_found": changes,
         "email_sent": email_sent,
         "summary": summary,
+    }
+
+
+def queue_rule_run(
+    rule_id: int,
+    trigger_type: str = "manual",
+    account_id: int | None = None,
+) -> dict[str, Any]:
+    """Start one automation rule on a background thread and return immediately."""
+    rule = get_rule(rule_id, account_id=account_id)
+    if not rule:
+        return {"ok": False, "error": "Rule not found"}
+    if not rule.get("enabled") and trigger_type == "scheduled":
+        return {"ok": False, "error": "Rule is disabled"}
+
+    existing = _find_running_run(rule_id)
+    if existing:
+        return {
+            "ok": True,
+            "run_id": existing["id"],
+            "status": RUN_STATUS_RUNNING,
+            "message": "This rule is already running.",
+            "already_running": True,
+        }
+
+    run_id = _create_run_log(rule_id, trigger_type)
+
+    def _worker() -> None:
+        try:
+            _execute_rule_run(rule, run_id, trigger_type=trigger_type)
+        except Exception as e:  # pragma: no cover - defensive background path
+            log.exception("Automation run #%d crashed", run_id)
+            _finish_run_log(
+                run_id,
+                status=RUN_STATUS_FAILED,
+                targets_total=0,
+                targets_ok=0,
+                targets_err=1,
+                changes_found=0,
+                email_sent=False,
+                error_message=str(e),
+                results=[],
+                summary=f"Automation run crashed: {e}",
+            )
+
+    threading.Thread(
+        target=_worker,
+        daemon=True,
+        name=f"automation-run-{run_id}",
+    ).start()
+
+    return {
+        "ok": True,
+        "run_id": run_id,
+        "status": RUN_STATUS_RUNNING,
+        "message": "Automation run started in the background.",
+        "already_running": False,
     }

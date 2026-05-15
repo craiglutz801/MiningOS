@@ -35,7 +35,7 @@ def _is_cron_due(cron_expr: str, now: datetime) -> bool:
 def _tick() -> None:
     """One scheduler tick: find enabled rules with a cron schedule and run due ones."""
     try:
-        from mining_os.services.automation_engine import list_rules, execute_rule
+        from mining_os.services.automation_engine import list_rules, queue_rule_run
 
         now = datetime.now(timezone.utc)
         rules = list_rules(all_accounts=True)
@@ -49,7 +49,7 @@ def _tick() -> None:
                 rule_id = rule["id"]
                 log.info("Scheduler: cron matched for rule #%d (%s), executing", rule_id, rule.get("name"))
                 try:
-                    execute_rule(rule_id, trigger_type="scheduled", account_id=rule.get("account_id"))
+                    queue_rule_run(rule_id, trigger_type="scheduled", account_id=rule.get("account_id"))
                 except Exception:
                     log.exception("Scheduler: rule #%d execution failed", rule_id)
     except Exception:

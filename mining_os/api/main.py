@@ -512,61 +512,13 @@ def _safe_fetch_claim_records(area_id: int, progress_cb=None, account_id: int | 
     `fetched_at`) — never bubbles to a 500. Used by both the `/api`-prefixed
     and bare-prefix route variants so prod always sees a clean error message.
     """
-    log.info("safe_fetch_claim_records CALLED area_id=%s", area_id)
-    try:
-        from mining_os.services.areas_of_focus import get_area
-        from mining_os.services.fetch_claim_records import fetch_claim_records_for_area
+    from mining_os.services.fetch_claim_records import run_fetch_claim_records_for_area_id
 
-        try:
-            area = get_area(area_id, account_id=account_id) if account_id is not None else get_area(area_id)
-        except TypeError as exc:
-            if account_id is not None and "account_id" in str(exc):
-                area = get_area(area_id)
-            else:
-                raise
-        if not area:
-            log.warning("fetch_claim_records: area_id=%s not found", area_id)
-            return {
-                "ok": False,
-                "log": "",
-                "claims": [],
-                "error": "Area not found. The target may have been deleted or the ID is invalid.",
-                "fetched_at": None,
-            }
-        log.info(
-            "fetch_claim_records: area_id=%s plss=%s state=%s meridian=%s twp=%s rng=%s sec=%s lat=%s lon=%s",
-            area_id, area.get("location_plss"), area.get("state_abbr"), area.get("meridian"),
-            area.get("township"), area.get("range"), area.get("section"),
-            area.get("latitude"), area.get("longitude"),
-        )
-        fetch_kwargs = {
-            "state_abbr": area.get("state_abbr"),
-            "meridian": area.get("meridian"),
-            "township": area.get("township"),
-            "range_val": area.get("range"),
-            "section": area.get("section"),
-            "latitude": area.get("latitude"),
-            "longitude": area.get("longitude"),
-            "previous_claim_records": (area.get("characteristics") or {}).get("claim_records"),
-            "progress_cb": progress_cb,
-        }
-        if account_id is not None:
-            fetch_kwargs["account_id"] = account_id
-        return fetch_claim_records_for_area(
-            area_id,
-            area.get("name") or "",
-            area.get("location_plss"),
-            **fetch_kwargs,
-        )
-    except Exception as e:
-        log.exception("safe_fetch_claim_records failed for area_id=%s: %s", area_id, e)
-        return {
-            "ok": False,
-            "log": "",
-            "claims": [],
-            "error": f"Fetch Claim Records failed: {e}",
-            "fetched_at": None,
-        }
+    return run_fetch_claim_records_for_area_id(
+        area_id,
+        progress_cb=progress_cb,
+        account_id=account_id,
+    )
 
 
 # --- Background job registry ---------------------------------------------
@@ -1743,8 +1695,8 @@ def api_get_automation_run(run_id: int) -> Dict[str, Any]:
 
 @api_app.post("/automations/rules/{rule_id}/trigger")
 def api_trigger_automation_rule(rule_id: int) -> Dict[str, Any]:
-    from mining_os.services.automation_engine import execute_rule
-    return execute_rule(rule_id, trigger_type="manual")
+    from mining_os.services.automation_engine import queue_rule_run
+    return queue_rule_run(rule_id, trigger_type="manual")
 
 
 @api_app.get("/automations/meta")

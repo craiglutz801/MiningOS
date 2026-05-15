@@ -40,6 +40,8 @@ const CRON_PRESETS = [
   { label: "Custom", value: "__custom__" },
 ];
 
+const INCLUDE_EXISTING_CLAIM_STATUS_KEY = "include_targets_with_claim_status";
+
 type Tab = "rules" | "runs";
 type ModalMode = "create" | "edit";
 
@@ -68,6 +70,7 @@ export function Automations() {
   const [formFilterStatus, setFormFilterStatus] = useState("");
   const [formFilterState, setFormFilterState] = useState("");
   const [formFilterName, setFormFilterName] = useState("");
+  const [formIncludeTargetsWithClaimStatus, setFormIncludeTargetsWithClaimStatus] = useState(false);
   const [formSaving, setFormSaving] = useState(false);
 
   // Run detail modal
@@ -98,6 +101,15 @@ export function Automations() {
     }
   };
 
+  const loadRunDetail = async (runId: number) => {
+    try {
+      const run = await automations.getRun(runId);
+      setRunDetail(run);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load run");
+    }
+  };
+
   const loadAll = async () => {
     setLoading(true);
     setError(null);
@@ -112,6 +124,20 @@ export function Automations() {
   useEffect(() => {
     if (tab === "runs") void loadRuns();
   }, [runsFilterRuleId, tab]);
+
+  useEffect(() => {
+    const shouldPoll =
+      tab === "runs" &&
+      (runs.some((run) => run.status === "running") || runDetail?.status === "running");
+    if (!shouldPoll) return;
+
+    const timer = window.setInterval(() => {
+      void loadRuns();
+      if (runDetail?.id) void loadRunDetail(runDetail.id);
+    }, 3000);
+
+    return () => window.clearInterval(timer);
+  }, [runs, runDetail?.id, runDetail?.status, tab]);
 
   const openCreate = () => {
     setModalMode("create");
@@ -128,6 +154,7 @@ export function Automations() {
     setFormFilterStatus("");
     setFormFilterState("");
     setFormFilterName("");
+    setFormIncludeTargetsWithClaimStatus(false);
     setModalOpen(true);
   };
 
@@ -152,11 +179,12 @@ export function Automations() {
     setFormMaxTargets(rule.max_targets);
     setFormEnabled(rule.enabled);
     const fc = rule.filter_config || {};
-    setFormFilterPriority(fc.priority || "");
-    setFormFilterMineral(fc.mineral || "");
-    setFormFilterStatus(fc.status || "");
-    setFormFilterState(fc.state_abbr || "");
-    setFormFilterName(fc.name || "");
+    setFormFilterPriority(typeof fc.priority === "string" ? fc.priority : "");
+    setFormFilterMineral(typeof fc.mineral === "string" ? fc.mineral : "");
+    setFormFilterStatus(typeof fc.status === "string" ? fc.status : "");
+    setFormFilterState(typeof fc.state_abbr === "string" ? fc.state_abbr : "");
+    setFormFilterName(typeof fc.name === "string" ? fc.name : "");
+    setFormIncludeTargetsWithClaimStatus(Boolean(fc[INCLUDE_EXISTING_CLAIM_STATUS_KEY]));
     setModalOpen(true);
   };
 
@@ -164,12 +192,15 @@ export function Automations() {
     setFormSaving(true);
     setError(null);
     const cron = formCronPreset === "__custom__" ? formCronCustom.trim() : formCronPreset;
-    const filter_config: Record<string, string> = {};
+    const filter_config: Record<string, string | boolean> = {};
     if (formFilterPriority) filter_config.priority = formFilterPriority;
     if (formFilterMineral.trim()) filter_config.mineral = formFilterMineral.trim();
     if (formFilterStatus) filter_config.status = formFilterStatus;
     if (formFilterState.trim()) filter_config.state_abbr = formFilterState.trim();
     if (formFilterName.trim()) filter_config.name = formFilterName.trim();
+    if (formAction === "fetch_claim_records" && formIncludeTargetsWithClaimStatus) {
+      filter_config[INCLUDE_EXISTING_CLAIM_STATUS_KEY] = true;
+    }
 
     try {
       if (modalMode === "create") {
@@ -220,7 +251,12 @@ export function Automations() {
       if (!res.ok && res.error) {
         setError(res.error);
       }
-      await loadAll();
+      setTab("runs");
+      await loadRuns();
+      if (res.run_id) {
+        await loadRunDetail(res.run_id);
+      }
+      await loadRules();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Trigger failed");
     } finally {
@@ -245,6 +281,9 @@ export function Automations() {
       return s;
     }
   };
+
+  const visibleFilterEntries = (rule: AutomationRule) =>
+    Object.entries(rule.filter_config || {}).filter(([k]) => k !== INCLUDE_EXISTING_CLAIM_STATUS_KEY);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
@@ -349,10 +388,20 @@ export function Automations() {
                       </span>
                       <span>Max targets: {rule.max_targets}</span>
                     </div>
-                    {Object.keys(rule.filter_config || {}).length > 0 && (
+                    {rule.action_type === "fetch_claim_records" && (
+                      <div className="mt-1 text-xs text-slate-500">
+                        Existing claim status:
+                        <span className="ml-1 text-slate-700">
+                          {rule.filter_config?.[INCLUDE_EXISTING_CLAIM_STATUS_KEY]
+                            ? "Include paid/unpaid targets"
+                            : "Skip paid/unpaid targets by default"}
+                        </span>
+                      </div>
+                    )}
+                    {visibleFilterEntries(rule).length > 0 && (
                       <div className="mt-1 text-xs text-slate-500">
                         Filters:{" "}
-                        {Object.entries(rule.filter_config)
+                        {visibleFilterEntries(rule)
                           .map(([k, v]) => `${k}=${v}`)
                           .join(", ")}
                       </div>
@@ -473,7 +522,7 @@ export function Automations() {
                           </span>
                         </td>
                         <td className="py-2 px-3 text-xs">
-                          {run.targets_ok}/{run.targets_total}
+                          {(run.results?.length ?? 0)}/{run.targets_total}
                           {run.targets_err > 0 && (
                             <span className="text-red-600 ml-1">({run.targets_err} err)</span>
                           )}
@@ -564,6 +613,24 @@ export function Automations() {
                     : "Generates a summary report for each target pulling together available data."}
                 </span>
               </label>
+
+              {formAction === "fetch_claim_records" && (
+                <label className="flex items-start gap-2 cursor-pointer rounded-lg border border-slate-200 p-3 bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={formIncludeTargetsWithClaimStatus}
+                    onChange={(e) => setFormIncludeTargetsWithClaimStatus(e.target.checked)}
+                    className="rounded border-slate-300 mt-0.5"
+                  />
+                  <span className="text-sm text-slate-700">
+                    Include targets that already have claim status.
+                    <span className="block text-xs text-slate-500 mt-1">
+                      Off by default. When unchecked, this automation will skip targets already marked
+                      paid or unpaid so it does not overwrite existing claim-status decisions unless you opt in.
+                    </span>
+                  </span>
+                </label>
+              )}
 
               <label className="flex flex-col gap-1">
                 <span className="font-medium text-slate-700">After run (outcome)</span>
@@ -759,6 +826,9 @@ export function Automations() {
                 Trigger: {runDetail.trigger_type}
                 {runDetail.email_sent && " · Email sent"}
               </p>
+              <p className="text-xs text-slate-500">
+                Progress: {runDetail.results?.length ?? 0}/{runDetail.targets_total} targets handled
+              </p>
               {runDetail.error_message && (
                 <p className="text-xs text-red-700 bg-red-50 px-2 py-1 rounded">{runDetail.error_message}</p>
               )}
@@ -784,11 +854,15 @@ export function Automations() {
                         <td className="py-1.5 px-2 font-mono text-xs">{r.id}</td>
                         <td className="py-1.5 px-2">{r.name || "—"}</td>
                         <td className="py-1.5 px-2">{r.ok ? "Yes" : "No"}</td>
-                        <td className="py-1.5 px-2">{r.changed ? "Yes" : "—"}</td>
+                        <td className="py-1.5 px-2">{r.skipped ? "Skipped" : r.changed ? "Yes" : "—"}</td>
                         <td className="py-1.5 px-2 text-xs text-slate-600">
-                          {r.claims_count !== undefined && `${r.claims_count} claims`}
-                          {r.old_status && r.status && ` ${r.old_status} → ${r.status}`}
-                          {!r.claims_count && !r.old_status && "—"}
+                          {r.skipped
+                            ? r.skip_reason || "Skipped by rule options"
+                            : r.claims_count !== undefined
+                            ? `${r.claims_count} claims`
+                            : r.old_status && r.status
+                            ? `${r.old_status} → ${r.status}`
+                            : "—"}
                         </td>
                         <td className="py-1.5 px-2 text-xs text-red-700 break-words max-w-[14rem]">
                           {r.error || "—"}

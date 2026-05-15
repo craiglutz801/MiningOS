@@ -891,7 +891,7 @@ export interface AutomationRule {
   id: number;
   name: string;
   enabled: boolean;
-  filter_config: Record<string, string>;
+  filter_config: Record<string, string | boolean>;
   action_type: string;
   outcome_type: string;
   schedule_cron: string | null;
@@ -905,6 +905,8 @@ export interface AutomationRunLogRow {
   ok: boolean;
   name?: string | null;
   changed?: boolean;
+  skipped?: boolean;
+  skip_reason?: string;
   claims_count?: number;
   status?: string;
   old_status?: string;
@@ -944,7 +946,7 @@ export const automations = {
   createRule: (body: {
     name: string;
     action_type: string;
-    filter_config?: Record<string, string>;
+    filter_config?: Record<string, string | boolean>;
     outcome_type?: string;
     schedule_cron?: string | null;
     max_targets?: number;
@@ -972,6 +974,9 @@ export const automations = {
       changes_found?: number;
       email_sent?: boolean;
       summary?: string;
+      status?: string;
+      message?: string;
+      already_running?: boolean;
     }>(`/automations/rules/${id}/trigger`, { method: "POST" }),
   listRuns: (params?: { rule_id?: number; limit?: number; offset?: number }) => {
     const q = new URLSearchParams();

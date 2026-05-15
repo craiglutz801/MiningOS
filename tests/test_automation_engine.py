@@ -10,9 +10,12 @@ from mining_os.services.automation_engine import (
     OUTCOME_TYPES,
     FILTER_KEYS,
     MAX_TARGETS_CAP,
+    FETCH_CLAIM_RECORDS_INCLUDE_EXISTING_KEY,
     _row_to_dict,
     _run_action_on_target,
     _filter_targets,
+    _claim_status_already_set,
+    _should_skip_fetch_claim_records,
     _send_outcome_email,
 )
 
@@ -65,9 +68,9 @@ class TestRunActionOnTarget:
         assert res["ok"] is False
         assert "Unknown" in (res.get("error") or "")
 
-    @patch("mining_os.services.fetch_claim_records.fetch_claim_records_for_area")
+    @patch("mining_os.services.fetch_claim_records.run_fetch_claim_records_for_area_id")
     def test_fetch_claim_records_success(self, mock_fetch):
-        mock_fetch.return_value = {"claims_count": 5}
+        mock_fetch.return_value = {"ok": True, "claims": [1, 2, 3, 4, 5]}
         area = {
             "id": 10, "name": "Test", "location_plss": "X", "state_abbr": "NV",
             "meridian": "M", "township": "T1S", "range": "R1E", "section": "1",
@@ -78,9 +81,9 @@ class TestRunActionOnTarget:
         assert res["claims_count"] == 5
         mock_fetch.assert_called_once()
 
-    @patch("mining_os.services.fetch_claim_records.fetch_claim_records_for_area")
+    @patch("mining_os.services.fetch_claim_records.run_fetch_claim_records_for_area_id")
     def test_fetch_claim_records_detects_change(self, mock_fetch):
-        mock_fetch.return_value = {"claims_count": 3}
+        mock_fetch.return_value = {"ok": True, "claims": [1, 2, 3]}
         area = {
             "id": 10, "name": "Test", "location_plss": "X", "state_abbr": "NV",
             "characteristics": {"claim_records": {"claims": [1, 2]}},
@@ -89,9 +92,9 @@ class TestRunActionOnTarget:
         assert res["ok"] is True
         assert res["changed"] is True
 
-    @patch("mining_os.services.fetch_claim_records.fetch_claim_records_for_area")
+    @patch("mining_os.services.fetch_claim_records.run_fetch_claim_records_for_area_id")
     def test_fetch_claim_records_exception(self, mock_fetch):
-        mock_fetch.side_effect = RuntimeError("Boom")
+        mock_fetch.return_value = {"ok": False, "error": "Boom", "claims": []}
         area = {"id": 1, "name": "T", "location_plss": "X", "characteristics": {}}
         res = _run_action_on_target("fetch_claim_records", area)
         assert res["ok"] is False
@@ -139,6 +142,24 @@ class TestFilterTargets:
         call_kwargs = mock_list.call_args
         assert call_kwargs.kwargs.get("mineral") == "Gold"
         assert call_kwargs.kwargs.get("state_abbr") == "NV"
+
+
+class TestFetchClaimStatusSkip:
+    def test_claim_status_already_set(self):
+        assert _claim_status_already_set({"status": "paid"}) is True
+        assert _claim_status_already_set({"status": "unpaid"}) is True
+        assert _claim_status_already_set({"status": "unknown"}) is False
+
+    def test_skip_fetch_claim_records_default(self):
+        area = {"status": "paid"}
+        assert _should_skip_fetch_claim_records(area, {}) is True
+
+    def test_include_existing_claim_status_opt_in(self):
+        area = {"status": "paid"}
+        assert _should_skip_fetch_claim_records(
+            area,
+            {FETCH_CLAIM_RECORDS_INCLUDE_EXISTING_KEY: True},
+        ) is False
 
 
 class TestSendOutcomeEmail:
