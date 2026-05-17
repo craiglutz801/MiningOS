@@ -125,6 +125,23 @@ class TestAreaSummaryRoutes:
         assert captured["target_status"] == "monitoring_high"
         assert captured["limit"] == 5000
 
+    def test_list_forwards_tag_filter(self, client, monkeypatch):
+        captured: dict[str, object] = {}
+
+        def _list_areas(**kwargs):
+            captured.update(kwargs)
+            return []
+
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.list_areas",
+            _list_areas,
+        )
+        r = client.get("/api/areas-of-focus?tag=Uranium%20West&limit=250")
+        assert r.status_code == 200
+        assert r.json() == []
+        assert captured["tag"] == "Uranium West"
+        assert captured["limit"] == 250
+
 
 class TestDiagnostics:
     """Production diagnostics — must always return 200 with useful JSON."""

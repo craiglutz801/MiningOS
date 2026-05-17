@@ -300,6 +300,43 @@ class TestNameEndpoints:
         assert body == {"id": 42, "name": "Spor Mountain (fixed)"}
 
 
+class TestTagEndpoints:
+    def test_sets_tag_successfully(self, client, monkeypatch, fake_area):
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.get_area",
+            lambda area_id: fake_area,
+        )
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.update_area_tag",
+            lambda area_id, tag: True,
+        )
+        r = client.post("/api/areas-of-focus/42/tag", json={"tag": "Uranium West"})
+        assert r.status_code == 200
+        assert r.json() == {"id": 42, "tag": "Uranium West"}
+
+    def test_clears_tag_successfully(self, client, monkeypatch, fake_area):
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.get_area",
+            lambda area_id: fake_area,
+        )
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.update_area_tag",
+            lambda area_id, tag: True,
+        )
+        r = client.post("/api/areas-of-focus/42/tag", json={"tag": "   "})
+        assert r.status_code == 200
+        assert r.json() == {"id": 42, "tag": None}
+
+    def test_batch_tag_returns_update_count(self, client, monkeypatch):
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.bulk_update_area_tag",
+            lambda ids, tag: {"updated": len(ids), "tag": tag.strip() if tag else None},
+        )
+        r = client.post("/api/areas-of-focus/batch/tag", json={"ids": [1, 2, 3], "tag": "Priority Basin"})
+        assert r.status_code == 200
+        assert r.json() == {"updated": 3, "tag": "Priority Basin"}
+
+
 # ────────────────────────────────────────────────────────────────────
 # API: /areas-of-focus/{id}/plss
 # ────────────────────────────────────────────────────────────────────

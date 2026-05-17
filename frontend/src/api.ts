@@ -186,6 +186,7 @@ export const api = {
     mineralSuggestions: () => request<string[]>("/areas-of-focus/minerals"),
     list: (params?: {
       mineral?: string;
+      tag?: string;
       status?: string;
       target_status?: string;
       state_abbr?: string;
@@ -199,6 +200,7 @@ export const api = {
     }) => {
       const q = new URLSearchParams();
       if (params?.mineral) q.set("mineral", params.mineral);
+      if (params?.tag) q.set("tag", params.tag);
       if (params?.status) q.set("status", params.status);
       if (params?.target_status) q.set("target_status", params.target_status);
       if (params?.state_abbr) q.set("state_abbr", params.state_abbr);
@@ -212,6 +214,7 @@ export const api = {
       const query = q.toString();
       return request<Area[]>(`/areas-of-focus${query ? "?" + query : ""}`);
     },
+    tagSuggestions: () => request<string[]>("/areas-of-focus/tags"),
     summary: () => request<AreasSummary>("/areas-of-focus/summary"),
     get: (id: number) => request<Area>(`/areas-of-focus/${id}`),
     create: (body: {
@@ -251,6 +254,16 @@ export const api = {
       request<{ id: number; minerals: string[] }>(`/areas-of-focus/${id}/minerals`, {
         method: "POST",
         body: JSON.stringify({ minerals }),
+      }),
+    updateTag: (id: number, tag: string | null) =>
+      request<{ id: number; tag: string | null }>(`/areas-of-focus/${id}/tag`, {
+        method: "POST",
+        body: JSON.stringify({ tag }),
+      }),
+    bulkUpdateTag: (ids: number[], tag: string | null) =>
+      request<{ updated: number; tag: string | null }>(`/areas-of-focus/batch/tag`, {
+        method: "POST",
+        body: JSON.stringify({ ids, tag }),
       }),
     updateCoordinates: (id: number, latitude: number, longitude: number) =>
       request<{ id: number; latitude: number; longitude: number }>(`/areas-of-focus/${id}/coordinates`, {
@@ -812,6 +825,7 @@ export interface BatchParseResult {
 export interface Area {
   id: number;
   name: string;
+  tag?: string | null;
   /** Present in clean-preview rows when parsed from validity_notes (`County: …`). */
   county?: string;
   location_plss?: string;

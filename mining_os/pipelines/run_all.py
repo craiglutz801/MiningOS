@@ -93,6 +93,7 @@ def init_db() -> None:
         "017_automation_engine.sql",
         "018_add_retrieval_type.sql",
         "019_accounts_auth.sql",
+        "020_add_target_tag.sql",
     ]
     auth_present = _auth_schema_present()
     base_schema_present = _base_app_schema_present()
@@ -124,6 +125,7 @@ def init_db() -> None:
             "017_automation_engine.sql",
             "018_add_retrieval_type.sql",
             "019_accounts_auth.sql",
+            "020_add_target_tag.sql",
         ]:
             sql_path = sql_dir / name
             if sql_path.exists():

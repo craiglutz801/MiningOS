@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
@@ -170,6 +170,7 @@ export function Areas() {
   const [searchParams] = useSearchParams();
   const areaIdParam = searchParams.get("areaId");
   const mineralParam = searchParams.get("mineral") ?? "";
+  const tagParam = searchParams.get("tag") ?? "";
   const statusParam = searchParams.get("status") ?? "";
   const targetStatusParam = searchParams.get("target_status") ?? "";
   const [areas, setAreas] = useState<Area[]>([]);
@@ -179,6 +180,7 @@ export function Areas() {
   const [nameDropdownOpen, setNameDropdownOpen] = useState(false);
   const [nameInputFocused, setNameInputFocused] = useState(false);
   const [mineralFilter, setMineralFilter] = useState(mineralParam);
+  const [tagFilter, setTagFilter] = useState(tagParam);
   const [statusFilter, setStatusFilter] = useState(statusParam);
   const [targetStatusFilter, setTargetStatusFilter] = useState(targetStatusParam);
   const [stateFilter, setStateFilter] = useState("");
@@ -189,6 +191,7 @@ export function Areas() {
   const [sectorFilter, setSectorFilter] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [mineralSuggestions, setMineralSuggestions] = useState<string[]>([]);
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [mineralDropdownOpen, setMineralDropdownOpen] = useState(false);
   const [mineralInputFocused, setMineralInputFocused] = useState(false);
   const [selected, setSelected] = useState<Area | null>(null);
@@ -247,6 +250,10 @@ export function Areas() {
   const [coordsLonDraft, setCoordsLonDraft] = useState("");
   const [coordsSaving, setCoordsSaving] = useState(false);
   const [tableSelectedIds, setTableSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkTagModalOpen, setBulkTagModalOpen] = useState(false);
+  const [bulkTagScope, setBulkTagScope] = useState<"selected" | "filtered">("filtered");
+  const [bulkTagDraft, setBulkTagDraft] = useState("");
+  const [bulkTagSaving, setBulkTagSaving] = useState(false);
   const [batchControlOpen, setBatchControlOpen] = useState(false);
   const [batchOptFetch, setBatchOptFetch] = useState(true);
   const [batchOptLr2000, setBatchOptLr2000] = useState(true);
@@ -289,6 +296,9 @@ export function Areas() {
   const [nameEditing, setNameEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [nameSaving, setNameSaving] = useState(false);
+  const [tagEditing, setTagEditing] = useState(false);
+  const [tagDraft, setTagDraft] = useState("");
+  const [tagSaving, setTagSaving] = useState(false);
   const [plssEditing, setPlssEditing] = useState(false);
   const [plssStateDraft, setPlssStateDraft] = useState("");
   const [plssTownshipDraft, setPlssTownshipDraft] = useState("");
@@ -328,6 +338,7 @@ export function Areas() {
     plssEdits: Record<number, string>;
   }>(null);
   const [plssAiApplying, setPlssAiApplying] = useState(false);
+  const loadRequestSeq = useRef(0);
 
   const closeSelected = () => {
     setSelected(null);
@@ -343,6 +354,7 @@ export function Areas() {
   // Sync URL params into filter state when they change (e.g. landing from Minerals "Locations" link)
   useEffect(() => {
     setMineralFilter(searchParams.get("mineral") ?? "");
+    setTagFilter(searchParams.get("tag") ?? "");
     setStatusFilter(searchParams.get("status") ?? "");
     setTargetStatusFilter(searchParams.get("target_status") ?? "");
   }, [searchParams]);
@@ -352,6 +364,8 @@ export function Areas() {
     setCoordsLatDraft("");
     setCoordsLonDraft("");
     setMineralsEditing(false);
+    setTagEditing(false);
+    setTagDraft("");
     setMineralsDraft([]);
     setMineralDraftInput("");
     setMineralDraftDropdownOpen(false);
@@ -377,6 +391,18 @@ export function Areas() {
     load();
   }, []);
 
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const tags = await api.areas.tagSuggestions().catch(() => [] as string[]);
+        setTagSuggestions([...tags].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })));
+      } catch {
+        setTagSuggestions([]);
+      }
+    };
+    load();
+  }, []);
+
   /** Merge minerals from the current target list so the filter always includes what you see on the page. */
   useEffect(() => {
     if (!areas.length) return;
@@ -388,6 +414,21 @@ export function Areas() {
       }
     }
     setMineralSuggestions((prev) => {
+      const merged = Array.from(new Set([...prev, ...fromRows]));
+      merged.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+      return merged;
+    });
+  }, [areas]);
+
+  useEffect(() => {
+    if (!areas.length) return;
+    const fromRows = new Set<string>();
+    for (const a of areas) {
+      const s = String(a.tag ?? "").trim();
+      if (s) fromRows.add(s);
+    }
+    if (fromRows.size === 0) return;
+    setTagSuggestions((prev) => {
       const merged = Array.from(new Set([...prev, ...fromRows]));
       merged.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
       return merged;
@@ -408,43 +449,49 @@ export function Areas() {
     setMineralsDraft((prev) => prev.filter((m) => m.toLowerCase() !== mineral.toLowerCase()));
   };
 
-  const load = () => {
+  const currentAreaListParams = () => ({
+    mineral: mineralFilter || undefined,
+    tag: tagFilter.trim() || undefined,
+    status: statusFilter || undefined,
+    target_status: targetStatusFilter || undefined,
+    state_abbr: stateFilter || undefined,
+    claim_type: claimTypeFilter || undefined,
+    retrieval_type: retrievalTypeFilter || undefined,
+    township: townshipFilter.trim() || undefined,
+    range_val: rangeFilter.trim() || undefined,
+    sector: sectorFilter.trim() || undefined,
+    name: nameFilter.trim() || undefined,
+    limit: AREA_LIST_LIMIT,
+  });
+
+  const load = async () => {
+    const requestSeq = ++loadRequestSeq.current;
     setLoading(true);
     setError(null);
-    api.areas
-      .list({
-        mineral: mineralFilter || undefined,
-        status: statusFilter || undefined,
-        target_status: targetStatusFilter || undefined,
-        state_abbr: stateFilter || undefined,
-        claim_type: claimTypeFilter || undefined,
-        retrieval_type: retrievalTypeFilter || undefined,
-        township: townshipFilter.trim() || undefined,
-        range_val: rangeFilter.trim() || undefined,
-        sector: sectorFilter.trim() || undefined,
-        name: nameFilter.trim() || undefined,
-        limit: AREA_LIST_LIMIT,
-      })
-      .then((list) => {
-        const rows = Array.isArray(list) ? list : [];
-        setAreas(rows);
-        if (areaIdParam) {
-          const id = parseInt(areaIdParam, 10);
-          if (!Number.isNaN(id)) {
-            const area = rows.find((a) => a.id === id);
-            if (area) setSelected(area);
-          }
+    try {
+      const list = await api.areas.list(currentAreaListParams());
+      if (requestSeq !== loadRequestSeq.current) return;
+      const rows = Array.isArray(list) ? list : [];
+      setAreas(rows);
+      if (areaIdParam) {
+        const id = parseInt(areaIdParam, 10);
+        if (!Number.isNaN(id)) {
+          const area = rows.find((a) => a.id === id);
+          if (area) setSelected(area);
         }
-      })
-      .catch((e) => {
-        if (e instanceof ApiError && e.status === 503 && e.body?.error === "database_unavailable") {
-          setError("DB_SETUP");
-        } else {
-          const detail = e instanceof ApiError ? formatApiDetail(e.body?.detail) : "";
-          setError(detail || (e as Error).message);
-        }
-      })
-      .finally(() => setLoading(false));
+      }
+    } catch (e) {
+      if (requestSeq !== loadRequestSeq.current) return;
+      if (e instanceof ApiError && e.status === 503 && e.body?.error === "database_unavailable") {
+        setError("DB_SETUP");
+      } else {
+        const detail = e instanceof ApiError ? formatApiDetail(e.body?.detail) : "";
+        setError(detail || (e as Error).message);
+      }
+    } finally {
+      if (requestSeq !== loadRequestSeq.current) return;
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -557,10 +604,9 @@ export function Areas() {
     }
   };
 
-  useEffect(
-    () => load(),
-    [mineralFilter, statusFilter, targetStatusFilter, stateFilter, claimTypeFilter, retrievalTypeFilter, townshipFilter, rangeFilter, sectorFilter, nameFilter]
-  );
+  useEffect(() => {
+    void load();
+  }, [mineralFilter, tagFilter, statusFilter, targetStatusFilter, stateFilter, claimTypeFilter, retrievalTypeFilter, townshipFilter, rangeFilter, sectorFilter, nameFilter]);
 
   const refreshMineralSuggestions = async () => {
     try {
@@ -574,6 +620,49 @@ export function Areas() {
       setMineralSuggestions(merged);
     } catch {
       // keep existing list
+    }
+  };
+
+  const openBulkTagModal = (scope: "selected" | "filtered") => {
+    setBulkTagScope(scope);
+    setBulkTagDraft(scope === "selected" && tableSelectedIds.size === 1
+      ? (areas.find((a) => a.id === Array.from(tableSelectedIds)[0])?.tag ?? "")
+      : "");
+    setBulkTagModalOpen(true);
+  };
+
+  const runBulkTagUpdate = async (tagValue: string | null) => {
+    const ids = bulkTagScope === "selected" ? Array.from(tableSelectedIds) : areas.map((a) => a.id);
+    if (ids.length === 0) {
+      setError(`No targets in the ${bulkTagScope === "selected" ? "selected" : "filtered"} set.`);
+      return;
+    }
+    setBulkTagSaving(true);
+    setError(null);
+    try {
+      const result = await api.areas.bulkUpdateTag(ids, tagValue);
+      if (result.tag) {
+        setTagSuggestions((prev) => {
+          const merged = Array.from(new Set([...prev, result.tag as string]));
+          merged.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+          return merged;
+        });
+      }
+      setBulkTagModalOpen(false);
+      if (bulkTagScope === "selected") setTableSelectedIds(new Set());
+      await load();
+      if (selected && ids.includes(selected.id)) {
+        try {
+          const full = await api.areas.get(selected.id);
+          setSelected(full);
+        } catch {
+          /* ignore */
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to apply tag");
+    } finally {
+      setBulkTagSaving(false);
     }
   };
 
@@ -2063,6 +2152,12 @@ export function Areas() {
         </div>
       )}
 
+      <datalist id="target-tag-options">
+        {tagSuggestions.map((tag) => (
+          <option key={tag} value={tag} />
+        ))}
+      </datalist>
+
       <section className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-card">
         <h2 className="text-sm font-semibold text-slate-700 mb-3">Search & filter</h2>
         <div className="flex flex-wrap items-center gap-4">
@@ -2182,6 +2277,17 @@ export function Areas() {
             )}
           </label>
           <label className="flex flex-col gap-1">
+            <span className="text-xs text-slate-500">Tag</span>
+            <input
+              type="text"
+              list="target-tag-options"
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              placeholder="Search by tag"
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm w-40 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
             <span className="text-xs text-slate-500">Target Status</span>
             <select
               value={targetStatusFilter}
@@ -2245,12 +2351,13 @@ export function Areas() {
               <option value="User Added">User Added</option>
             </select>
           </label>
-          {(nameFilter || mineralFilter || statusFilter || targetStatusFilter || stateFilter || claimTypeFilter || retrievalTypeFilter || townshipFilter || rangeFilter || sectorFilter) && (
+          {(nameFilter || mineralFilter || tagFilter || statusFilter || targetStatusFilter || stateFilter || claimTypeFilter || retrievalTypeFilter || townshipFilter || rangeFilter || sectorFilter) && (
             <button
               type="button"
               onClick={() => {
                 setNameFilter("");
                 setMineralFilter("");
+                setTagFilter("");
                 setStatusFilter("");
                 setTargetStatusFilter("");
                 setStateFilter("");
@@ -2263,6 +2370,15 @@ export function Areas() {
               className="self-end px-3 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium"
             >
               Clear filters
+            </button>
+          )}
+          {areas.length > 0 && (
+            <button
+              type="button"
+              onClick={() => openBulkTagModal("filtered")}
+              className="self-end px-3 py-2 text-white bg-slate-700 rounded-lg text-sm font-medium hover:bg-slate-800"
+            >
+              Apply tag to filtered
             </button>
           )}
         </div>
@@ -2284,7 +2400,7 @@ export function Areas() {
                   type="text"
                   value={townshipFilter}
                   onChange={(e) => setTownshipFilter(e.target.value)}
-                  placeholder="e.g. 12S, T12S"
+                  placeholder="e.g. 12S or 22S-24S"
                   className="px-3 py-2 border border-slate-200 rounded-lg text-sm w-28 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </label>
@@ -2294,7 +2410,7 @@ export function Areas() {
                   type="text"
                   value={rangeFilter}
                   onChange={(e) => setRangeFilter(e.target.value)}
-                  placeholder="e.g. 14E, R14E"
+                  placeholder="e.g. 14E or 14E-18E"
                   className="px-3 py-2 border border-slate-200 rounded-lg text-sm w-28 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </label>
@@ -2304,12 +2420,12 @@ export function Areas() {
                   type="text"
                   value={sectorFilter}
                   onChange={(e) => setSectorFilter(e.target.value)}
-                  placeholder="e.g. 1–36"
+                  placeholder="e.g. 5 or 5-12"
                   className="px-3 py-2 border border-slate-200 rounded-lg text-sm w-24 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </label>
               <p className="text-xs text-slate-500 max-w-xs">
-                Leave blank to ignore. Example: Range 14E shows all targets with Range 14E (any Township/Sector).
+                Leave blank to ignore. You can enter a single value or a range like Township 22S-24S, Range 14E-18E, or Sector 5-12.
               </p>
             </div>
           )}
@@ -2319,6 +2435,14 @@ export function Areas() {
       {areas.length > 0 && tableSelectedIds.size > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
           <span className="text-sm font-medium text-slate-800">{tableSelectedIds.size} selected</span>
+          <button
+            type="button"
+            disabled={batchRunStatus !== null}
+            onClick={() => openBulkTagModal("selected")}
+            className="px-3 py-1.5 text-xs font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+          >
+            Apply tag…
+          </button>
           <button
             type="button"
             disabled={batchRunStatus !== null}
@@ -2388,6 +2512,9 @@ export function Areas() {
                       Name
                     </th>
                     <th className="sticky top-0 z-20 bg-slate-50 text-left py-3 px-4 font-semibold text-slate-700 shadow-[0_1px_0_0_rgb(226_232_240)]">
+                      Tag
+                    </th>
+                    <th className="sticky top-0 z-20 bg-slate-50 text-left py-3 px-4 font-semibold text-slate-700 shadow-[0_1px_0_0_rgb(226_232_240)]">
                       Location (PLSS)
                     </th>
                     <th className="sticky top-0 z-20 bg-slate-50 text-left py-3 px-4 font-semibold text-slate-700 shadow-[0_1px_0_0_rgb(226_232_240)]">
@@ -2441,6 +2568,13 @@ export function Areas() {
                         />
                       </td>
                       <td className="py-3 px-4 font-medium text-slate-900">{a.name}</td>
+                      <td className="py-3 px-4">
+                        {a.tag ? (
+                          <span className="inline-block px-2 py-0.5 bg-amber-100 text-amber-800 rounded text-xs font-medium">
+                            {a.tag}
+                          </span>
+                        ) : "—"}
+                      </td>
                       <td className="py-3 px-4 text-slate-600">{a.location_plss || a.location_coords || "—"}</td>
                       <td className="py-3 px-4 text-slate-600">{a.state_abbr || "—"}</td>
                       <td className="py-3 px-4">
@@ -2546,6 +2680,85 @@ export function Areas() {
                   )}
                 </div>
                 <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Tag</span>
+                    {!tagEditing && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTagDraft(selected.tag || "");
+                          setTagEditing(true);
+                        }}
+                        className="text-xs text-primary-600 hover:underline"
+                      >
+                        {selected.tag ? "Edit" : "Add"}
+                      </button>
+                    )}
+                  </div>
+                  {tagEditing ? (
+                    <div className="mt-1 space-y-2">
+                      <input
+                        type="text"
+                        list="target-tag-options"
+                        value={tagDraft}
+                        onChange={(e) => setTagDraft(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="Create or choose a tag"
+                        maxLength={120}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={tagSaving}
+                          onClick={async () => {
+                            setTagSaving(true);
+                            setError(null);
+                            try {
+                              const nextTag = tagDraft.trim() || null;
+                              await api.areas.updateTag(selected.id, nextTag);
+                              if (nextTag) {
+                                setTagSuggestions((prev) => {
+                                  const merged = Array.from(new Set([...prev, nextTag]));
+                                  merged.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+                                  return merged;
+                                });
+                              }
+                              const full = await api.areas.get(selected.id);
+                              setSelected(full);
+                              setTagEditing(false);
+                              await load();
+                            } catch (err) {
+                              setError(err instanceof Error ? err.message : "Failed to save tag");
+                            } finally {
+                              setTagSaving(false);
+                            }
+                          }}
+                          className="px-3 py-1 bg-primary-600 text-white rounded text-xs font-medium hover:bg-primary-700 disabled:opacity-50"
+                        >
+                          {tagSaving ? "Saving…" : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={tagSaving}
+                          onClick={() => {
+                            setTagDraft("");
+                            setTagEditing(false);
+                          }}
+                          className="px-3 py-1 bg-slate-100 text-slate-600 rounded text-xs font-medium hover:bg-slate-200 disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : selected.tag ? (
+                    <span className="inline-block mt-0.5 px-2 py-0.5 bg-amber-100 text-amber-800 rounded text-xs font-medium">
+                      {selected.tag}
+                    </span>
+                  ) : (
+                    <span className="text-slate-700">—</span>
+                  )}
+                </div>
+                <div>
                   <span className="text-slate-500 block">Target Status</span>
                   <select
                     value={(selected.priority || "monitoring_low").toLowerCase()}
@@ -2556,19 +2769,7 @@ export function Areas() {
                       setError(null);
                       try {
                         await api.areas.updatePriority(id, v);
-                        const list = await api.areas.list({
-                          mineral: mineralFilter || undefined,
-                          status: statusFilter || undefined,
-                          target_status: targetStatusFilter || undefined,
-                          state_abbr: stateFilter || undefined,
-                          claim_type: claimTypeFilter || undefined,
-                          retrieval_type: retrievalTypeFilter || undefined,
-                          township: townshipFilter.trim() || undefined,
-                          range_val: rangeFilter.trim() || undefined,
-                          sector: sectorFilter.trim() || undefined,
-                          name: nameFilter.trim() || undefined,
-                          limit: AREA_LIST_LIMIT,
-                        });
+                        const list = await api.areas.list(currentAreaListParams());
                         setAreas(list);
                         const updated = list.find((a) => a.id === id);
                         if (updated) setSelected(updated);
@@ -3214,19 +3415,7 @@ export function Areas() {
                                   if (!out.ok && out.error) setError(out.error);
                                   const full = await api.areas.get(selected.id);
                                   setSelected(full);
-                                  const list = await api.areas.list({
-                                    mineral: mineralFilter || undefined,
-                                    status: statusFilter || undefined,
-                                    target_status: targetStatusFilter || undefined,
-                                    state_abbr: stateFilter || undefined,
-                                    claim_type: claimTypeFilter || undefined,
-                                    retrieval_type: retrievalTypeFilter || undefined,
-                                    township: townshipFilter.trim() || undefined,
-                                    range_val: rangeFilter.trim() || undefined,
-                                    sector: sectorFilter.trim() || undefined,
-                                    name: nameFilter.trim() || undefined,
-                                    limit: AREA_LIST_LIMIT,
-                                  });
+                                  const list = await api.areas.list(currentAreaListParams());
                                   setAreas(list);
                                 } catch (e) {
                                   setError(e instanceof Error ? e.message : "Clear failed");
@@ -3333,19 +3522,7 @@ export function Areas() {
                                   if (!out.ok && out.error) setError(out.error);
                                   const full = await api.areas.get(selected.id);
                                   setSelected(full);
-                                  const list = await api.areas.list({
-                                    mineral: mineralFilter || undefined,
-                                    status: statusFilter || undefined,
-                                    target_status: targetStatusFilter || undefined,
-                                    state_abbr: stateFilter || undefined,
-                                    claim_type: claimTypeFilter || undefined,
-                                    retrieval_type: retrievalTypeFilter || undefined,
-                                    township: townshipFilter.trim() || undefined,
-                                    range_val: rangeFilter.trim() || undefined,
-                                    sector: sectorFilter.trim() || undefined,
-                                    name: nameFilter.trim() || undefined,
-                                    limit: AREA_LIST_LIMIT,
-                                  });
+                                  const list = await api.areas.list(currentAreaListParams());
                                   setAreas(list);
                                 } catch (e) {
                                   setError(e instanceof Error ? e.message : "Clear failed");
@@ -3520,19 +3697,7 @@ export function Areas() {
                               : prev
                           );
                           try {
-                            const list = await api.areas.list({
-                              mineral: mineralFilter || undefined,
-                              status: statusFilter || undefined,
-                              target_status: targetStatusFilter || undefined,
-                              state_abbr: stateFilter || undefined,
-                              claim_type: claimTypeFilter || undefined,
-                              retrieval_type: retrievalTypeFilter || undefined,
-                              township: townshipFilter.trim() || undefined,
-                              range_val: rangeFilter.trim() || undefined,
-                              sector: sectorFilter.trim() || undefined,
-                              name: nameFilter.trim() || undefined,
-                              limit: AREA_LIST_LIMIT,
-                            });
+                            const list = await api.areas.list(currentAreaListParams());
                             setAreas(list);
                             const full = await api.areas.get(selected.id);
                             setSelected(full);
@@ -3802,6 +3967,105 @@ export function Areas() {
                 className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkTagModalOpen && (
+        <div
+          className="fixed inset-0 z-[57] flex items-center justify-center p-4 bg-black/50"
+          onClick={() => !bulkTagSaving && setBulkTagModalOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bulk-tag-title"
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-md w-full flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
+              <h3 id="bulk-tag-title" className="font-semibold text-slate-900">
+                Apply Tag
+              </h3>
+              <button
+                type="button"
+                disabled={bulkTagSaving}
+                onClick={() => setBulkTagModalOpen(false)}
+                className="text-slate-500 hover:text-slate-700 text-xl leading-none disabled:opacity-40"
+                aria-label="Close"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-4 space-y-4 text-sm text-slate-700">
+              <p className="text-slate-600">Choose whether to tag the selected rows or every target in the current filtered list.</p>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="bulk-tag-scope"
+                  className="mt-0.5"
+                  checked={bulkTagScope === "selected"}
+                  disabled={tableSelectedIds.size === 0}
+                  onChange={() => setBulkTagScope("selected")}
+                />
+                <span>
+                  <span className="font-medium text-slate-900">Selected targets</span>
+                  <span className="block text-xs text-slate-500">{tableSelectedIds.size} selected row{tableSelectedIds.size === 1 ? "" : "s"}.</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="bulk-tag-scope"
+                  className="mt-0.5"
+                  checked={bulkTagScope === "filtered"}
+                  onChange={() => setBulkTagScope("filtered")}
+                />
+                <span>
+                  <span className="font-medium text-slate-900">Current filtered list</span>
+                  <span className="block text-xs text-slate-500">{areas.length} target{areas.length === 1 ? "" : "s"} currently shown.</span>
+                </span>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-slate-600">Tag</span>
+                <input
+                  type="text"
+                  list="target-tag-options"
+                  value={bulkTagDraft}
+                  onChange={(e) => setBulkTagDraft(e.target.value)}
+                  placeholder="Create or choose a tag"
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  maxLength={120}
+                />
+                <span className="text-xs text-slate-500">Leave blank only if you want to clear the tag on the chosen targets.</span>
+              </label>
+            </div>
+            <div className="p-4 border-t border-slate-200 flex gap-2 shrink-0">
+              <button
+                type="button"
+                disabled={bulkTagSaving}
+                onClick={() => setBulkTagModalOpen(false)}
+                className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={bulkTagSaving}
+                onClick={() => void runBulkTagUpdate(null)}
+                className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {bulkTagSaving ? "Working…" : "Clear tag"}
+              </button>
+              <button
+                type="button"
+                disabled={bulkTagSaving || !bulkTagDraft.trim()}
+                onClick={() => void runBulkTagUpdate(bulkTagDraft.trim())}
+                className="flex-1 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 disabled:opacity-50"
+              >
+                {bulkTagSaving ? "Applying…" : "Apply tag"}
               </button>
             </div>
           </div>

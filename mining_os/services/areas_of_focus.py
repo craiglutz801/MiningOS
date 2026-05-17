@@ -48,6 +48,16 @@ def _format_area_display(row: dict) -> dict:
     return row
 
 
+def _normalize_tag(raw: str | None) -> str | None:
+    """Normalize a target tag while preserving the user's intended casing."""
+    if raw is None:
+        return None
+    s = re.sub(r"\s+", " ", str(raw)).strip()
+    if not s:
+        return None
+    return s[:120]
+
+
 RETRIEVAL_TYPE_KNOWN_MINE = "Known Mine"
 RETRIEVAL_TYPE_USER_ADDED = "User Added"
 
@@ -550,8 +560,68 @@ def _normalize_plss_filter_component(value: str | None, kind: str) -> str | None
     return s.strip().upper() if s else None
 
 
+def _split_plss_filter_range(value: str | None) -> tuple[str, str] | None:
+    """Split inputs like '22S-24S' or '5 - 12' into start/end pieces."""
+    if not value or not isinstance(value, str):
+        return None
+    parts = re.split(r"\s*(?:-|–|—)\s*", value.strip(), maxsplit=1)
+    if len(parts) != 2:
+        return None
+    start, end = (parts[0].strip(), parts[1].strip())
+    if not start or not end:
+        return None
+    return start, end
+
+
+def _plss_filter_sort_key(value: str, kind: str) -> tuple[str | None, int] | None:
+    """Convert a normalized PLSS component into a sortable (direction, number) pair."""
+    if kind == "section":
+        if not value.isdigit():
+            return None
+        return (None, int(value))
+    m = re.match(r"^(\d+)([NSEW])$", value)
+    if not m:
+        return None
+    return (m.group(2), int(m.group(1)))
+
+
+def _normalize_plss_filter_spec(value: str | None, kind: str) -> dict[str, Any] | None:
+    """Return either a single-value or range filter spec for a PLSS component."""
+    if not value or not isinstance(value, str):
+        return None
+    rng = _split_plss_filter_range(value)
+    if rng:
+        start_norm = _normalize_plss_filter_component(rng[0], kind)
+        end_norm = _normalize_plss_filter_component(rng[1], kind)
+        if not start_norm or not end_norm:
+            return None
+        start_key = _plss_filter_sort_key(start_norm, kind)
+        end_key = _plss_filter_sort_key(end_norm, kind)
+        if not start_key or not end_key:
+            return None
+        if kind in {"township", "range"} and start_key[0] != end_key[0]:
+            return None
+        if start_key[1] > end_key[1]:
+            start_norm, end_norm = end_norm, start_norm
+            start_key, end_key = end_key, start_key
+        return {
+            "mode": "range",
+            "kind": kind,
+            "start": start_norm,
+            "end": end_norm,
+            "direction": start_key[0],
+            "start_num": start_key[1],
+            "end_num": end_key[1],
+        }
+    single = _normalize_plss_filter_component(value, kind)
+    if not single:
+        return None
+    return {"mode": "single", "kind": kind, "value": single}
+
+
 def list_areas(
     mineral: str | None = None,
+    tag: str | None = None,
     status: str | None = None,
     target_status: str | None = None,
     state_abbr: str | None = None,
@@ -565,6 +635,12 @@ def list_areas(
     account_id: int | None = None,
 ) -> List[dict]:
     account_id = _effective_account_id(account_id)
+    if township and township.strip() and _normalize_plss_filter_spec(township, "township") is None:
+        return []
+    if range_val and range_val.strip() and _normalize_plss_filter_spec(range_val, "range") is None:
+        return []
+    if sector and sector.strip() and _normalize_plss_filter_spec(sector, "section") is None:
+        return []
     eng = get_engine()
     filters = ["a.account_id = :account_id"]
     params: dict = {"limit": limit, "account_id": account_id}
@@ -582,6 +658,11 @@ def list_areas(
     if mineral:
         filters.append(":mineral = ANY(a.minerals)")
         params["mineral"] = mineral.strip()
+    if tag:
+        normalized_tag = _normalize_tag(tag)
+        if normalized_tag:
+            filters.append("a.tag ILIKE :tag_pat")
+            params["tag_pat"] = f"%{normalized_tag}%"
     if status:
         filters.append("a.status = :status")
         params["status"] = status.strip().lower()
@@ -601,18 +682,58 @@ def list_areas(
         params["retrieval_type"] = _normalize_retrieval_type(retrieval_type)
         params["retrieval_type_default"] = RETRIEVAL_TYPE_USER_ADDED
     # Advanced search: PLSS at section (sector) level. plss_normalized format: "STATE TWP RNG" or "STATE TWP RNG SEC"
-    t_norm = _normalize_plss_filter_component(township, "township")
-    r_norm = _normalize_plss_filter_component(range_val, "range")
-    s_norm = _normalize_plss_filter_component(sector, "section")
-    if t_norm:
-        filters.append("(plss_normalized IS NOT NULL AND TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 2)) = :township_norm)")
-        params["township_norm"] = t_norm
-    if r_norm:
-        filters.append("(plss_normalized IS NOT NULL AND TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 3)) = :range_norm)")
-        params["range_norm"] = r_norm
-    if s_norm:
-        filters.append("(plss_normalized IS NOT NULL AND TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 4)) = :sector_norm)")
-        params["sector_norm"] = s_norm
+    t_spec = _normalize_plss_filter_spec(township, "township")
+    r_spec = _normalize_plss_filter_spec(range_val, "range")
+    s_spec = _normalize_plss_filter_spec(sector, "section")
+    if t_spec:
+        if t_spec["mode"] == "single":
+            filters.append("(plss_normalized IS NOT NULL AND TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 2)) = :township_norm)")
+            params["township_norm"] = t_spec["value"]
+        else:
+            filters.append(
+                "("
+                "plss_normalized IS NOT NULL "
+                "AND TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 2)) ~ '^[0-9]+[NSEW]$' "
+                "AND RIGHT(TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 2)), 1) = :township_dir "
+                "AND CAST(REGEXP_REPLACE(TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 2)), '[^0-9]', '', 'g') AS INTEGER) "
+                "BETWEEN :township_start_num AND :township_end_num"
+                ")"
+            )
+            params["township_dir"] = t_spec["direction"]
+            params["township_start_num"] = t_spec["start_num"]
+            params["township_end_num"] = t_spec["end_num"]
+    if r_spec:
+        if r_spec["mode"] == "single":
+            filters.append("(plss_normalized IS NOT NULL AND TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 3)) = :range_norm)")
+            params["range_norm"] = r_spec["value"]
+        else:
+            filters.append(
+                "("
+                "plss_normalized IS NOT NULL "
+                "AND TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 3)) ~ '^[0-9]+[NSEW]$' "
+                "AND RIGHT(TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 3)), 1) = :range_dir "
+                "AND CAST(REGEXP_REPLACE(TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 3)), '[^0-9]', '', 'g') AS INTEGER) "
+                "BETWEEN :range_start_num AND :range_end_num"
+                ")"
+            )
+            params["range_dir"] = r_spec["direction"]
+            params["range_start_num"] = r_spec["start_num"]
+            params["range_end_num"] = r_spec["end_num"]
+    if s_spec:
+        if s_spec["mode"] == "single":
+            filters.append("(plss_normalized IS NOT NULL AND TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 4)) = :sector_norm)")
+            params["sector_norm"] = s_spec["value"]
+        else:
+            filters.append(
+                "("
+                "plss_normalized IS NOT NULL "
+                "AND TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 4)) ~ '^[0-9]+$' "
+                "AND CAST(TRIM(SPLIT_PART(TRIM(plss_normalized), ' ', 4)) AS INTEGER) "
+                "BETWEEN :sector_start_num AND :sector_end_num"
+                ")"
+            )
+            params["sector_start_num"] = s_spec["start_num"]
+            params["sector_end_num"] = s_spec["end_num"]
     where = " AND ".join(filters)
     # report_count = focus_reports count + report_links array length; magnitude = roi_score + report bonus
     sql = f"""
@@ -623,7 +744,7 @@ def list_areas(
       FROM areas_of_focus a
       WHERE {where}
     )
-    SELECT a.id, a.name, a.location_plss, a.location_coords, a.latitude, a.longitude,
+    SELECT a.id, a.name, a.tag, a.location_plss, a.location_coords, a.latitude, a.longitude,
            a.minerals, a.status, a.status_checked_at, a.report_links, a.report_summary,
            a.validity_notes, a.source, a.external_id, a.blm_case_url, a.blm_serial_number,
            COALESCE(a.priority, 'low') AS priority, a.state_abbr, a.meridian, a.claim_type, COALESCE(a.retrieval_type, 'User Added') AS retrieval_type, a.created_at, a.updated_at,
@@ -652,7 +773,7 @@ def list_areas(
                   FROM areas_of_focus a
                   WHERE {where}
                 )
-                SELECT a.id, a.name, a.location_plss, a.location_coords, a.latitude, a.longitude,
+                SELECT a.id, a.name, a.tag, a.location_plss, a.location_coords, a.latitude, a.longitude,
                        a.minerals, a.status, a.status_checked_at, a.report_links, a.report_summary,
                        a.validity_notes, a.source, a.external_id, a.blm_case_url, a.blm_serial_number,
                        'monitoring_low' AS priority, a.state_abbr, a.meridian, a.claim_type, COALESCE(a.retrieval_type, 'User Added') AS retrieval_type, a.created_at, a.updated_at,
@@ -677,7 +798,7 @@ def list_areas(
                   FROM areas_of_focus a
                   WHERE {where}
                 )
-                SELECT a.id, a.name, a.location_plss, a.location_coords, a.latitude, a.longitude,
+                SELECT a.id, a.name, a.tag, a.location_plss, a.location_coords, a.latitude, a.longitude,
                        a.minerals, a.status, a.status_checked_at, a.report_links, a.report_summary,
                        a.validity_notes, a.source, a.external_id, a.blm_case_url, a.blm_serial_number,
                        COALESCE(a.priority, 'low') AS priority, a.state_abbr, a.meridian, a.claim_type, COALESCE(a.retrieval_type, 'User Added') AS retrieval_type, a.created_at, a.updated_at,
@@ -693,11 +814,42 @@ def list_areas(
                 rows = conn.execute(text(sql_no_plss_cols), params).mappings().all()
                 out = [dict(r) for r in rows]
                 for o in out:
+                    o["tag"] = None
                     o["township"] = None
                     o["range"] = None
                     o["section"] = None
                     o["is_uploaded"] = False
                 return out
+            if "tag" in err and ("column" in err or "does not exist" in err):
+                if tag and tag.strip():
+                    return []
+                sql_no_tag = f"""
+                WITH area_report_counts AS (
+                  SELECT a.id,
+                         (SELECT COUNT(*) FROM focus_reports fr WHERE fr.area_id = a.id)
+                         + COALESCE(array_length(a.report_links, 1), 0) AS report_count
+                  FROM areas_of_focus a
+                  WHERE {where}
+                )
+                SELECT a.id, a.name, a.location_plss, a.location_coords, a.latitude, a.longitude,
+                       a.minerals, a.status, a.status_checked_at, a.report_links, a.report_summary,
+                       a.validity_notes, a.source, a.external_id, a.blm_case_url, a.blm_serial_number,
+                       COALESCE(a.priority, 'low') AS priority, a.state_abbr, a.meridian, a.claim_type, COALESCE(a.retrieval_type, 'User Added') AS retrieval_type, a.created_at, a.updated_at,
+                       a.township, a."range", a.section, COALESCE(a.is_uploaded, false) AS is_uploaded,
+                       COALESCE(arc.report_count, 0)::int AS report_count,
+                       (COALESCE(a.roi_score, 0) + COALESCE(arc.report_count, 0) * 5)::int AS magnitude_score
+                FROM areas_of_focus a
+                LEFT JOIN area_report_counts arc ON arc.id = a.id
+                WHERE {where}
+                ORDER BY CASE COALESCE(a.priority, 'monitoring_low') WHEN 'ownership' THEN 1 WHEN 'due_diligence' THEN 2 WHEN 'negotiation' THEN 3 WHEN 'monitoring_high' THEN 4 WHEN 'high' THEN 4 WHEN 'monitoring_med' THEN 5 WHEN 'medium' THEN 5 WHEN 'monitoring_low' THEN 6 WHEN 'low' THEN 6 ELSE 7 END,
+                         (COALESCE(a.roi_score, 0) + COALESCE(arc.report_count, 0) * 5) DESC NULLS LAST, a.updated_at DESC
+                LIMIT :limit
+                """
+                rows = conn.execute(text(sql_no_tag), params).mappings().all()
+                out = [dict(r) for r in rows]
+                for o in out:
+                    o["tag"] = None
+                return [_format_area_display(o) for o in out]
             log.exception("list_areas failed: %s", e)
             raise
 
@@ -782,6 +934,31 @@ def list_distinct_minerals(account_id: int | None = None) -> List[str]:
     return [r[0] for r in rows if r[0]]
 
 
+def list_distinct_tags(account_id: int | None = None) -> List[str]:
+    """Return sorted list of distinct tag values that appear on any target."""
+    account_id = _effective_account_id(account_id)
+    eng = get_engine()
+    with eng.begin() as conn:
+        try:
+            rows = conn.execute(
+                text("""
+                SELECT DISTINCT TRIM(tag) AS name
+                FROM areas_of_focus
+                WHERE account_id = :account_id
+                  AND tag IS NOT NULL
+                  AND TRIM(tag) != ''
+                ORDER BY LOWER(TRIM(tag)), TRIM(tag)
+                """),
+                {"account_id": account_id},
+            ).fetchall()
+        except Exception as e:
+            err = str(e).lower()
+            if "tag" in err and ("column" in err or "does not exist" in err):
+                return []
+            raise
+    return [r[0] for r in rows if r[0]]
+
+
 def get_area(id: int, account_id: int | None = None) -> dict | None:
     account_id = _effective_account_id(account_id)
     eng = get_engine()
@@ -789,7 +966,7 @@ def get_area(id: int, account_id: int | None = None) -> dict | None:
         try:
             row = conn.execute(
                 text("""
-                SELECT id, name, location_plss, location_coords, latitude, longitude,
+                SELECT id, name, tag, location_plss, location_coords, latitude, longitude,
                        minerals, status, status_checked_at, report_links, report_summary,
                        validity_notes, source, external_id, blm_case_url, blm_serial_number,
                        priority, roi_score, characteristics, state_abbr, meridian,
@@ -801,10 +978,34 @@ def get_area(id: int, account_id: int | None = None) -> dict | None:
             ).mappings().first()
         except Exception as e:
             err = str(e).lower()
-            if "township" in err or "range" in err or "section" in err or "is_uploaded" in err:
+            if "tag" in err and ("column" in err or "does not exist" in err):
                 row = conn.execute(
                     text("""
                     SELECT id, name, location_plss, location_coords, latitude, longitude,
+                           minerals, status, status_checked_at, report_links, report_summary,
+                           validity_notes, source, external_id, blm_case_url, blm_serial_number,
+                           priority, roi_score, characteristics, state_abbr, meridian,
+                           township, "range", section, COALESCE(is_uploaded, false) AS is_uploaded,
+                           plss_normalized, claim_type, COALESCE(retrieval_type, 'User Added') AS retrieval_type, created_at, updated_at
+                    FROM areas_of_focus WHERE id = :id AND account_id = :account_id
+                    """),
+                    {"id": id, "account_id": account_id},
+                ).mappings().first()
+                if row:
+                    row = dict(row)
+                    row["tag"] = None
+                    if row.get("characteristics") is None:
+                        row["characteristics"] = {}
+                    row.setdefault("plss_normalized", None)
+                    row.setdefault("claim_type", None)
+                    row.setdefault("retrieval_type", RETRIEVAL_TYPE_USER_ADDED)
+                    _format_area_display(row)
+                    return row
+                return None
+            if "township" in err or "range" in err or "section" in err or "is_uploaded" in err:
+                row = conn.execute(
+                    text("""
+                    SELECT id, name, tag, location_plss, location_coords, latitude, longitude,
                            minerals, status, status_checked_at, report_links, report_summary,
                            validity_notes, source, external_id, blm_case_url, blm_serial_number,
                            priority, roi_score, characteristics, state_abbr, meridian,
@@ -815,6 +1016,7 @@ def get_area(id: int, account_id: int | None = None) -> dict | None:
                 ).mappings().first()
                 if row:
                     row = dict(row)
+                    row.setdefault("tag", None)
                     row["township"] = None
                     row["range"] = None
                     row["section"] = None
@@ -829,7 +1031,7 @@ def get_area(id: int, account_id: int | None = None) -> dict | None:
             if "priority" in err and "column" in err:
                 row = conn.execute(
                     text("""
-                    SELECT id, name, location_plss, location_coords, latitude, longitude,
+                    SELECT id, name, tag, location_plss, location_coords, latitude, longitude,
                            minerals, status, status_checked_at, report_links, report_summary,
                            validity_notes, source, external_id, blm_case_url, blm_serial_number,
                            roi_score, created_at, updated_at
@@ -839,6 +1041,7 @@ def get_area(id: int, account_id: int | None = None) -> dict | None:
                 ).mappings().first()
                 if row:
                     row = dict(row)
+                    row.setdefault("tag", None)
                     row["priority"] = "monitoring_low"
                     row["characteristics"] = row.get("characteristics") or {}
                     row.setdefault("township", None)
@@ -853,7 +1056,7 @@ def get_area(id: int, account_id: int | None = None) -> dict | None:
             if "characteristics" in err and "column" in err:
                 row = conn.execute(
                     text("""
-                    SELECT id, name, location_plss, location_coords, latitude, longitude,
+                    SELECT id, name, tag, location_plss, location_coords, latitude, longitude,
                            minerals, status, status_checked_at, report_links, report_summary,
                            validity_notes, source, external_id, blm_case_url, blm_serial_number,
                            priority, roi_score, created_at, updated_at
@@ -863,6 +1066,7 @@ def get_area(id: int, account_id: int | None = None) -> dict | None:
                 ).mappings().first()
                 if row:
                     row = dict(row)
+                    row.setdefault("tag", None)
                     row["characteristics"] = {}
                     row.setdefault("township", None)
                     row.setdefault("range", None)
@@ -876,6 +1080,7 @@ def get_area(id: int, account_id: int | None = None) -> dict | None:
             raise
     if row:
         row = dict(row)
+        row.setdefault("tag", None)
         if row.get("characteristics") is None:
             row["characteristics"] = {}
         row.setdefault("plss_normalized", None)
@@ -1003,6 +1208,53 @@ def update_area_minerals(id: int, minerals: List[str] | None, account_id: int | 
             {"id": id, "minerals": cleaned, "account_id": account_id},
         )
     return r.rowcount > 0
+
+
+def update_area_tag(id: int, tag: str | None, account_id: int | None = None) -> bool:
+    """Set or clear the tag field on a target. Returns True if a row was updated."""
+    account_id = _effective_account_id(account_id)
+    eng = get_engine()
+    normalized = _normalize_tag(tag)
+    with eng.begin() as conn:
+        try:
+            r = conn.execute(
+                text("UPDATE areas_of_focus SET tag = :tag, updated_at = now() WHERE id = :id AND account_id = :account_id"),
+                {"id": id, "tag": normalized, "account_id": account_id},
+            )
+        except Exception as e:
+            err = str(e).lower()
+            if "tag" in err and ("column" in err or "does not exist" in err):
+                return False
+            raise
+    return r.rowcount > 0
+
+
+def bulk_update_area_tag(ids: List[int], tag: str | None, account_id: int | None = None) -> dict[str, Any]:
+    """Set or clear the same tag across a batch of targets."""
+    account_id = _effective_account_id(account_id)
+    normalized = _normalize_tag(tag)
+    cleaned_ids = sorted({int(i) for i in ids if int(i) > 0})
+    if not cleaned_ids:
+        return {"updated": 0, "tag": normalized}
+    eng = get_engine()
+    with eng.begin() as conn:
+        try:
+            r = conn.execute(
+                text("""
+                UPDATE areas_of_focus
+                SET tag = :tag,
+                    updated_at = now()
+                WHERE account_id = :account_id
+                  AND id = ANY(CAST(:ids AS BIGINT[]))
+                """),
+                {"tag": normalized, "account_id": account_id, "ids": cleaned_ids},
+            )
+        except Exception as e:
+            err = str(e).lower()
+            if "tag" in err and ("column" in err or "does not exist" in err):
+                return {"updated": 0, "tag": None, "error": "tag_column_missing"}
+            raise
+    return {"updated": int(r.rowcount or 0), "tag": normalized}
 
 
 def update_area_coordinates(area_id: int, latitude: float | None, longitude: float | None, account_id: int | None = None) -> bool:
@@ -1960,6 +2212,7 @@ def upsert_area(
     meridian: str | None = None,
     is_uploaded: bool | None = None,
     retrieval_type: str | None = None,
+    tag: str | None = None,
     skip_plss_geocode: bool = False,
     account_id: int | None = None,
 ) -> int:
@@ -1968,6 +2221,7 @@ def upsert_area(
     eng = get_engine()
     minerals = _normalize_minerals(",".join(minerals)) if minerals else []
     report_links = report_links or []
+    tag = _normalize_tag(tag)
     plss_norm = _normalize_plss(location_plss, default_state=state_abbr)
     name_trim = (name[:500] if len(name) > 500 else name) if name else "Unknown"
 
@@ -2047,6 +2301,7 @@ def upsert_area(
                       "range" = COALESCE(:range_val, "range"),
                       section = COALESCE(:section, section),
                       meridian = COALESCE(:meridian, meridian),
+                      tag = COALESCE(:tag, tag),
                       retrieval_type = COALESCE(:retrieval_type, retrieval_type),
                       is_uploaded = CASE WHEN :is_uploaded IS TRUE THEN TRUE ELSE is_uploaded END,
                       updated_at = now()
@@ -2076,6 +2331,7 @@ def upsert_area(
                         "range_val": range_val,
                         "section": section,
                         "meridian": meridian,
+                        "tag": tag,
                         "retrieval_type": retrieval_type,
                         "is_uploaded": is_uploaded,
                     },
@@ -2096,12 +2352,12 @@ def upsert_area(
               account_id, name, location_plss, location_coords, plss_normalized, latitude, longitude,
               minerals, status, report_links, report_summary, validity_notes,
               source, external_id, blm_case_url, blm_serial_number, roi_score, priority,
-              state_abbr, township, "range", section, meridian, retrieval_type, is_uploaded
+              state_abbr, township, "range", section, meridian, tag, retrieval_type, is_uploaded
             ) VALUES (
               :account_id, :name, :location_plss, :location_coords, :plss_normalized, :lat, :lon,
               :minerals, :status, :report_links, :report_summary, :validity_notes,
               :source, :external_id, :blm_case_url, :blm_serial_number, :roi_score, :priority,
-              :state_abbr, :township, :range_val, :section, :meridian, :retrieval_type, :is_uploaded
+              :state_abbr, :township, :range_val, :section, :meridian, :tag, :retrieval_type, :is_uploaded
             )
             RETURNING id
             """),
@@ -2129,6 +2385,7 @@ def upsert_area(
                 "range_val": range_val,
                 "section": section,
                 "meridian": meridian,
+                "tag": tag,
                 "retrieval_type": retrieval_type,
                 "is_uploaded": is_uploaded if is_uploaded is not None else False,
             },

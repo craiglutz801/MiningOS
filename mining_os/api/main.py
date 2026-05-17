@@ -875,6 +875,7 @@ def api_delete_mineral(mineral_id: int) -> Dict[str, str]:
 @api_app.get("/areas-of-focus")
 def api_list_areas(
     mineral: Optional[str] = None,
+    tag: Optional[str] = None,
     status: Optional[str] = None,
     target_status: Optional[str] = None,
     state_abbr: Optional[str] = None,
@@ -889,6 +890,7 @@ def api_list_areas(
     from mining_os.services.areas_of_focus import list_areas
     return list_areas(
         mineral=mineral,
+        tag=tag,
         status=status,
         target_status=target_status,
         state_abbr=state_abbr,
@@ -918,6 +920,7 @@ class CreateAreaBody(BaseModel):
     status: Optional[str] = None
     minerals: Optional[List[str]] = None
     priority: Optional[str] = None
+    tag: Optional[str] = None
 
 
 def _finite_coord(v: Any) -> bool:
@@ -963,6 +966,7 @@ def _create_area_from_body(body: CreateAreaBody) -> Dict[str, Any]:
         status=status_val,
         minerals=minerals if minerals else None,
         priority=priority_val,
+        tag=body.tag,
         source="manual",
         is_uploaded=True,
         skip_plss_geocode=skip_geo,
@@ -987,6 +991,13 @@ def api_list_area_minerals() -> List[str]:
     """Distinct mineral names from targets (for mineral filter autocomplete)."""
     from mining_os.services.areas_of_focus import list_distinct_minerals
     return list_distinct_minerals()
+
+
+@api_app.get("/areas-of-focus/tags")
+def api_list_area_tags() -> List[str]:
+    """Distinct tag values from targets (for tag autocomplete)."""
+    from mining_os.services.areas_of_focus import list_distinct_tags
+    return list_distinct_tags()
 
 
 # Literal paths before {area_id} so they are not matched as GET /areas-of-focus/{area_id}
@@ -1209,6 +1220,20 @@ def api_batch_lr2000_geographic_report(body: BatchAreaIdsBody = Body(...)) -> Di
     return batch_lr2000_geographic_report(body.ids)
 
 
+class BatchAreaTagBody(BaseModel):
+    ids: List[int]
+    tag: Optional[str] = None
+
+
+@api_app.post("/areas-of-focus/batch/tag")
+def api_batch_set_area_tag(body: BatchAreaTagBody = Body(...)) -> Dict[str, Any]:
+    from mining_os.services.areas_of_focus import bulk_update_area_tag
+    result = bulk_update_area_tag(body.ids, body.tag)
+    if result.get("error") == "tag_column_missing":
+        raise HTTPException(status_code=503, detail="Tag column is not available yet. Run DB init/migration first.")
+    return result
+
+
 @api_app.get("/areas-of-focus/{area_id}")
 def api_get_area(area_id: int) -> Dict[str, Any]:
     from mining_os.services.areas_of_focus import get_area
@@ -1276,6 +1301,21 @@ def api_set_area_minerals(area_id: int, body: AreaMineralsBody = Body(...)) -> D
     if not ok:
         raise HTTPException(status_code=404, detail="Target not found")
     return {"id": area_id, "minerals": body.minerals}
+
+
+class AreaTagBody(BaseModel):
+    tag: Optional[str] = None
+
+
+@api_app.post("/areas-of-focus/{area_id}/tag")
+def api_set_area_tag(area_id: int, body: AreaTagBody = Body(...)) -> Dict[str, Any]:
+    from mining_os.services.areas_of_focus import get_area, update_area_tag
+    if not get_area(area_id):
+        raise HTTPException(status_code=404, detail="Target not found")
+    ok = update_area_tag(area_id, body.tag)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Failed to update tag")
+    return {"id": area_id, "tag": (body.tag or "").strip() or None}
 
 
 class AreaNameBody(BaseModel):
