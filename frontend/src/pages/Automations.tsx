@@ -47,6 +47,14 @@ const INCLUDE_EXISTING_CLAIM_STATUS_KEY = "include_targets_with_claim_status";
 type Tab = "rules" | "runs";
 type ModalMode = "create" | "edit";
 
+function normalizeAutocompleteText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function Automations() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<Tab>(searchParams.get("tab") === "runs" ? "runs" : "rules");
@@ -327,15 +335,23 @@ export function Automations() {
 
   const filteredTagSuggestions = (() => {
     const q = formFilterTag.trim().toLowerCase();
+    const normalizedQuery = normalizeAutocompleteText(formFilterTag);
     const startsWith: string[] = [];
     const contains: string[] = [];
     for (const tag of tagSuggestions) {
       const lower = tag.toLowerCase();
+      const normalizedTag = normalizeAutocompleteText(tag);
       if (!q) {
         startsWith.push(tag);
-      } else if (lower.startsWith(q)) {
+      } else if (
+        lower.startsWith(q) ||
+        (normalizedQuery && normalizedTag.startsWith(normalizedQuery))
+      ) {
         startsWith.push(tag);
-      } else if (lower.includes(q)) {
+      } else if (
+        lower.includes(q) ||
+        (normalizedQuery && normalizedTag.includes(normalizedQuery))
+      ) {
         contains.push(tag);
       }
     }
@@ -609,13 +625,16 @@ export function Automations() {
       {modalOpen && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50"
-          onClick={() => !formSaving && setModalOpen(false)}
+          onClick={(e) => {
+            if (!formSaving && e.target === e.currentTarget) setModalOpen(false);
+          }}
           role="dialog"
           aria-modal="true"
         >
           <div
             className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
               <h3 className="font-semibold text-slate-900">
@@ -901,13 +920,16 @@ export function Automations() {
       {runDetail && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50"
-          onClick={() => setRunDetail(null)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setRunDetail(null);
+          }}
           role="dialog"
           aria-modal="true"
         >
           <div
             className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
               <h3 className="font-semibold text-slate-900">
