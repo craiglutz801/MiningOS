@@ -87,6 +87,7 @@ export function Automations() {
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
   const [tagInputFocused, setTagInputFocused] = useState(false);
+  const [tagSuggestionsLoading, setTagSuggestionsLoading] = useState(false);
 
   // Run detail modal
   const [runDetail, setRunDetail] = useState<AutomationRun | null>(null);
@@ -132,6 +133,18 @@ export function Automations() {
     setLoading(false);
   };
 
+  const loadTagSuggestions = async () => {
+    setTagSuggestionsLoading(true);
+    try {
+      const tags = await api.areas.tagSuggestions();
+      setTagSuggestions([...tags].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })));
+    } catch {
+      setTagSuggestions([]);
+    } finally {
+      setTagSuggestionsLoading(false);
+    }
+  };
+
   useEffect(() => {
     void loadAll();
   }, []);
@@ -141,19 +154,7 @@ export function Automations() {
   }, [searchParams]);
 
   useEffect(() => {
-    let cancelled = false;
-    void api.areas.tagSuggestions()
-      .then((tags) => {
-        if (cancelled) return;
-        setTagSuggestions([...tags].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })));
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setTagSuggestions([]);
-      });
-    return () => {
-      cancelled = true;
-    };
+    void loadTagSuggestions();
   }, []);
 
   useEffect(() => {
@@ -175,6 +176,7 @@ export function Automations() {
   }, [runs, runDetail?.id, runDetail?.status, tab]);
 
   const openCreate = () => {
+    void loadTagSuggestions();
     setModalMode("create");
     setEditId(null);
     setFormName("");
@@ -195,6 +197,7 @@ export function Automations() {
   };
 
   const openEdit = (rule: AutomationRule) => {
+    void loadTagSuggestions();
     setModalMode("edit");
     setEditId(rule.id);
     setFormName(rule.name);
@@ -806,10 +809,14 @@ export function Automations() {
                     <input
                       type="text"
                       value={formFilterTag}
-                      onChange={(e) => setFormFilterTag(e.target.value)}
+                      onChange={(e) => {
+                        setFormFilterTag(e.target.value);
+                        setTagDropdownOpen(true);
+                      }}
                       onFocus={() => {
                         setTagInputFocused(true);
                         setTagDropdownOpen(true);
+                        void loadTagSuggestions();
                       }}
                       onBlur={() => {
                         setTagInputFocused(false);
@@ -825,7 +832,11 @@ export function Automations() {
                         className="absolute z-[100] top-full left-0 mt-0.5 w-full max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg py-1 text-sm"
                         role="listbox"
                       >
-                        {filteredTagSuggestions.length === 0 ? (
+                        {tagSuggestionsLoading ? (
+                          <li className="px-3 py-2 text-slate-500" role="option">
+                            Loading tags...
+                          </li>
+                        ) : filteredTagSuggestions.length === 0 ? (
                           <li className="px-3 py-2 text-slate-500" role="option">
                             No matching tags.
                           </li>

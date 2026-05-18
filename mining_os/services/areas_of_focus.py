@@ -942,12 +942,15 @@ def list_distinct_tags(account_id: int | None = None) -> List[str]:
         try:
             rows = conn.execute(
                 text("""
-                SELECT DISTINCT TRIM(tag) AS name
-                FROM areas_of_focus
-                WHERE account_id = :account_id
-                  AND tag IS NOT NULL
-                  AND TRIM(tag) != ''
-                ORDER BY LOWER(TRIM(tag)), TRIM(tag)
+                SELECT name
+                FROM (
+                  SELECT DISTINCT TRIM(tag) AS name
+                  FROM areas_of_focus
+                  WHERE account_id = :account_id
+                    AND tag IS NOT NULL
+                    AND TRIM(tag) != ''
+                ) tags
+                ORDER BY LOWER(name), name
                 """),
                 {"account_id": account_id},
             ).fetchall()
