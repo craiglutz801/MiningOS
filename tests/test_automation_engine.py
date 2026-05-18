@@ -32,6 +32,7 @@ class TestConstants:
         assert "email_on_change" in OUTCOME_TYPES
 
     def test_filter_keys(self):
+        assert "tag" in FILTER_KEYS
         assert "priority" in FILTER_KEYS
         assert "mineral" in FILTER_KEYS
 
@@ -138,8 +139,9 @@ class TestFilterTargets:
     @patch("mining_os.services.areas_of_focus.list_areas")
     def test_filter_passes_params(self, mock_list):
         mock_list.return_value = []
-        _filter_targets({"mineral": "Gold", "state_abbr": "NV"}, 50)
+        _filter_targets({"tag": "Uranium West", "mineral": "Gold", "state_abbr": "NV"}, 50)
         call_kwargs = mock_list.call_args
+        assert call_kwargs.kwargs.get("tag") == "Uranium West"
         assert call_kwargs.kwargs.get("mineral") == "Gold"
         assert call_kwargs.kwargs.get("state_abbr") == "NV"
 

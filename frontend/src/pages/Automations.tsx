@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
+  api,
   automations,
   type AutomationRule,
   type AutomationRun,
@@ -46,7 +48,8 @@ type Tab = "rules" | "runs";
 type ModalMode = "create" | "edit";
 
 export function Automations() {
-  const [tab, setTab] = useState<Tab>("rules");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState<Tab>(searchParams.get("tab") === "runs" ? "runs" : "rules");
   const [meta, setMeta] = useState<AutomationMeta | null>(null);
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [runs, setRuns] = useState<AutomationRun[]>([]);
@@ -66,12 +69,16 @@ export function Automations() {
   const [formMaxTargets, setFormMaxTargets] = useState(50);
   const [formEnabled, setFormEnabled] = useState(true);
   const [formFilterPriority, setFormFilterPriority] = useState("");
+  const [formFilterTag, setFormFilterTag] = useState("");
   const [formFilterMineral, setFormFilterMineral] = useState("");
   const [formFilterStatus, setFormFilterStatus] = useState("");
   const [formFilterState, setFormFilterState] = useState("");
   const [formFilterName, setFormFilterName] = useState("");
   const [formIncludeTargetsWithClaimStatus, setFormIncludeTargetsWithClaimStatus] = useState(false);
   const [formSaving, setFormSaving] = useState(false);
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+  const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
+  const [tagInputFocused, setTagInputFocused] = useState(false);
 
   // Run detail modal
   const [runDetail, setRunDetail] = useState<AutomationRun | null>(null);
@@ -122,6 +129,26 @@ export function Automations() {
   }, []);
 
   useEffect(() => {
+    setTab(searchParams.get("tab") === "runs" ? "runs" : "rules");
+  }, [searchParams]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void api.areas.tagSuggestions()
+      .then((tags) => {
+        if (cancelled) return;
+        setTagSuggestions([...tags].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setTagSuggestions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (tab === "runs") void loadRuns();
   }, [runsFilterRuleId, tab]);
 
@@ -150,6 +177,7 @@ export function Automations() {
     setFormMaxTargets(50);
     setFormEnabled(true);
     setFormFilterPriority("");
+    setFormFilterTag("");
     setFormFilterMineral("");
     setFormFilterStatus("");
     setFormFilterState("");
@@ -180,6 +208,7 @@ export function Automations() {
     setFormEnabled(rule.enabled);
     const fc = rule.filter_config || {};
     setFormFilterPriority(typeof fc.priority === "string" ? fc.priority : "");
+    setFormFilterTag(typeof fc.tag === "string" ? fc.tag : "");
     setFormFilterMineral(typeof fc.mineral === "string" ? fc.mineral : "");
     setFormFilterStatus(typeof fc.status === "string" ? fc.status : "");
     setFormFilterState(typeof fc.state_abbr === "string" ? fc.state_abbr : "");
@@ -194,6 +223,7 @@ export function Automations() {
     const cron = formCronPreset === "__custom__" ? formCronCustom.trim() : formCronPreset;
     const filter_config: Record<string, string | boolean> = {};
     if (formFilterPriority) filter_config.priority = formFilterPriority;
+    if (formFilterTag.trim()) filter_config.tag = formFilterTag.trim();
     if (formFilterMineral.trim()) filter_config.mineral = formFilterMineral.trim();
     if (formFilterStatus) filter_config.status = formFilterStatus;
     if (formFilterState.trim()) filter_config.state_abbr = formFilterState.trim();
@@ -251,7 +281,7 @@ export function Automations() {
       if (!res.ok && res.error) {
         setError(res.error);
       }
-      setTab("runs");
+      changeTab("runs");
       await loadRuns();
       if (res.run_id) {
         await loadRunDetail(res.run_id);
@@ -284,6 +314,33 @@ export function Automations() {
 
   const visibleFilterEntries = (rule: AutomationRule) =>
     Object.entries(rule.filter_config || {}).filter(([k]) => k !== INCLUDE_EXISTING_CLAIM_STATUS_KEY);
+
+  const changeTab = (nextTab: Tab) => {
+    setTab(nextTab);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (nextTab === "runs") next.set("tab", "runs");
+      else next.delete("tab");
+      return next;
+    }, { replace: true });
+  };
+
+  const filteredTagSuggestions = (() => {
+    const q = formFilterTag.trim().toLowerCase();
+    const startsWith: string[] = [];
+    const contains: string[] = [];
+    for (const tag of tagSuggestions) {
+      const lower = tag.toLowerCase();
+      if (!q) {
+        startsWith.push(tag);
+      } else if (lower.startsWith(q)) {
+        startsWith.push(tag);
+      } else if (lower.includes(q)) {
+        contains.push(tag);
+      }
+    }
+    return [...startsWith, ...contains].slice(0, 20);
+  })();
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
@@ -320,7 +377,7 @@ export function Automations() {
       <div className="flex gap-2 border-b border-slate-200">
         <button
           type="button"
-          onClick={() => setTab("rules")}
+          onClick={() => changeTab("rules")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             tab === "rules"
               ? "border-slate-800 text-slate-900"
@@ -331,7 +388,7 @@ export function Automations() {
         </button>
         <button
           type="button"
-          onClick={() => setTab("runs")}
+          onClick={() => changeTab("runs")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             tab === "runs"
               ? "border-slate-800 text-slate-900"
@@ -724,6 +781,53 @@ export function Automations() {
                         </option>
                       ))}
                     </select>
+                  </label>
+                  <label className="flex flex-col gap-1 relative">
+                    <span className="text-xs text-slate-500">Tag</span>
+                    <input
+                      type="text"
+                      value={formFilterTag}
+                      onChange={(e) => setFormFilterTag(e.target.value)}
+                      onFocus={() => {
+                        setTagInputFocused(true);
+                        setTagDropdownOpen(true);
+                      }}
+                      onBlur={() => {
+                        setTagInputFocused(false);
+                        window.setTimeout(() => setTagDropdownOpen(false), 100);
+                      }}
+                      placeholder="e.g. Uranium West"
+                      autoComplete="off"
+                      className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                    />
+                    {tagDropdownOpen && tagInputFocused && (
+                      <ul
+                        onMouseDown={(e) => e.preventDefault()}
+                        className="absolute z-[100] top-full left-0 mt-0.5 w-full max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg py-1 text-sm"
+                        role="listbox"
+                      >
+                        {filteredTagSuggestions.length === 0 ? (
+                          <li className="px-3 py-2 text-slate-500" role="option">
+                            No matching tags.
+                          </li>
+                        ) : (
+                          filteredTagSuggestions.map((tag) => (
+                            <li
+                              key={tag}
+                              role="option"
+                              className="px-3 py-2 cursor-pointer hover:bg-primary-50 text-slate-800"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setFormFilterTag(tag);
+                                setTagDropdownOpen(false);
+                              }}
+                            >
+                              {tag}
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    )}
                   </label>
                   <label className="flex flex-col gap-1">
                     <span className="text-xs text-slate-500">Mineral</span>

@@ -34,6 +34,7 @@ OUTCOME_TYPES = [
 ]
 
 FILTER_KEYS = [
+    "tag",
     "priority",
     "mineral",
     "status",
@@ -503,6 +504,7 @@ def _filter_targets(
 
     limit = min(max_targets, MAX_TARGETS_CAP)
     areas = list_areas(
+        tag=params.get("tag"),
         mineral=params.get("mineral"),
         status=params.get("status"),
         state_abbr=params.get("state_abbr"),
