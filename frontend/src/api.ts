@@ -635,6 +635,17 @@ export const api = {
       }),
   },
 
+  share: {
+    /** Create a public, no-login share link for the selected targets. */
+    create: (areaIds: number[], title?: string) =>
+      request<ShareCreateResult>("/areas-of-focus/share", {
+        method: "POST",
+        body: JSON.stringify({ area_ids: areaIds, title: title?.trim() || null }),
+      }),
+    /** Public tailored view for a share token (no authentication required). */
+    view: (token: string) => request<SharedView>(`/share/${encodeURIComponent(token)}`),
+  },
+
   alerts: {
     sendPriorityUnpaid: () =>
       request<{ sent: boolean; email_sent?: boolean; count: number; recipient?: string; message?: string }>(
@@ -874,6 +885,41 @@ export interface Area {
     };
     blm_prod_types?: string[];
   };
+}
+
+export interface ShareCreateResult {
+  token: string;
+  created_at: string | null;
+  count: number;
+  path: string;
+}
+
+export interface SharedUnpaidClaim {
+  claim_name: string | null;
+  serial_number: string | null;
+  case_page: string | null;
+  payment_report: string | null;
+  payment_message: string | null;
+}
+
+export interface SharedTarget {
+  id: number;
+  name: string;
+  location_plss: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  minerals: string[];
+  reports: string[];
+  report_summary: string | null;
+  unpaid_claims: SharedUnpaidClaim[];
+}
+
+export interface SharedView {
+  title: string | null;
+  created_at: string | null;
+  target_count: number;
+  unpaid_claim_count: number;
+  targets: SharedTarget[];
 }
 
 export interface ReportTarget {

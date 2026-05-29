@@ -254,6 +254,14 @@ export function Areas() {
   const [bulkTagScope, setBulkTagScope] = useState<"selected" | "filtered">("filtered");
   const [bulkTagDraft, setBulkTagDraft] = useState("");
   const [bulkTagSaving, setBulkTagSaving] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareScope, setShareScope] = useState<"selected" | "filtered">("selected");
+  const [shareTitleDraft, setShareTitleDraft] = useState("");
+  const [shareCreating, setShareCreating] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareCount, setShareCount] = useState(0);
+  const [shareCopied, setShareCopied] = useState(false);
   const [batchControlOpen, setBatchControlOpen] = useState(false);
   const [batchOptFetch, setBatchOptFetch] = useState(true);
   const [batchOptLr2000, setBatchOptLr2000] = useState(true);
@@ -638,6 +646,51 @@ export function Areas() {
       ? (areas.find((a) => a.id === Array.from(tableSelectedIds)[0])?.tag ?? "")
       : "");
     setBulkTagModalOpen(true);
+  };
+
+  const shareScopeIds = () =>
+    shareScope === "selected" ? Array.from(tableSelectedIds) : areas.map((a) => a.id);
+
+  const openShareModal = (scope: "selected" | "filtered") => {
+    setShareScope(scope);
+    setShareTitleDraft(scope === "filtered" && tagFilter.trim() ? `${tagFilter.trim()} targets` : "");
+    setShareUrl(null);
+    setShareError(null);
+    setShareCopied(false);
+    setShareCount(scope === "selected" ? tableSelectedIds.size : areas.length);
+    setShareModalOpen(true);
+  };
+
+  const createShareLink = async () => {
+    const ids = shareScopeIds();
+    if (ids.length === 0) {
+      setShareError("No targets selected to share.");
+      return;
+    }
+    setShareCreating(true);
+    setShareError(null);
+    try {
+      const result = await api.share.create(ids, shareTitleDraft.trim() || undefined);
+      setShareUrl(`${window.location.origin}${result.path}`);
+      setShareCount(result.count);
+    } catch (e) {
+      setShareError(
+        e instanceof ApiError ? (formatApiDetail(e.body?.detail) || e.message) : (e as Error).message,
+      );
+    } finally {
+      setShareCreating(false);
+    }
+  };
+
+  const copyShareUrl = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      setShareError("Could not copy automatically — select and copy the link manually.");
+    }
   };
 
   const runBulkTagUpdate = async (tagValue: string | null) => {
@@ -2463,6 +2516,14 @@ export function Areas() {
           <button
             type="button"
             disabled={batchRunStatus !== null}
+            onClick={() => openShareModal("selected")}
+            className="px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+          >
+            Share…
+          </button>
+          <button
+            type="button"
+            disabled={batchRunStatus !== null}
             onClick={() => setTableSelectedIds(new Set())}
             className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-50"
           >
@@ -4076,6 +4137,158 @@ export function Areas() {
               >
                 {bulkTagSaving ? "Applying…" : "Apply tag"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {shareModalOpen && (
+        <div
+          className="fixed inset-0 z-[58] flex items-center justify-center p-4 bg-black/50"
+          onClick={() => !shareCreating && setShareModalOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="share-title"
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-md w-full flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
+              <h3 id="share-title" className="font-semibold text-slate-900">
+                Share targets
+              </h3>
+              <button
+                type="button"
+                disabled={shareCreating}
+                onClick={() => setShareModalOpen(false)}
+                className="text-slate-500 hover:text-slate-700 text-xl leading-none disabled:opacity-40"
+                aria-label="Close"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4 text-sm text-slate-700">
+              {!shareUrl ? (
+                <>
+                  <p className="text-slate-600">
+                    Create a public, no-login link to a clean view of these targets — name, PLSS, coordinates,
+                    minerals, known reports, and any unpaid claims.
+                  </p>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="share-scope"
+                      className="mt-0.5"
+                      checked={shareScope === "selected"}
+                      disabled={tableSelectedIds.size === 0}
+                      onChange={() => setShareScope("selected")}
+                    />
+                    <span>
+                      <span className="font-medium text-slate-900">Selected targets</span>
+                      <span className="block text-xs text-slate-500">{tableSelectedIds.size} selected row{tableSelectedIds.size === 1 ? "" : "s"}.</span>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="share-scope"
+                      className="mt-0.5"
+                      checked={shareScope === "filtered"}
+                      onChange={() => setShareScope("filtered")}
+                    />
+                    <span>
+                      <span className="font-medium text-slate-900">Current filtered list</span>
+                      <span className="block text-xs text-slate-500">{areas.length} target{areas.length === 1 ? "" : "s"} currently shown.</span>
+                    </span>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-slate-600">Title (optional)</span>
+                    <input
+                      type="text"
+                      value={shareTitleDraft}
+                      onChange={(e) => setShareTitleDraft(e.target.value)}
+                      placeholder="e.g. Uranium prospects — Utah"
+                      className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      maxLength={160}
+                    />
+                  </label>
+                  {shareError && (
+                    <p className="text-xs text-red-600">{shareError}</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-800">
+                    <span className="text-base">✓</span>
+                    <span className="text-sm font-medium">Share link ready ({shareCount} target{shareCount === 1 ? "" : "s"})</span>
+                  </div>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-slate-600">Public link</span>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={shareUrl}
+                        onFocus={(e) => e.currentTarget.select()}
+                        className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 font-mono text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void copyShareUrl()}
+                        className="px-3 py-2 bg-primary-600 text-white rounded-lg text-xs font-medium hover:bg-primary-700 whitespace-nowrap"
+                      >
+                        {shareCopied ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+                    <span className="text-xs text-slate-500">Anyone with this link can view the targets — no login required.</span>
+                  </label>
+                  {shareError && <p className="text-xs text-red-600">{shareError}</p>}
+                </>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-200 flex gap-2 shrink-0">
+              {!shareUrl ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={shareCreating}
+                    onClick={() => setShareModalOpen(false)}
+                    className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={shareCreating || shareScopeIds().length === 0}
+                    onClick={() => void createShareLink()}
+                    className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {shareCreating ? "Creating…" : "Create link"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <a
+                    href={shareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 text-center"
+                  >
+                    Open view
+                  </a>
+                  <a
+                    href={`${shareUrl}?print=1`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 text-center"
+                  >
+                    Download PDF
+                  </a>
+                </>
+              )}
             </div>
           </div>
         </div>

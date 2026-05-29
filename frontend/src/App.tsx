@@ -11,12 +11,15 @@ import { Automations } from "./pages/Automations";
 import { Login } from "./pages/Login";
 import { BootstrapAdmin } from "./pages/BootstrapAdmin";
 import { AdminAccounts } from "./pages/AdminAccounts";
+import { SharePage } from "./pages/SharePage";
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* Public, no-login shared target view */}
+          <Route path="/share/:token" element={<SharePage />} />
           <Route element={<GuestOnly />}>
             <Route path="/login" element={<Login />} />
           </Route>

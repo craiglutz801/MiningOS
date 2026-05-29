@@ -58,6 +58,7 @@ _PUBLIC_API_PATHS = {
 _PUBLIC_API_PREFIXES = (
     "/api/diag/",
     "/api/auth/",
+    "/api/share/",
 )
 
 
@@ -1249,6 +1250,37 @@ def api_delete_area(area_id: int) -> Dict[str, str]:
     if not delete_area(area_id):
         raise HTTPException(status_code=404, detail="Target not found")
     return {"status": "deleted"}
+
+
+class ShareCreateBody(BaseModel):
+    area_ids: List[int]
+    title: Optional[str] = None
+
+
+@api_app.post("/areas-of-focus/share")
+def api_create_share_link(request: Request, body: ShareCreateBody = Body(...)) -> Dict[str, Any]:
+    """Create a public, no-login share link for the selected targets."""
+    ctx = _require_auth(request)
+    from mining_os.services.share_links import create_share_link
+    try:
+        return create_share_link(
+            body.area_ids,
+            title=body.title,
+            account_id=ctx.active_account_id,
+            created_by=ctx.user_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@api_app.get("/share/{token}")
+def api_get_shared_view(token: str) -> Dict[str, Any]:
+    """Public tailored view for a share token (no authentication required)."""
+    from mining_os.services.share_links import get_shared_view
+    view = get_shared_view(token)
+    if view is None:
+        raise HTTPException(status_code=404, detail="This share link is invalid or has expired.")
+    return view
 
 
 class AreaPriorityBody(BaseModel):
