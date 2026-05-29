@@ -477,7 +477,16 @@ export function Areas() {
         const id = parseInt(areaIdParam, 10);
         if (!Number.isNaN(id)) {
           const area = rows.find((a) => a.id === id);
-          if (area) setSelected(area);
+          if (area) {
+            // Fetch the full detail (incl. MLRS claim records) so the payment
+            // table shows when landing here from the map, matching a row click.
+            try {
+              const full = await api.areas.get(id);
+              if (requestSeq === loadRequestSeq.current) setSelected(full);
+            } catch {
+              if (requestSeq === loadRequestSeq.current) setSelected(area);
+            }
+          }
         }
       }
     } catch (e) {
