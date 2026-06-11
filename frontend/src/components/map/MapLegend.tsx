@@ -40,6 +40,13 @@ export function MapLegend() {
             <span className="font-mono">10+</span>, then <strong>click the map</strong> for surface manager (BLM /
             USFS / private / state — not deed names).
           </p>
+          <p className="text-[10px] text-slate-500 pt-2 mt-2 border-t border-slate-100 leading-snug">
+            <span className="font-semibold text-slate-600">Mine layers:</span>{" "}
+            <strong>USMIN Mine Features</strong> is the most complete (USGS topo-derived workings),{" "}
+            <strong>USMIN Deposits</strong> covers critical-mineral deposits, and{" "}
+            <strong>Known Mines (MRDS)</strong> is the older USGS occurrence set. Toggle them in the{" "}
+            <strong>Layers</strong> control (top-right).
+          </p>
         </div>
       )}
     </div>

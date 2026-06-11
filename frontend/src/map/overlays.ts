@@ -40,6 +40,40 @@ export const OVERLAYS: Record<OverlayKey, OverlayDef> = {
     pane: MAP_PANES.mines,
     minZoom: 8,
   },
+  // USGS USMIN — Prospect- and Mine-Related Features digitized from historical
+  // USGS topo maps (~725k point/polygon symbols nationwide). Far more complete
+  // than MRDS for physical workings. Rendered as WMS imagery so the FULL
+  // inventory is shown (no client-side 2000-feature cap like MRDS). Layers are
+  // listed bottom-to-top: polygons first so the point symbols draw on top.
+  usminMines: {
+    key: "usminMines",
+    label: "USMIN Mine Features (USGS)",
+    kind: "wms",
+    visibleByDefault: false,
+    pane: MAP_PANES.usminMines,
+    url: "https://mrdata.usgs.gov/services/usmin",
+    layers: "polygons,points",
+    format: "image/png",
+    transparent: true,
+    opacity: 0.85,
+    minZoom: 7,
+  },
+  // USGS USMIN Mineral Deposit Database — curated, authoritative critical-mineral
+  // deposits. Sparse nationwide, so safe at low zoom. `sites` = one generalized
+  // point per deposit (best zoomed out), `points` = detailed features.
+  usminDeposits: {
+    key: "usminDeposits",
+    label: "USMIN Deposits (USGS)",
+    kind: "wms",
+    visibleByDefault: false,
+    pane: MAP_PANES.usminDeposits,
+    url: "https://mrdata.usgs.gov/services/deposit",
+    layers: "polygons,points,sites",
+    format: "image/png",
+    transparent: true,
+    opacity: 0.9,
+    minZoom: 4,
+  },
 };
 
 export const OVERLAY_KEYS = Object.keys(OVERLAYS) as OverlayKey[];

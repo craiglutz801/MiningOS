@@ -188,6 +188,38 @@ function OverlayLayers({ visibleOverlays }: { visibleOverlays: Record<string, bo
           pane={MAP_PANES.plss}
         />
       )}
+
+      {/* USMIN Deposits — curated USGS deposit DB (WMS). Sparse, safe at low zoom. */}
+      {visibleOverlays.usminDeposits && OVERLAYS.usminDeposits.url && (
+        <WMSTileLayer
+          url={OVERLAYS.usminDeposits.url}
+          params={{
+            layers: OVERLAYS.usminDeposits.layers || "",
+            format: OVERLAYS.usminDeposits.format || "image/png",
+            transparent: true,
+            version: "1.1.1",
+          }}
+          opacity={OVERLAYS.usminDeposits.opacity ?? 0.9}
+          minZoom={OVERLAYS.usminDeposits.minZoom}
+          pane={MAP_PANES.usminDeposits}
+        />
+      )}
+
+      {/* USMIN Mine Features — full topo-map mine/prospect inventory (WMS, no feature cap). */}
+      {visibleOverlays.usminMines && OVERLAYS.usminMines.url && (
+        <WMSTileLayer
+          url={OVERLAYS.usminMines.url}
+          params={{
+            layers: OVERLAYS.usminMines.layers || "",
+            format: OVERLAYS.usminMines.format || "image/png",
+            transparent: true,
+            version: "1.1.1",
+          }}
+          opacity={OVERLAYS.usminMines.opacity ?? 0.85}
+          minZoom={OVERLAYS.usminMines.minZoom}
+          pane={MAP_PANES.usminMines}
+        />
+      )}
     </>
   );
 }

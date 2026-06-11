@@ -1,6 +1,12 @@
 export type BasemapKey = "satellite" | "topo" | "streets";
 
-export type OverlayKey = "targets" | "plss" | "ownership" | "knownMines";
+export type OverlayKey =
+  | "targets"
+  | "plss"
+  | "ownership"
+  | "knownMines"
+  | "usminMines"
+  | "usminDeposits";
 
 export type LayerKind = "tile" | "wms" | "geojson" | "api-points" | "mrds-points";
 

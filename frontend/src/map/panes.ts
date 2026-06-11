@@ -4,6 +4,8 @@ export const MAP_PANES = {
   ownership: "ownership-pane",
   stateOutlines: "state-outlines-pane",
   plss: "plss-pane",
+  usminDeposits: "usmin-deposits-pane",
+  usminMines: "usmin-mines-pane",
   mines: "mines-pane",
   targets: "targets-pane",
   selectedTarget: "selected-target-pane",
@@ -14,6 +16,8 @@ const PANE_Z: Record<string, number> = {
   [MAP_PANES.ownership]: 300,
   [MAP_PANES.stateOutlines]: 335,
   [MAP_PANES.plss]: 350,
+  [MAP_PANES.usminDeposits]: 360,
+  [MAP_PANES.usminMines]: 365,
   [MAP_PANES.mines]: 400,
   [MAP_PANES.targets]: 500,
   [MAP_PANES.selectedTarget]: 650,
@@ -28,7 +32,9 @@ export function ensureMapPanes(map: L.Map) {
       if (
         paneName === MAP_PANES.ownership ||
         paneName === MAP_PANES.stateOutlines ||
-        paneName === MAP_PANES.plss
+        paneName === MAP_PANES.plss ||
+        paneName === MAP_PANES.usminDeposits ||
+        paneName === MAP_PANES.usminMines
       ) {
         pane.style.pointerEvents = "none";
       }
