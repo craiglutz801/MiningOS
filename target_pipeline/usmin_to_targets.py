@@ -28,7 +28,9 @@ import argparse
 import gzip
 import json
 import logging
+import math
 import sys
+import time
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -87,101 +89,162 @@ def load_usmin_points(state: str) -> list[MinePoint]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Reverse-geocode: one BLM call per unique grid cell, with retry
+# Reverse-geocode: bulk tile prefetch + local point-in-polygon
 # ─────────────────────────────────────────────────────────────────────────────
 #
-# mines_to_targets.reverse_geocode_points issues one call per *point* and
-# permanently caches None on timeout, silently dropping mines. With 124k NV
-# points that's both slow and lossy, so here we (a) dedupe to unique cache
-# cells before calling BLM, (b) retry failures once, (c) only cache a None
-# when BLM positively answered "no PLSS here", and (d) re-probe pre-existing
-# cached Nones (many are timeout artifacts from earlier MRDS runs).
+# Per-point BLM reverse lookups get throttled hard at this scale (~50k cells
+# would take days and timeouts get cached as permanent Nones, silently dropping
+# mines). Instead we fetch ALL section polygons for each 0.25° tile that
+# contains an unresolved point (one envelope query returns ~250 sections in
+# ~0.1 MB), then assign points to sections locally with ray-casting. Results
+# land in the same per-cell disk cache that mines_to_targets uses, and a None
+# is only cached when the point genuinely falls outside every PLSS section.
+
+TILE_DEGREES = 0.25
+TILE_PAGE_SIZE = 2000
 
 
-def _reverse_once(lat: float, lon: float, timeout: float) -> tuple[bool, dict[str, Any] | None]:
-    """Returns (answered, plss_dict_or_None). answered=False means request failed."""
+def _tile_key(lat: float, lon: float) -> tuple[int, int]:
+    return (math.floor(lon / TILE_DEGREES), math.floor(lat / TILE_DEGREES))
+
+
+def _fetch_tile_sections(tx: int, ty: int, timeout: float = 90.0) -> list[dict[str, Any]] | None:
+    """All PLSS section features intersecting the tile, or None when BLM fails."""
     import requests
+
+    env = {
+        "xmin": tx * TILE_DEGREES, "ymin": ty * TILE_DEGREES,
+        "xmax": (tx + 1) * TILE_DEGREES, "ymax": (ty + 1) * TILE_DEGREES,
+        "spatialReference": {"wkid": 4326},
+    }
+    feats: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        params = {
+            "f": "json",
+            "geometry": json.dumps(env),
+            "geometryType": "esriGeometryEnvelope",
+            "inSR": "4326",
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "PLSSID,FRSTDIVNO",
+            "returnGeometry": "true",
+            "geometryPrecision": "5",
+            "outSR": "4326",
+            "resultRecordCount": str(TILE_PAGE_SIZE),
+            "resultOffset": str(offset),
+        }
+        data = None
+        for attempt in range(2):
+            try:
+                r = requests.get(BLM_PLSS_REVERSE_URL, params=params, timeout=timeout)
+                r.raise_for_status()
+                data = r.json()
+                if isinstance(data, dict) and not data.get("error"):
+                    break
+                data = None
+            except Exception:
+                data = None
+            time.sleep(2.0)
+        if data is None:
+            return None
+        page = data.get("features") or []
+        feats.extend(page)
+        if not data.get("exceededTransferLimit") and len(page) < TILE_PAGE_SIZE:
+            break
+        offset += len(page)
+    return feats
+
+
+def _point_in_rings(lon: float, lat: float, rings: list[list[list[float]]]) -> bool:
+    """Even-odd ray casting across all rings."""
+    inside = False
+    for ring in rings:
+        n = len(ring)
+        j = n - 1
+        for i in range(n):
+            xi, yi = ring[i][0], ring[i][1]
+            xj, yj = ring[j][0], ring[j][1]
+            if (yi > lat) != (yj > lat) and lon < (xj - xi) * (lat - yi) / (yj - yi) + xi:
+                inside = not inside
+            j = i
+    return inside
+
+
+def _resolve_cell(lon: float, lat: float, sections: list[dict[str, Any]]) -> dict[str, Any] | None:
     from mining_os.services.plss_geocode import _parse_plssid_attrs
 
-    params = {
-        "f": "json",
-        "geometry": f"{lon},{lat}",
-        "geometryType": "esriGeometryPoint",
-        "inSR": "4326",
-        "spatialRel": "esriSpatialRelIntersects",
-        "outFields": "PLSSID,FRSTDIVNO",
-        "returnGeometry": "false",
-        "resultRecordCount": "5",
-    }
-    try:
-        r = requests.get(BLM_PLSS_REVERSE_URL, params=params, timeout=timeout)
-        r.raise_for_status()
-        data = r.json()
-        if not isinstance(data, dict) or data.get("error"):
-            return False, None
-        feats = data.get("features") or []
-        if not feats:
-            return True, None  # positive "not on PLSS land"
-        attrs = (feats[0] or {}).get("attributes") or {}
-        return True, _parse_plssid_attrs(attrs.get("PLSSID"), attrs.get("FRSTDIVNO"))
-    except Exception:
-        return False, None
+    for f in sections:
+        bbox = f.get("_bbox")
+        if bbox and not (bbox[0] <= lon <= bbox[2] and bbox[1] <= lat <= bbox[3]):
+            continue
+        rings = (f.get("geometry") or {}).get("rings") or []
+        if rings and _point_in_rings(lon, lat, rings):
+            attrs = f.get("attributes") or {}
+            return _parse_plssid_attrs(attrs.get("PLSSID"), attrs.get("FRSTDIVNO"))
+    return None
 
 
-def geocode_points_via_cells(
+def geocode_points_via_tiles(
     points: list[MinePoint],
     cache: PlssReverseCache,
-    workers: int = 8,
-    timeout: float = 25.0,
+    workers: int = 6,
     retry_nulls: bool = True,
 ) -> dict[int, dict[str, Any] | None]:
-    """Map point-index → PLSS dict (or None), calling BLM once per unique grid cell."""
+    """Map point-index → PLSS dict (or None) using bulk tile downloads."""
     import concurrent.futures
     import threading
-    import time as _time
 
-    cells: dict[str, tuple[float, float]] = {}
+    # Unique cache cells that still need resolution, grouped by tile.
+    cell_rep: dict[str, tuple[float, float]] = {}
     for p in points:
         k = cache.cell_key(p.latitude, p.longitude)
-        cells.setdefault(k, (p.latitude, p.longitude))
+        cell_rep.setdefault(k, (p.latitude, p.longitude))
 
-    todo: list[tuple[str, float, float]] = []
-    for k, (lat, lon) in cells.items():
+    tiles: dict[tuple[int, int], list[tuple[str, float, float]]] = {}
+    unresolved = 0
+    for k, (lat, lon) in cell_rep.items():
         hit, val = cache.get(lat, lon)
-        if not hit or (retry_nulls and val is None):
-            todo.append((k, lat, lon))
+        if hit and not (retry_nulls and val is None):
+            continue
+        unresolved += 1
+        tiles.setdefault(_tile_key(lat, lon), []).append((k, lat, lon))
 
-    log.info("geocode: %d points → %d unique cells (%d need BLM lookups)",
-             len(points), len(cells), len(todo))
+    log.info("geocode: %d points → %d cells; %d unresolved across %d tiles",
+             len(points), len(cell_rep), unresolved, len(tiles))
 
-    failed = 0
-    done = 0
+    failed_tiles = 0
+    done_tiles = 0
     lock = threading.Lock()
 
-    def _work(item: tuple[str, float, float]) -> None:
-        nonlocal failed, done
-        _, lat, lon = item
-        answered, val = _reverse_once(lat, lon, timeout)
-        if not answered:
-            _time.sleep(1.0)
-            answered, val = _reverse_once(lat, lon, timeout)
+    def _work(item: tuple[tuple[int, int], list[tuple[str, float, float]]]) -> None:
+        nonlocal failed_tiles, done_tiles
+        (tx, ty), cells = item
+        feats = _fetch_tile_sections(tx, ty)
         with lock:
-            done += 1
-            if answered:
-                cache.set(lat, lon, val)
-            else:
-                failed += 1
-            if done % 500 == 0:
+            done_tiles += 1
+            if feats is None:
+                failed_tiles += 1
+                log.warning("tile (%d,%d) failed — %d cells left unresolved", tx, ty, len(cells))
+                return
+            # Precompute feature bboxes once per tile.
+            for f in feats:
+                rings = (f.get("geometry") or {}).get("rings") or []
+                xs = [pt[0] for ring in rings for pt in ring]
+                ys = [pt[1] for ring in rings for pt in ring]
+                f["_bbox"] = (min(xs), min(ys), max(xs), max(ys)) if xs else None
+            for _, lat, lon in cells:
+                cache.set(lat, lon, _resolve_cell(lon, lat, feats))
+            if done_tiles % 20 == 0:
                 cache.flush()
-                log.info("geocode progress: %d/%d cells (%d failed)", done, len(todo), failed)
+                log.info("geocode progress: %d/%d tiles (%d failed)", done_tiles, len(tiles), failed_tiles)
 
-    if todo:
+    if tiles:
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
-            list(ex.map(_work, todo))
+            list(ex.map(_work, sorted(tiles.items())))
         cache.flush()
-    if failed:
-        log.warning("geocode: %d cells failed twice — their mines are skipped this run "
-                    "(rerun to retry; they were NOT cached as empty)", failed)
+    if failed_tiles:
+        log.warning("geocode: %d/%d tiles failed — affected mines skipped this run "
+                    "(NOT cached as empty; rerun to retry)", failed_tiles, len(tiles))
 
     out: dict[int, dict[str, Any] | None] = {}
     for i, p in enumerate(points):
@@ -360,8 +423,8 @@ def main() -> int:
                         help="Geocode + write payload artifacts; no DB writes.")
     parser.add_argument("--upsert-only", action="store_true",
                         help="Skip geocoding; load payloads_<ST>.json and insert new sections only.")
-    parser.add_argument("--workers", type=int, default=8)
-    parser.add_argument("--fast-timeout", type=float, default=25.0)
+    parser.add_argument("--workers", type=int, default=6,
+                        help="Parallel BLM tile downloads (default: 6)")
     parser.add_argument("--cache", default=str(CACHE_DIR / "plss_reverse_cache.json"))
     parser.add_argument("--account-id", type=int, default=1)
     parser.add_argument("--log-level", default="INFO",
@@ -393,11 +456,10 @@ def main() -> int:
         else:
             points = load_usmin_points(state)
             log.info("loaded %d USMIN points for %s", len(points), state)
-            geocodes = geocode_points_via_cells(
+            geocodes = geocode_points_via_tiles(
                 points,
                 cache,
                 workers=max(1, int(args.workers)),
-                timeout=float(args.fast_timeout),
             )
             groups = group_by_section(points, geocodes, target_state=state)
             payloads = build_target_payloads(groups)
