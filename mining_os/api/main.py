@@ -726,6 +726,36 @@ def map_sma_query(
         raise HTTPException(status_code=502, detail=f"BLM SMA service unavailable: {e}") from e
 
 
+@api_app.get("/map/usmin-points")
+def map_usmin_points(
+    bbox: str = Query(..., description="west,south,east,north in WGS84 lon/lat"),
+    limit: int = Query(3000, ge=1, le=6000),
+) -> Dict[str, Any]:
+    """Return local USGS USMIN mine-feature points within a bounding box.
+
+    Backs the map's clickable USMIN vector overlay (data converted from the
+    state KMZ files via scripts/convert_usmin_kmz.py).
+    """
+    from mining_os.services.usmin_points import query_points
+
+    parts = [p.strip() for p in (bbox or "").split(",")]
+    if len(parts) != 4:
+        raise HTTPException(status_code=400, detail="bbox must be 'west,south,east,north'")
+    try:
+        west, south, east, north = (float(p) for p in parts)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="bbox values must be numeric") from e
+    return query_points(west, south, east, north, limit=limit)
+
+
+@api_app.get("/map/usmin-coverage")
+def map_usmin_coverage() -> List[Dict[str, Any]]:
+    """Per-state USMIN point counts and bounding boxes (for map info/legend)."""
+    from mining_os.services.usmin_points import coverage
+
+    return coverage()
+
+
 @api_app.get("/candidates")
 def list_candidates(
     limit: int = Query(200, ge=1, le=2000),
@@ -2486,6 +2516,16 @@ app.mount("/api", api_app)
 # ---- Start automation scheduler on uvicorn boot ---
 @app.on_event("startup")
 def _start_automation_scheduler() -> None:
+    # Reconcile orphaned runs BEFORE the scheduler can launch new ones. Automation
+    # runs live on in-memory daemon threads that cannot survive a process restart,
+    # so any run still marked "running" at boot was stranded by the previous
+    # restart/redeploy and must be failed (otherwise it shows as a phantom running
+    # job forever and blocks its rule from running again).
+    try:
+        from mining_os.services.automation_engine import reconcile_stuck_runs
+        reconcile_stuck_runs()
+    except Exception as e:
+        log.warning("Automation run reconciliation failed: %s", e)
     try:
         from mining_os.services.automation_scheduler import start_scheduler
         start_scheduler()

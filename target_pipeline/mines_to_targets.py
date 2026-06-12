@@ -495,7 +495,11 @@ def build_target_payloads(groups: dict[Any, SectionGroup]) -> list[dict[str, Any
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def upsert_payloads(payloads: list[dict[str, Any]], commit_every: int = 100) -> dict[str, int]:
+def upsert_payloads(
+    payloads: list[dict[str, Any]],
+    commit_every: int = 100,
+    account_id: int | None = None,
+) -> dict[str, int]:
     """Insert/update each payload via mining_os.services.areas_of_focus.upsert_area."""
     from mining_os.services.areas_of_focus import upsert_area  # uses DATABASE_URL
 
@@ -521,6 +525,7 @@ def upsert_payloads(payloads: list[dict[str, Any]], commit_every: int = 100) -> 
                 meridian=p["meridian"],
                 is_uploaded=True,
                 skip_plss_geocode=True,
+                account_id=account_id,
             )
             inserted += 1
         except Exception as e:
@@ -636,6 +641,17 @@ def main() -> int:
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
     )
+    parser.add_argument(
+        "--account-id",
+        type=int,
+        default=1,
+        help="areas_of_focus account_id (required for CLI upserts; default: 1)",
+    )
+    parser.add_argument(
+        "--upsert-only",
+        action="store_true",
+        help="Skip MRDS/geocode; load dry_run_<STATE>.json and upsert to DATABASE_URL only.",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -651,6 +667,30 @@ def main() -> int:
             log.error("Unknown state %s — known: %s", state, sorted(STATE_BBOXES))
             continue
         log.info("== %s ==", state)
+
+        if args.upsert_only:
+            dry_path = DRY_RUN_OUT_DIR / f"dry_run_{state}.json"
+            if not dry_path.exists():
+                log.error("No dry-run file at %s — run without --upsert-only first", dry_path)
+                continue
+            payloads = json.loads(dry_path.read_text(encoding="utf-8"))
+            log.info("loaded %d payloads from %s", len(payloads), dry_path)
+            grand_total["sections"] += len(payloads)
+            grand_total["mines"] += sum(p.get("_mine_count", 0) for p in payloads)
+            if args.dry_run:
+                log.info("\n--- DRY-RUN PREVIEW (%s) ---\n%s", state, summarize(payloads))
+                continue
+            log.info(
+                "upserting %d sections for %s (account_id=%d) ...",
+                len(payloads),
+                state,
+                args.account_id,
+            )
+            result = upsert_payloads(payloads, account_id=args.account_id)
+            grand_total["upserted"] += result["upserted"]
+            grand_total["errors"] += result["errors"]
+            log.info("== %s done: upserted %d, errors %d ==", state, result["upserted"], result["errors"])
+            continue
 
         if args.use_cached_mrds and (RAW_MRDS_DIR / f"mrds_{state}.json").exists():
             raw = json.loads((RAW_MRDS_DIR / f"mrds_{state}.json").read_text(encoding="utf-8"))
@@ -698,7 +738,7 @@ def main() -> int:
         log.info("upserting %d sections for %s into DATABASE_URL=%s ...",
                  len(payloads), state,
                  (os.environ.get("DATABASE_URL") or "(unset)").split("@")[-1])
-        result = upsert_payloads(payloads)
+        result = upsert_payloads(payloads, account_id=args.account_id)
         grand_total["upserted"] += result["upserted"]
         grand_total["errors"] += result["errors"]
         log.info("== %s done: upserted %d, errors %d ==", state, result["upserted"], result["errors"])

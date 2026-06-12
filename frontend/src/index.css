@@ -106,6 +106,51 @@
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
 }
 
+/* Local USMIN mine features — amber pick divIcon + amber cluster circles */
+.usmin-pick-icon {
+  background: transparent !important;
+  border: none !important;
+}
+.usmin-marker-cluster {
+  border-radius: 50%;
+}
+.usmin-marker-cluster-small {
+  background-color: rgba(180, 83, 9, 0.22);
+}
+.usmin-marker-cluster-small .usmin-cluster-inner {
+  background-color: rgba(180, 83, 9, 0.88);
+}
+.usmin-marker-cluster-medium {
+  background-color: rgba(146, 64, 14, 0.28);
+}
+.usmin-marker-cluster-medium .usmin-cluster-inner {
+  background-color: rgba(146, 64, 14, 0.9);
+}
+.usmin-marker-cluster-large {
+  background-color: rgba(120, 53, 15, 0.34);
+}
+.usmin-marker-cluster-large .usmin-cluster-inner {
+  background-color: rgba(120, 53, 15, 0.95);
+}
+.usmin-cluster-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.leaflet-tooltip.usmin-tooltip {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
 /* Selected target pulse */
 @keyframes target-pulse {
   0%, 100% { opacity: 0.6; }

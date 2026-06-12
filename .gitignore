@@ -41,3 +41,13 @@ target_pipeline/data/usgs/mrds.csv
 # Pipeline reverse-geocode cache + dry-run artifacts
 target_pipeline/.cache/
 target_pipeline/data/mines_to_targets/
+target_pipeline/data/usmin_to_targets/
+CustomActions/.cache/
+
+# Local run artifacts / DB dumps (never commit)
+logs/*.out
+logs/*.pid
+miningos.db
+miningos_backup.sql
+backups/
+target_audit_report.csv

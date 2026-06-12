@@ -48,6 +48,11 @@ FILTER_KEYS = [
 
 MAX_TARGETS_CAP = 200
 PAUSE_BETWEEN_TARGETS_SEC = 0.3
+# A run that has been "running" longer than this without finishing is treated as
+# wedged/orphaned and auto-failed by the scheduler watchdog. Generous enough that
+# a full 200-target fetch_claim_records run (Playwright, ~1 min/target worst case)
+# never trips it.
+STALE_RUN_THRESHOLD_SEC = 6 * 60 * 60  # 6 hours
 RUN_STATUS_RUNNING = "running"
 RUN_STATUS_COMPLETED = "completed"
 RUN_STATUS_FAILED = "failed"
@@ -403,6 +408,55 @@ def _find_running_run(rule_id: int) -> dict[str, Any] | None:
             {"rule_id": rule_id, "status": RUN_STATUS_RUNNING},
         ).mappings().first()
         return _row_to_dict(row) if row else None
+
+
+def reconcile_stuck_runs(max_age_seconds: int = 0, reason: str | None = None) -> int:
+    """Mark orphaned ``running`` automation runs as ``failed``.
+
+    Automation runs execute on an in-memory daemon thread (see ``queue_rule_run``).
+    A server restart or redeploy kills that thread instantly, but the run-log row
+    stays at ``status='running'`` forever — the UI shows a phantom "1 run running"
+    and ``_find_running_run`` blocks the rule from ever running again.
+
+    ``max_age_seconds=0`` fails *all* running rows. This is correct at startup:
+    no run thread can survive into a freshly booted process, so any ``running``
+    row at boot is by definition orphaned. A positive value only fails rows older
+    than that age — used by the scheduler watchdog to catch a run that wedged
+    without a process restart.
+    """
+    reason = reason or (
+        "Run interrupted: the background worker thread was terminated by a "
+        "server restart/redeploy and never resumed."
+    )
+    eng = get_engine()
+    with eng.begin() as conn:
+        rows = conn.execute(
+            text("""
+            UPDATE automation_run_log
+            SET status = :failed,
+                finished_at = now(),
+                error_message = COALESCE(NULLIF(error_message, ''), :reason),
+                summary = COALESCE(summary, '')
+                    || CASE WHEN COALESCE(summary, '') = '' THEN '' ELSE ' — ' END
+                    || 'auto-failed (stale run cleanup)'
+            WHERE status = :running
+              AND started_at < now() - make_interval(secs => :age)
+            RETURNING id
+            """),
+            {
+                "failed": RUN_STATUS_FAILED,
+                "running": RUN_STATUS_RUNNING,
+                "reason": reason,
+                "age": float(max_age_seconds),
+            },
+        ).fetchall()
+    ids = [int(r[0]) for r in rows]
+    if ids:
+        log.warning(
+            "Reconciled %d stuck automation run(s) -> failed: %s",
+            len(ids), ids,
+        )
+    return len(ids)
 
 
 # ---------------------------------------------------------------------------

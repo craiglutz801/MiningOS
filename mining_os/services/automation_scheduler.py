@@ -35,7 +35,22 @@ def _is_cron_due(cron_expr: str, now: datetime) -> bool:
 def _tick() -> None:
     """One scheduler tick: find enabled rules with a cron schedule and run due ones."""
     try:
-        from mining_os.services.automation_engine import list_rules, queue_rule_run
+        from mining_os.services.automation_engine import (
+            list_rules,
+            queue_rule_run,
+            reconcile_stuck_runs,
+            STALE_RUN_THRESHOLD_SEC,
+        )
+
+        # Watchdog: fail any run wedged far past a plausible completion time
+        # (covers a run whose worker thread died without a full process restart).
+        try:
+            reconcile_stuck_runs(
+                max_age_seconds=STALE_RUN_THRESHOLD_SEC,
+                reason="Run auto-failed by watchdog: exceeded the maximum run duration without finishing.",
+            )
+        except Exception:
+            log.exception("Scheduler: stale-run watchdog failed")
 
         now = datetime.now(timezone.utc)
         rules = list_rules(all_accounts=True)

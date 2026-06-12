@@ -6,9 +6,10 @@ export type OverlayKey =
   | "ownership"
   | "knownMines"
   | "usminMines"
-  | "usminDeposits";
+  | "usminDeposits"
+  | "usminLocal";
 
-export type LayerKind = "tile" | "wms" | "geojson" | "api-points" | "mrds-points";
+export type LayerKind = "tile" | "wms" | "geojson" | "api-points" | "mrds-points" | "usmin-points";
 
 export interface BasemapDef {
   key: BasemapKey;

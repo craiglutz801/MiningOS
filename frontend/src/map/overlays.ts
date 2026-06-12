@@ -74,6 +74,18 @@ export const OVERLAYS: Record<OverlayKey, OverlayDef> = {
     opacity: 0.9,
     minZoom: 4,
   },
+  // Local USMIN mine features served from the imported state KMZ files
+  // (UT/NV/ID/WY). Unlike the WMS layers above, these are clickable vector
+  // points with name/type and a link to the USGS record. Rendered by the
+  // dedicated UsminLocalOverlay component (viewport-filtered + clustered).
+  usminLocal: {
+    key: "usminLocal",
+    label: "USMIN Mines — clickable (UT/NV/ID/WY)",
+    kind: "usmin-points",
+    visibleByDefault: false,
+    pane: MAP_PANES.usminLocal,
+    minZoom: 9,
+  },
 };
 
 export const OVERLAY_KEYS = Object.keys(OVERLAYS) as OverlayKey[];

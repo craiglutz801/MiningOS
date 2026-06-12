@@ -28,6 +28,7 @@ import { MapLegend } from "./MapLegend";
 import { MapLayerControl } from "./MapLayerControl";
 import { LandOwnershipIdentify } from "./LandOwnershipIdentify";
 import { MrdsMinesOverlay } from "./MrdsMinesOverlay";
+import { UsminLocalOverlay } from "./UsminLocalOverlay";
 import { UsStateBoundaries } from "./UsStateBoundaries";
 
 interface TargetMapProps {
@@ -318,6 +319,8 @@ export function TargetMap({ selectedAreaId }: TargetMapProps) {
           <OverlayLayers visibleOverlays={visibleOverlays} />
 
           <MrdsMinesOverlay visible={visibleOverlays.knownMines ?? false} />
+
+          <UsminLocalOverlay visible={visibleOverlays.usminLocal ?? false} />
 
           <LandOwnershipIdentify enabled={visibleOverlays.ownership} />
 

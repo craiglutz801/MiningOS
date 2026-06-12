@@ -42,9 +42,10 @@ export function MapLegend() {
           </p>
           <p className="text-[10px] text-slate-500 pt-2 mt-2 border-t border-slate-100 leading-snug">
             <span className="font-semibold text-slate-600">Mine layers:</span>{" "}
-            <strong>USMIN Mine Features</strong> is the most complete (USGS topo-derived workings),{" "}
-            <strong>USMIN Deposits</strong> covers critical-mineral deposits, and{" "}
-            <strong>Known Mines (MRDS)</strong> is the older USGS occurrence set. Toggle them in the{" "}
+            <strong>USMIN Mines — clickable</strong> (amber picks, UT/NV/ID/WY) are individual
+            features you can click for name/type and the USGS record;{" "}
+            <strong>USMIN Mine Features</strong>/<strong>Deposits</strong> are full-coverage USGS
+            imagery; <strong>Known Mines (MRDS)</strong> is the older occurrence set. Toggle in the{" "}
             <strong>Layers</strong> control (top-right).
           </p>
         </div>
