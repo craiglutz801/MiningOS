@@ -2694,6 +2694,46 @@ def _csv_row_to_target(r: dict) -> tuple[dict | None, str | None]:
     }, None
 
 
+def list_map_targets() -> List[dict]:
+    """ALL of the account's targets with coordinates, as compact rows for the map.
+
+    The map must never show an arbitrary subset (a LIMIT on the priority/recency
+    sort silently hides whole regions whenever a bulk import refreshes
+    updated_at). Full Area rows are too heavy at ~30k targets, so this returns
+    only the fields the map markers/popups use.
+    """
+    account_id = _effective_account_id()
+    eng = get_engine()
+    with eng.begin() as conn:
+        rows = conn.execute(
+            text(
+                """
+                SELECT id, name, latitude, longitude, minerals, status, priority,
+                       claim_type, location_plss
+                FROM areas_of_focus
+                WHERE account_id = :account_id
+                  AND latitude IS NOT NULL AND longitude IS NOT NULL
+                ORDER BY id
+                """
+            ),
+            {"account_id": account_id},
+        ).mappings().all()
+    return [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "latitude": float(r["latitude"]),
+            "longitude": float(r["longitude"]),
+            "minerals": list(r["minerals"] or []),
+            "status": r["status"] or "unknown",
+            "priority": r["priority"] or "monitoring_low",
+            "claim_type": r["claim_type"] or "",
+            "location_plss": r["location_plss"] or "",
+        }
+        for r in rows
+    ]
+
+
 def get_existing_plss_map() -> Dict[str, dict]:
     """Return dict of plss_normalized -> {id, name} for all targets with PLSS."""
     account_id = _effective_account_id()

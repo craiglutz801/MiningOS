@@ -756,6 +756,14 @@ def map_usmin_coverage() -> List[Dict[str, Any]]:
     return coverage()
 
 
+@api_app.get("/map/targets")
+def map_targets() -> List[Dict[str, Any]]:
+    """All targets with coordinates as compact rows for the map's My Targets layer."""
+    from mining_os.services.areas_of_focus import list_map_targets
+
+    return list_map_targets()
+
+
 @api_app.get("/candidates")
 def list_candidates(
     limit: int = Query(200, ge=1, le=2000),
@@ -1816,6 +1824,12 @@ def api_automation_meta() -> Dict[str, Any]:
 # ---- Serve React SPA when frontend is built ---------------------------------
 
 app = FastAPI(title="Mining_OS")
+
+# Compress large JSON responses (the full map-targets payload is ~7 MB raw,
+# ~0.8 MB gzipped). Applies to all /api responses above the size threshold.
+from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402
+
+app.add_middleware(GZipMiddleware, minimum_size=2048)
 
 
 def _request_log_path() -> Path:

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import L from "leaflet";
-import { api, type Area } from "../api";
 
 export interface MapTarget {
   id: number;
@@ -14,12 +13,25 @@ export interface MapTarget {
   plss: string;
 }
 
-function normalize(a: Area): MapTarget {
+/** Compact row from GET /api/map/targets (all targets with coordinates, no cap). */
+interface MapTargetRow {
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  minerals: string[];
+  status: string;
+  priority: string;
+  claim_type: string;
+  location_plss: string;
+}
+
+function normalize(a: MapTargetRow): MapTarget {
   return {
     id: a.id,
     name: a.name,
-    latitude: a.latitude!,
-    longitude: a.longitude!,
+    latitude: a.latitude,
+    longitude: a.longitude,
     minerals: a.minerals || [],
     status: (a.status || "unknown").toLowerCase(),
     priority: (a.priority || "monitoring_low").toLowerCase(),
@@ -29,14 +41,20 @@ function normalize(a: Area): MapTarget {
 }
 
 export function useTargetsLayer(selectedAreaId?: string | null) {
-  const [raw, setRaw] = useState<Area[]>([]);
+  const [raw, setRaw] = useState<MapTargetRow[]>([]);
   const [isLoading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.areas
-      .list({ limit: 1000 })
-      .then((list) => setRaw(list))
+    // Dedicated compact endpoint: the generic list API caps results, and any
+    // cap on a recency-sorted list hides whole regions after bulk imports.
+    fetch("/api/map/targets", { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Failed to load map targets (${res.status})`);
+        const data = (await res.json()) as MapTargetRow[];
+        if (!Array.isArray(data)) throw new Error("Invalid map targets response");
+        setRaw(data);
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
