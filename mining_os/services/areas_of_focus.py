@@ -527,6 +527,18 @@ def backfill_plss_normalized_to_section(account_id: int | None = None) -> int:
             new_key = _normalize_plss(row["location_plss"])
             if new_key is None:
                 continue
+            # Skip when another target already owns this section key (e.g. per-mine
+            # 'usmin_named' targets intentionally share a section with the roll-up
+            # target); writing it would violate the unique PLSS index.
+            taken = conn.execute(
+                text(
+                    "SELECT 1 FROM areas_of_focus "
+                    "WHERE account_id = :account_id AND plss_normalized = :key AND id <> :id LIMIT 1"
+                ),
+                {"key": new_key, "id": row["id"], "account_id": row["account_id"]},
+            ).first()
+            if taken:
+                continue
             conn.execute(
                 text(
                     "UPDATE areas_of_focus SET plss_normalized = :key, updated_at = now() "

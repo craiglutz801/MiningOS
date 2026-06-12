@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
 import { api, ApiError, type Area, type BatchAreaActionRow, type FetchClaimRecordsProgress } from "../api";
+import { useAuth } from "../auth";
 import { parseCsvForPreview, type CsvInspectResult } from "../csvInspectLocal";
 import { ClaimPaymentBadge, getClaimPaymentText } from "../areas/claimPaymentBadge";
 
@@ -167,6 +168,7 @@ const MAPPING_FIELDS: readonly { key: string; label: string; required: boolean; 
 
 export function Areas() {
   const navigate = useNavigate();
+  const { me } = useAuth();
   const [searchParams] = useSearchParams();
   const areaIdParam = searchParams.get("areaId");
   const mineralParam = searchParams.get("mineral") ?? "";
@@ -481,22 +483,6 @@ export function Areas() {
       if (requestSeq !== loadRequestSeq.current) return;
       const rows = Array.isArray(list) ? list : [];
       setAreas(rows);
-      if (areaIdParam) {
-        const id = parseInt(areaIdParam, 10);
-        if (!Number.isNaN(id)) {
-          const area = rows.find((a) => a.id === id);
-          if (area) {
-            // Fetch the full detail (incl. MLRS claim records) so the payment
-            // table shows when landing here from the map, matching a row click.
-            try {
-              const full = await api.areas.get(id);
-              if (requestSeq === loadRequestSeq.current) setSelected(full);
-            } catch {
-              if (requestSeq === loadRequestSeq.current) setSelected(area);
-            }
-          }
-        }
-      }
     } catch (e) {
       if (requestSeq !== loadRequestSeq.current) return;
       if (e instanceof ApiError && e.status === 503 && e.body?.error === "database_unavailable") {
@@ -622,8 +608,28 @@ export function Areas() {
   };
 
   useEffect(() => {
+    if (!me) return;
     void load();
-  }, [mineralFilter, tagFilter, statusFilter, targetStatusFilter, stateFilter, claimTypeFilter, retrievalTypeFilter, townshipFilter, rangeFilter, sectorFilter, nameFilter]);
+  }, [me, mineralFilter, tagFilter, statusFilter, targetStatusFilter, stateFilter, claimTypeFilter, retrievalTypeFilter, townshipFilter, rangeFilter, sectorFilter, nameFilter]);
+
+  // Deep-link from map: fetch the target immediately — don't wait for the 2k-row list.
+  useEffect(() => {
+    if (!me || !areaIdParam) return;
+    const id = parseInt(areaIdParam, 10);
+    if (Number.isNaN(id)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const full = await api.areas.get(id);
+        if (!cancelled) setSelected(full);
+      } catch {
+        /* list load may still surface it if it falls inside AREA_LIST_LIMIT */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [me, areaIdParam]);
 
   const refreshMineralSuggestions = async () => {
     try {
@@ -900,7 +906,23 @@ export function Areas() {
     );
   };
 
-  const tableVisibleIds = areas.map((a) => a.id);
+  /** Targets shown in the left table — selected drill-down row pinned to the top. */
+  const listAreas = useMemo(() => {
+    if (!selected) return areas;
+    const idx = areas.findIndex((a) => a.id === selected.id);
+    if (idx > 0) {
+      const rest = areas.filter((a) => a.id !== selected.id);
+      return [selected, ...rest];
+    }
+    if (idx === 0) {
+      const next = [...areas];
+      next[0] = selected;
+      return next;
+    }
+    return [selected, ...areas];
+  }, [areas, selected]);
+
+  const tableVisibleIds = listAreas.map((a) => a.id);
   const tableSelectedOnPage = tableVisibleIds.filter((id) => tableSelectedIds.has(id)).length;
   const tableAllOnPageSelected = tableVisibleIds.length > 0 && tableSelectedOnPage === tableVisibleIds.length;
 
@@ -2542,14 +2564,19 @@ export function Areas() {
 
       <div className={`grid gap-6 ${selected ? "lg:grid-cols-2" : "grid-cols-1"}`}>
         <div className="bg-white rounded-xl border border-slate-200 shadow-card">
-          {loading ? (
+          {loading && areas.length === 0 && !selected ? (
             <div className="p-8 text-center text-slate-500">Loading…</div>
-          ) : areas.length === 0 ? (
+          ) : areas.length === 0 && !selected ? (
             <div className="p-8 text-center text-slate-500">
               No targets. Click <strong>Ingest data files</strong> to load your CSVs.
             </div>
           ) : (
             <div className="max-h-[min(70vh,calc(100vh-14rem))] overflow-y-auto overflow-x-auto">
+              {loading && (
+                <div className="px-4 py-2 text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
+                  Loading target list…
+                </div>
+              )}
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200">
@@ -2602,7 +2629,7 @@ export function Areas() {
                   </tr>
                 </thead>
                 <tbody>
-                  {areas.map((a) => (
+                  {listAreas.map((a) => (
                     <tr
                       key={a.id}
                       onClick={async () => {
