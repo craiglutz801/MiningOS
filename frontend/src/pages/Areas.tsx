@@ -1016,6 +1016,21 @@ export function Areas() {
           >
             {alertSending ? "Sending…" : "Email priority unpaid"}
           </button>
+          <button
+            type="button"
+            disabled={areas.length === 0 || batchRunStatus !== null}
+            onClick={() => openShareModal(tableSelectedIds.size > 0 ? "selected" : "filtered")}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
+            title={
+              areas.length === 0
+                ? "Load targets first"
+                : tableSelectedIds.size > 0
+                  ? `Share ${tableSelectedIds.size} selected target(s)`
+                  : `Share all ${areas.length} filtered target(s)`
+            }
+          >
+            Share…
+          </button>
         </div>
       </div>
 
