@@ -1,0 +1,19 @@
+{
+  "records": [
+    {
+      "source_record_key": "wp-ts-44",
+      "apn": "001-123-04",
+      "owner": "ELY CONSOLIDATED",
+      "best_name": "Robinson district millsite remnant",
+      "legal_description": "MS 3344 T16N R62E Sec 8 Mount Diablo Meridian",
+      "status": "AUCTION",
+      "amount_due": 5100,
+      "minimum_bid": 5100,
+      "sale_date": "2026-06-12",
+      "latitude": 39.248,
+      "longitude": -114.891,
+      "mineral_survey_numbers": ["3344"],
+      "commodities": ["Copper", "Gold"]
+    }
+  ]
+}

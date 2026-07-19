@@ -1,0 +1,34 @@
+{
+  "records": [
+    {
+      "source_record_key": "beaver-apn-01",
+      "apn": "01-0123-0001",
+      "owner": "DESERT LODE LLC",
+      "best_name": "Desert Queen Lode",
+      "legal_description": "MS 4127 T27S R11W Sec 14 Salt Lake Meridian patented mining claim Desert Queen",
+      "status": "AUCTION SCHEDULED",
+      "amount_due": 1842.55,
+      "minimum_bid": 2000,
+      "sale_date": "2026-05-20",
+      "acreage": 20.66,
+      "latitude": 38.4121,
+      "longitude": -113.2214,
+      "patent_number": "872341",
+      "mineral_survey_numbers": ["4127"],
+      "commodities": ["Gold", "Silver"]
+    },
+    {
+      "source_record_key": "beaver-apn-02",
+      "apn": "01-0199-0044",
+      "owner": "SMITH JOHN",
+      "best_name": "Vacant ranch parcel",
+      "legal_description": "T28S R12W Sec 22 SLM",
+      "status": "SALE ELIGIBLE",
+      "amount_due": 612.1,
+      "minimum_bid": 612.1,
+      "sale_date": "2026-05-20",
+      "latitude": 38.301,
+      "longitude": -113.41
+    }
+  ]
+}

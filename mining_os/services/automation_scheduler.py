@@ -52,6 +52,14 @@ def _tick() -> None:
         except Exception:
             log.exception("Scheduler: stale-run watchdog failed")
 
+        # Tax Sales scheduled ingest / enrichment / alerts (feature-flagged).
+        try:
+            from mining_os.tax_intel.jobs import tick_tax_sales_jobs
+
+            tick_tax_sales_jobs()
+        except Exception:
+            log.exception("Scheduler: tax sales jobs tick failed")
+
         now = datetime.now(timezone.utc)
         rules = list_rules(all_accounts=True)
         for rule in rules:

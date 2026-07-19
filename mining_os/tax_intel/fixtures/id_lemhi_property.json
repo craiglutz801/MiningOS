@@ -1,0 +1,17 @@
+{
+  "records": [
+    {
+      "source_record_key": "lemhi-delinq-9",
+      "apn": "RP18N22E221200",
+      "owner": "SALMON RIVER MINING CO",
+      "best_name": "Leesburg gulch patented ground",
+      "legal_description": "MS 667 T21N R21E Sec 22 Boise Meridian",
+      "status": "DELINQUENT",
+      "amount_due": 1333.0,
+      "latitude": 45.201,
+      "longitude": -114.102,
+      "mineral_survey_numbers": ["667"],
+      "commodities": ["Gold"]
+    }
+  ]
+}

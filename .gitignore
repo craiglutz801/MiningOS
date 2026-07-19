@@ -51,3 +51,4 @@ miningos.db
 miningos_backup.sql
 backups/
 target_audit_report.csv
+data_files/tax_intel_artifacts/

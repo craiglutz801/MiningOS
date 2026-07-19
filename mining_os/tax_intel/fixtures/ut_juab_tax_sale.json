@@ -1,0 +1,20 @@
+{
+  "records": [
+    {
+      "source_record_key": "juab-ms-881",
+      "apn": "XA-1234-A",
+      "owner": "TINTIC HILLS HOLDINGS",
+      "best_name": "Dragon Fly Mine patent",
+      "legal_description": "Mineral Survey 881 Patent 554221 T10S R2W Sec 9 SLM",
+      "status": "NOTICE",
+      "amount_due": 4210.0,
+      "minimum_bid": 4500,
+      "sale_date": "2026-06-03",
+      "latitude": 39.9412,
+      "longitude": -112.1188,
+      "patent_number": "554221",
+      "mineral_survey_numbers": ["881"],
+      "commodities": ["Lead", "Zinc", "Silver"]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "records": [
+    {
+      "source_record_key": "nye-online-12",
+      "apn": "012-451-08",
+      "owner": "TONOPAH FLATS LLC",
+      "best_name": "Tonopah patented claim group",
+      "legal_description": "MS 2851 Patent 991002 T3N R42E Sec 5 MDM",
+      "status": "AUCTION SCHEDULED",
+      "amount_due": 8200,
+      "minimum_bid": 9000,
+      "sale_date": "2026-06-01",
+      "latitude": 38.067,
+      "longitude": -117.23,
+      "patent_number": "991002",
+      "mineral_survey_numbers": ["2851"],
+      "commodities": ["Silver", "Gold"]
+    }
+  ]
+}

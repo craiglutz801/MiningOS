@@ -1,0 +1,19 @@
+{
+  "records": [
+    {
+      "source_record_key": "elko-trustee-77",
+      "apn": "007-880-15",
+      "owner": "ELKO COUNTY TRUSTEE",
+      "best_name": "Tuscarora district trustee parcel",
+      "legal_description": "MS 1788 T39N R51E Sec 19 Mount Diablo Meridian",
+      "status": "TRUSTEE",
+      "amount_due": 0,
+      "minimum_bid": 12500,
+      "sale_date": "2026-08-01",
+      "latitude": 41.301,
+      "longitude": -116.221,
+      "mineral_survey_numbers": ["1788"],
+      "commodities": ["Gold"]
+    }
+  ]
+}
