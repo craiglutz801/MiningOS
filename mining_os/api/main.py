@@ -54,6 +54,7 @@ _PUBLIC_API_PATHS = {
     "/api/auth/bootstrap-status",
     "/api/auth/bootstrap-admin",
     "/api/auth/login",
+    "/api/tax-sales/meta",  # feature-flag probe; does not expose tax data
 }
 _PUBLIC_API_PREFIXES = (
     "/api/diag/",
