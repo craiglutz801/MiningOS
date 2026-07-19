@@ -1,0 +1,20 @@
+{
+  "records": [
+    {
+      "source_record_key": "shoshone-td-17",
+      "apn": "RP00010001001A",
+      "owner": "SHOSHONE COUNTY",
+      "best_name": "Bunker Hill vicinity patent",
+      "legal_description": "MS 992 Patent 301122 T48N R2E Sec 12 Boise Meridian",
+      "status": "TAX DEED",
+      "amount_due": 0,
+      "minimum_bid": 15000,
+      "sale_date": "2026-07-15",
+      "latitude": 47.5412,
+      "longitude": -116.118,
+      "patent_number": "301122",
+      "mineral_survey_numbers": ["992"],
+      "commodities": ["Silver", "Lead"]
+    }
+  ]
+}

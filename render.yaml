@@ -30,6 +30,16 @@ services:
         value: "1"
       - key: MINING_OS_MLRS_PAYMENT_MAX_CLAIMS
         value: "60"
+      # Tax Sales / Patented Claim Watch — fully enabled in production
+      - key: ENABLE_TAX_SALES_API
+        value: "true"
+      - key: ENABLE_TAX_SALES_JOBS
+        value: "true"
+      - key: ENABLE_TAX_SALES_ADMIN
+        value: "true"
+      # Bake Tax Sales tab into the Vite production build (Render buildCommand)
+      - key: VITE_ENABLE_TAX_SALES
+        value: "true"
       - key: DATABASE_URL
         sync: false
       - key: OPENAI_API_KEY

@@ -1048,3 +1048,69 @@ export const automations = {
   },
   getRun: (id: number) => request<AutomationRun>(`/automations/runs/${id}`),
 };
+
+// ---- Tax Sales / Patented Claim Watch ---------------------------------------
+
+export const taxSales = {
+  meta: () =>
+    request<{
+      ok: boolean;
+      enabled: boolean;
+      admin_enabled?: boolean;
+      jobs_enabled?: boolean;
+      label?: string;
+      subtitle?: string;
+      error?: string | null;
+    }>("/tax-sales/meta"),
+  summary: () => request<Record<string, unknown>>("/tax-sales/summary"),
+  list: (params?: Record<string, string | number | boolean | undefined>) => {
+    const q = new URLSearchParams();
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        if (v === undefined || v === null || v === "") continue;
+        q.set(k, String(v));
+      }
+    }
+    const qs = q.toString();
+    return request<Record<string, unknown>>(`/tax-sales/opportunities${qs ? `?${qs}` : ""}`);
+  },
+  get: (id: string) => request<Record<string, unknown>>(`/tax-sales/opportunities/${id}`),
+  coverage: () => request<Record<string, unknown>>("/tax-sales/coverage"),
+  map: (params?: Record<string, string | number | undefined>) => {
+    const q = new URLSearchParams();
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        if (v === undefined || v === null || v === "") continue;
+        q.set(k, String(v));
+      }
+    }
+    const qs = q.toString();
+    return request<Record<string, unknown>>(`/tax-sales/map${qs ? `?${qs}` : ""}`);
+  },
+  review: () => request<Record<string, unknown>>("/tax-sales/review"),
+  watch: (id: string) =>
+    request<{ ok: boolean; error?: string | null; watchlisted?: boolean }>(
+      `/tax-sales/opportunities/${id}/watch`,
+      { method: "POST" }
+    ),
+  unwatch: (id: string) =>
+    request<{ ok: boolean; error?: string | null; watchlisted?: boolean }>(
+      `/tax-sales/opportunities/${id}/watch`,
+      { method: "DELETE" }
+    ),
+  promote: (id: string) =>
+    request<{
+      ok: boolean;
+      error?: string | null;
+      area_of_focus_id?: number;
+      already_linked?: boolean;
+    }>(`/tax-sales/opportunities/${id}/promote-to-target`, { method: "POST" }),
+  refresh: (sourceKey?: string) => {
+    const qs = sourceKey ? `?source_key=${encodeURIComponent(sourceKey)}` : "";
+    return request<Record<string, unknown>>(`/tax-sales/jobs/refresh${qs}`, { method: "POST" });
+  },
+  jobsStatus: () => request<Record<string, unknown>>("/tax-sales/jobs/status"),
+  alerts: () => request<{ ok: boolean; items?: Array<Record<string, unknown>>; error?: string }>(
+    "/tax-sales/alerts"
+  ),
+};

@@ -1,0 +1,19 @@
+{
+  "records": [
+    {
+      "source_record_key": "tooele-stockton-1",
+      "apn": "04-055-0-0003",
+      "owner": "ORE HOUSE PARTNERS",
+      "best_name": "Stockton district claim remnant",
+      "legal_description": "MS 2104 T3S R4W Sec 28 SLM",
+      "status": "SALE ELIGIBLE",
+      "amount_due": 990.25,
+      "minimum_bid": 990.25,
+      "sale_date": "2026-05-28",
+      "latitude": 40.451,
+      "longitude": -112.371,
+      "mineral_survey_numbers": ["2104"],
+      "commodities": ["Copper", "Gold"]
+    }
+  ]
+}

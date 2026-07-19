@@ -4,6 +4,8 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { useAuth } from "./auth";
 import { automations, formatApiNetworkError, type AutomationRun } from "./api";
 
+const taxSalesUiEnabled = import.meta.env.VITE_ENABLE_TAX_SALES === "true";
+
 const nav = [
   { to: "/", label: "Dashboard" },
   { to: "/areas", label: "Targets" },
@@ -11,6 +13,7 @@ const nav = [
   { to: "/discoveries", label: "Discoveries" },
   { to: "/map", label: "Map" },
   { to: "/automations", label: "Automations" },
+  ...(taxSalesUiEnabled ? [{ to: "/tax-sales", label: "Tax Sales" }] : []),
 ];
 
 export function Layout() {

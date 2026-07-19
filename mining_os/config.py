@@ -65,6 +65,14 @@ class Settings(BaseSettings):
     # Full path to tesseract binary if PATH is wrong (e.g. /opt/homebrew/bin/tesseract on Apple Silicon)
     TESSERACT_CMD: str = ""
 
+    # Tax Sales / Patented Claim Watch (additive module; safe defaults for production)
+    ENABLE_TAX_SALES_API: bool = False
+    ENABLE_TAX_SALES_ADMIN: bool = False
+    ENABLE_TAX_SALES_JOBS: bool = False
+    ENABLE_TAX_SALES_AI_EXTRACTION: bool = False
+    ENABLE_TAX_SALES_PLAYWRIGHT: bool = False
+    ENABLE_TAX_SALES_OCR: bool = False
+
     # ---- parsed lists (use these in code) ------------------------------------
 
     @property

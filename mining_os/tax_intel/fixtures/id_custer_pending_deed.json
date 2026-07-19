@@ -1,0 +1,17 @@
+{
+  "records": [
+    {
+      "source_record_key": "custer-pending-3",
+      "apn": "RP03N18E156001",
+      "owner": "UNKNOWN HEIRS",
+      "best_name": "Bayhorse district patent tract",
+      "legal_description": "MS 1455 T13N R18E Sec 15 Boise Meridian",
+      "status": "PENDING TAX DEED",
+      "amount_due": 2788.4,
+      "latitude": 44.385,
+      "longitude": -114.312,
+      "mineral_survey_numbers": ["1455"],
+      "commodities": ["Silver"]
+    }
+  ]
+}

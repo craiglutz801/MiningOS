@@ -1821,6 +1821,293 @@ def api_automation_meta() -> Dict[str, Any]:
     }
 
 
+# ---- Tax Sales / Patented Claim Watch (feature-flagged) ----------------------
+
+
+def _tax_sales_guard() -> Dict[str, Any] | None:
+    from mining_os.tax_intel.config import tax_sales_enabled
+    from mining_os.tax_intel.opportunity_service import disabled_payload
+
+    if not tax_sales_enabled():
+        return disabled_payload()
+    return None
+
+
+@api_app.get("/tax-sales/meta")
+def api_tax_sales_meta() -> Dict[str, Any]:
+    """Always available so the frontend can decide whether to show the tab."""
+    from mining_os.tax_intel.config import (
+        tax_sales_admin_enabled,
+        tax_sales_enabled,
+        tax_sales_jobs_enabled,
+    )
+
+    return {
+        "ok": True,
+        "error": None,
+        "enabled": tax_sales_enabled(),
+        "admin_enabled": tax_sales_admin_enabled(),
+        "jobs_enabled": tax_sales_jobs_enabled(),
+        "label": "Tax Sales",
+        "subtitle": "Patented Claim Watch",
+    }
+
+
+@api_app.get("/tax-sales/summary")
+def api_tax_sales_summary() -> Dict[str, Any]:
+    blocked = _tax_sales_guard()
+    if blocked:
+        return blocked
+    from mining_os.tax_intel.opportunity_service import get_summary
+
+    try:
+        return get_summary(current_account_id())
+    except Exception as e:
+        log.exception("tax-sales summary failed")
+        return {"ok": False, "error": str(e), "enabled": True}
+
+
+@api_app.get("/tax-sales/opportunities")
+def api_tax_sales_opportunities(
+    state: Optional[str] = None,
+    county: Optional[str] = None,
+    status: Optional[str] = None,
+    patent_classification: Optional[str] = None,
+    mineral_signal: Optional[str] = None,
+    priority_tier: Optional[str] = None,
+    review_status: Optional[str] = None,
+    search: Optional[str] = None,
+    min_score: Optional[float] = None,
+    auction_within_days: Optional[int] = None,
+    active_only: bool = True,
+    watchlisted: Optional[bool] = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    sort: str = "overall_priority_score",
+    order: str = "desc",
+) -> Dict[str, Any]:
+    blocked = _tax_sales_guard()
+    if blocked:
+        return blocked
+    from mining_os.tax_intel.opportunity_service import list_opportunities
+
+    try:
+        return list_opportunities(
+            current_account_id(),
+            state=state,
+            county=county,
+            status=status,
+            patent_classification=patent_classification,
+            mineral_signal=mineral_signal,
+            priority_tier=priority_tier,
+            review_status=review_status,
+            search=search,
+            min_score=min_score,
+            auction_within_days=auction_within_days,
+            active_only=active_only,
+            watchlisted=watchlisted,
+            page=page,
+            page_size=page_size,
+            sort=sort,
+            order=order,
+        )
+    except Exception as e:
+        log.exception("tax-sales list failed")
+        return {"ok": False, "error": str(e), "items": [], "total": 0}
+
+
+@api_app.get("/tax-sales/opportunities/{opportunity_id}")
+def api_tax_sales_opportunity(opportunity_id: str) -> Dict[str, Any]:
+    blocked = _tax_sales_guard()
+    if blocked:
+        return blocked
+    from mining_os.tax_intel.opportunity_service import get_opportunity
+
+    try:
+        return get_opportunity(current_account_id(), opportunity_id)
+    except Exception as e:
+        log.exception("tax-sales detail failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.get("/tax-sales/coverage")
+def api_tax_sales_coverage() -> Dict[str, Any]:
+    blocked = _tax_sales_guard()
+    if blocked:
+        return blocked
+    from mining_os.tax_intel.opportunity_service import get_coverage
+
+    try:
+        return get_coverage(current_account_id())
+    except Exception as e:
+        log.exception("tax-sales coverage failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.get("/tax-sales/map")
+def api_tax_sales_map(
+    state: Optional[str] = None,
+    patent_classification: Optional[str] = None,
+    min_score: Optional[float] = None,
+    limit: int = Query(500, ge=1, le=2000),
+) -> Dict[str, Any]:
+    blocked = _tax_sales_guard()
+    if blocked:
+        return blocked
+    from mining_os.tax_intel.opportunity_service import get_map_features
+
+    try:
+        return get_map_features(
+            current_account_id(),
+            state=state,
+            patent_classification=patent_classification,
+            min_score=min_score,
+            limit=limit,
+        )
+    except Exception as e:
+        log.exception("tax-sales map failed")
+        return {"ok": False, "error": str(e), "features": []}
+
+
+@api_app.get("/tax-sales/review")
+def api_tax_sales_review() -> Dict[str, Any]:
+    blocked = _tax_sales_guard()
+    if blocked:
+        return blocked
+    from mining_os.tax_intel.opportunity_service import list_review_tasks
+
+    try:
+        return list_review_tasks(current_account_id())
+    except Exception as e:
+        log.exception("tax-sales review failed")
+        return {"ok": False, "error": str(e), "items": []}
+
+
+@api_app.post("/tax-sales/opportunities/{opportunity_id}/watch")
+def api_tax_sales_watch(opportunity_id: str) -> Dict[str, Any]:
+    blocked = _tax_sales_guard()
+    if blocked:
+        return blocked
+    from mining_os.services.auth import get_auth_context
+    from mining_os.tax_intel.opportunity_service import set_watch
+
+    ctx = get_auth_context()
+    user_id = int(ctx.user_id) if ctx and getattr(ctx, "user_id", None) else None
+    try:
+        return set_watch(current_account_id(), opportunity_id, watch=True, user_id=user_id)
+    except Exception as e:
+        log.exception("tax-sales watch failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.delete("/tax-sales/opportunities/{opportunity_id}/watch")
+def api_tax_sales_unwatch(opportunity_id: str) -> Dict[str, Any]:
+    blocked = _tax_sales_guard()
+    if blocked:
+        return blocked
+    from mining_os.tax_intel.opportunity_service import set_watch
+
+    try:
+        return set_watch(current_account_id(), opportunity_id, watch=False)
+    except Exception as e:
+        log.exception("tax-sales unwatch failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.post("/tax-sales/opportunities/{opportunity_id}/promote-to-target")
+def api_tax_sales_promote(opportunity_id: str) -> Dict[str, Any]:
+    blocked = _tax_sales_guard()
+    if blocked:
+        return blocked
+    from mining_os.services.auth import get_auth_context
+    from mining_os.tax_intel.promote import promote_to_target
+
+    ctx = get_auth_context()
+    user_id = int(ctx.user_id) if ctx and getattr(ctx, "user_id", None) else None
+    try:
+        return promote_to_target(current_account_id(), opportunity_id, user_id=user_id)
+    except Exception as e:
+        log.exception("tax-sales promote failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.post("/tax-sales/jobs/refresh")
+def api_tax_sales_refresh(source_key: Optional[str] = None) -> Dict[str, Any]:
+    """Manual source refresh. Requires API flag; jobs flag recommended for scheduled runs."""
+    blocked = _tax_sales_guard()
+    if blocked:
+        return blocked
+    from mining_os.tax_intel.config import tax_sales_admin_enabled, tax_sales_jobs_enabled
+    from mining_os.tax_intel.jobs import run_manual_refresh
+
+    if not (tax_sales_jobs_enabled() or tax_sales_admin_enabled()):
+        return {
+            "ok": False,
+            "error": "Enable ENABLE_TAX_SALES_JOBS or ENABLE_TAX_SALES_ADMIN to run refreshes.",
+        }
+    try:
+        return run_manual_refresh(current_account_id(), source_key=source_key)
+    except Exception as e:
+        log.exception("tax-sales refresh failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.get("/tax-sales/jobs/status")
+def api_tax_sales_jobs_status() -> Dict[str, Any]:
+    blocked = _tax_sales_guard()
+    if blocked:
+        return blocked
+    from mining_os.tax_intel.jobs import jobs_status
+
+    try:
+        return jobs_status()
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.get("/tax-sales/alerts")
+def api_tax_sales_alerts(limit: int = Query(50, ge=1, le=200)) -> Dict[str, Any]:
+    blocked = _tax_sales_guard()
+    if blocked:
+        return blocked
+    from mining_os.tax_intel.alerts import list_alerts
+
+    try:
+        return list_alerts(current_account_id(), limit=limit)
+    except Exception as e:
+        log.exception("tax-sales alerts failed")
+        return {"ok": False, "error": str(e), "items": []}
+
+
+@api_app.post("/tax-sales/admin/upload-csv")
+async def api_tax_sales_upload_csv(
+    source_key: str = Query(...),
+    file: UploadFile = File(...),
+) -> Dict[str, Any]:
+    blocked = _tax_sales_guard()
+    if blocked:
+        return blocked
+    from mining_os.tax_intel.config import tax_sales_admin_enabled, tax_sales_jobs_enabled
+    from mining_os.tax_intel.ingest import ingest_csv_bytes
+
+    if not (tax_sales_admin_enabled() or tax_sales_jobs_enabled()):
+        return {
+            "ok": False,
+            "error": "Enable ENABLE_TAX_SALES_ADMIN or ENABLE_TAX_SALES_JOBS for CSV upload.",
+        }
+    try:
+        content = await file.read()
+        return ingest_csv_bytes(
+            account_id=current_account_id(),
+            source_key=source_key,
+            content=content,
+            filename=file.filename or "upload.csv",
+        )
+    except Exception as e:
+        log.exception("tax-sales csv upload failed")
+        return {"ok": False, "error": str(e)}
+
+
 # ---- Serve React SPA when frontend is built ---------------------------------
 
 app = FastAPI(title="Mining_OS")

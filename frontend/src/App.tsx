@@ -7,11 +7,18 @@ import { Areas } from "./pages/Areas";
 import { MapPage } from "./pages/MapPage";
 import { Discoveries } from "./pages/Discoveries";
 import { DiscoveryDetail } from "./pages/DiscoveryDetail";
+import { lazy, Suspense } from "react";
 import { Automations } from "./pages/Automations";
 import { Login } from "./pages/Login";
 import { BootstrapAdmin } from "./pages/BootstrapAdmin";
 import { AdminAccounts } from "./pages/AdminAccounts";
 import { SharePage } from "./pages/SharePage";
+
+const TaxSales = lazy(() =>
+  import("./pages/TaxSales").then((m) => ({ default: m.TaxSales }))
+);
+
+const taxSalesUiEnabled = import.meta.env.VITE_ENABLE_TAX_SALES === "true";
 
 export default function App() {
   return (
@@ -35,6 +42,20 @@ export default function App() {
               <Route path="discoveries/:id" element={<DiscoveryDetail />} />
               <Route path="map" element={<MapPage />} />
               <Route path="automations" element={<Automations />} />
+              {taxSalesUiEnabled && (
+                <Route
+                  path="tax-sales"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="p-6 text-sm text-slate-500">Loading Tax Sales…</div>
+                      }
+                    >
+                      <TaxSales />
+                    </Suspense>
+                  }
+                />
+              )}
               <Route path="admin/accounts" element={<AdminAccounts />} />
             </Route>
           </Route>
