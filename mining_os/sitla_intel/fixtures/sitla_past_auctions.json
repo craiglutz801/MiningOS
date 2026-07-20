@@ -1,0 +1,36 @@
+{
+  "records": [
+    {
+      "source_record_key": "ml-2024-088",
+      "reference_number": "ML-2024-088",
+      "title": "Juab County metalliferous — June 2024 award",
+      "opportunity_type": "Metalliferous mineral lease",
+      "status": "Awarded",
+      "county_name": "Juab",
+      "commodity": "Metalliferous minerals",
+      "commodities": ["Tungsten"],
+      "acreage": 640,
+      "legal_description": "T12S R2W Sec 16 SLM",
+      "latitude": 39.812,
+      "longitude": -112.205,
+      "winning_bid": 4200,
+      "winning_bidder": "Example Minerals LLC",
+      "offering_cycle": "2024-JUN",
+      "detail_url": "https://trustlands.utah.gov/work-with-us/energy-minerals/past-auctions/"
+    },
+    {
+      "source_record_key": "ml-2025-012",
+      "reference_number": "ML-2025-012",
+      "title": "Emery County metalliferous — no bid",
+      "opportunity_type": "Metalliferous mineral lease",
+      "status": "No bid",
+      "county_name": "Emery",
+      "commodity": "Metalliferous minerals",
+      "commodities": ["Copper"],
+      "acreage": 320,
+      "legal_description": "T22S R8E Sec 16 SLM",
+      "winning_bid": null,
+      "offering_cycle": "2025-JUN"
+    }
+  ]
+}

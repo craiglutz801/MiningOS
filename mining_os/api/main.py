@@ -55,6 +55,7 @@ _PUBLIC_API_PATHS = {
     "/api/auth/bootstrap-admin",
     "/api/auth/login",
     "/api/tax-sales/meta",  # feature-flag probe; does not expose tax data
+    "/api/sitla/meta",  # feature-flag probe; does not expose SITLA data
 }
 _PUBLIC_API_PREFIXES = (
     "/api/diag/",
@@ -2106,6 +2107,218 @@ async def api_tax_sales_upload_csv(
         )
     except Exception as e:
         log.exception("tax-sales csv upload failed")
+        return {"ok": False, "error": str(e)}
+
+
+# ---- SITLA Intelligence (feature-flagged) ------------------------------------
+
+
+def _sitla_guard() -> Dict[str, Any] | None:
+    from mining_os.sitla_intel.config import sitla_enabled
+    from mining_os.sitla_intel.opportunity_service import disabled_payload
+
+    if not sitla_enabled():
+        return disabled_payload()
+    return None
+
+
+@api_app.get("/sitla/meta")
+def api_sitla_meta() -> Dict[str, Any]:
+    from mining_os.sitla_intel.config import sitla_admin_enabled, sitla_enabled, sitla_jobs_enabled
+
+    return {
+        "ok": True,
+        "error": None,
+        "enabled": sitla_enabled(),
+        "admin_enabled": sitla_admin_enabled(),
+        "jobs_enabled": sitla_jobs_enabled(),
+        "label": "SITLA",
+        "subtitle": "Utah Trust Lands mineral opportunities",
+    }
+
+
+@api_app.get("/sitla/summary")
+def api_sitla_summary() -> Dict[str, Any]:
+    blocked = _sitla_guard()
+    if blocked:
+        return blocked
+    from mining_os.sitla_intel.opportunity_service import get_summary
+
+    try:
+        return get_summary(current_account_id())
+    except Exception as e:
+        log.exception("sitla summary failed")
+        return {"ok": False, "error": str(e), "enabled": True}
+
+
+@api_app.get("/sitla/opportunities")
+def api_sitla_opportunities(
+    county: Optional[str] = None,
+    status: Optional[str] = None,
+    opportunity_type: Optional[str] = None,
+    priority_tier: Optional[str] = None,
+    review_status: Optional[str] = None,
+    search: Optional[str] = None,
+    min_score: Optional[float] = None,
+    deadline_within_days: Optional[int] = None,
+    active_only: bool = True,
+    historical: Optional[bool] = None,
+    watchlisted: Optional[bool] = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    sort: str = "overall_priority_score",
+    order: str = "desc",
+) -> Dict[str, Any]:
+    blocked = _sitla_guard()
+    if blocked:
+        return blocked
+    from mining_os.sitla_intel.opportunity_service import list_opportunities
+
+    try:
+        return list_opportunities(
+            current_account_id(),
+            county=county,
+            status=status,
+            opportunity_type=opportunity_type,
+            priority_tier=priority_tier,
+            review_status=review_status,
+            search=search,
+            min_score=min_score,
+            deadline_within_days=deadline_within_days,
+            active_only=active_only,
+            historical=historical,
+            watchlisted=watchlisted,
+            page=page,
+            page_size=page_size,
+            sort=sort,
+            order=order,
+        )
+    except Exception as e:
+        log.exception("sitla list failed")
+        return {"ok": False, "error": str(e), "items": [], "total": 0}
+
+
+@api_app.get("/sitla/opportunities/{opportunity_id}")
+def api_sitla_opportunity(opportunity_id: str) -> Dict[str, Any]:
+    blocked = _sitla_guard()
+    if blocked:
+        return blocked
+    from mining_os.sitla_intel.opportunity_service import get_opportunity
+
+    try:
+        return get_opportunity(current_account_id(), opportunity_id)
+    except Exception as e:
+        log.exception("sitla detail failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.get("/sitla/coverage")
+def api_sitla_coverage() -> Dict[str, Any]:
+    blocked = _sitla_guard()
+    if blocked:
+        return blocked
+    from mining_os.sitla_intel.opportunity_service import get_coverage
+
+    try:
+        return get_coverage(current_account_id())
+    except Exception as e:
+        log.exception("sitla coverage failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.get("/sitla/map")
+def api_sitla_map(limit: int = Query(500, ge=1, le=2000)) -> Dict[str, Any]:
+    blocked = _sitla_guard()
+    if blocked:
+        return blocked
+    from mining_os.sitla_intel.opportunity_service import get_map_features
+
+    try:
+        return get_map_features(current_account_id(), limit=limit)
+    except Exception as e:
+        log.exception("sitla map failed")
+        return {"ok": False, "error": str(e), "features": []}
+
+
+@api_app.get("/sitla/review")
+def api_sitla_review() -> Dict[str, Any]:
+    blocked = _sitla_guard()
+    if blocked:
+        return blocked
+    from mining_os.sitla_intel.opportunity_service import list_review_tasks
+
+    try:
+        return list_review_tasks(current_account_id())
+    except Exception as e:
+        log.exception("sitla review failed")
+        return {"ok": False, "error": str(e), "items": []}
+
+
+@api_app.post("/sitla/opportunities/{opportunity_id}/watch")
+def api_sitla_watch(opportunity_id: str) -> Dict[str, Any]:
+    blocked = _sitla_guard()
+    if blocked:
+        return blocked
+    from mining_os.services.auth import get_auth_context
+    from mining_os.sitla_intel.opportunity_service import set_watch
+
+    ctx = get_auth_context()
+    user_id = int(ctx.user_id) if ctx and getattr(ctx, "user_id", None) else None
+    try:
+        return set_watch(current_account_id(), opportunity_id, watch=True, user_id=user_id)
+    except Exception as e:
+        log.exception("sitla watch failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.delete("/sitla/opportunities/{opportunity_id}/watch")
+def api_sitla_unwatch(opportunity_id: str) -> Dict[str, Any]:
+    blocked = _sitla_guard()
+    if blocked:
+        return blocked
+    from mining_os.sitla_intel.opportunity_service import set_watch
+
+    try:
+        return set_watch(current_account_id(), opportunity_id, watch=False)
+    except Exception as e:
+        log.exception("sitla unwatch failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.post("/sitla/opportunities/{opportunity_id}/promote-to-target")
+def api_sitla_promote(opportunity_id: str) -> Dict[str, Any]:
+    blocked = _sitla_guard()
+    if blocked:
+        return blocked
+    from mining_os.services.auth import get_auth_context
+    from mining_os.sitla_intel.promote import promote_to_target
+
+    ctx = get_auth_context()
+    user_id = int(ctx.user_id) if ctx and getattr(ctx, "user_id", None) else None
+    try:
+        return promote_to_target(current_account_id(), opportunity_id, user_id=user_id)
+    except Exception as e:
+        log.exception("sitla promote failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.post("/sitla/jobs/refresh")
+def api_sitla_refresh() -> Dict[str, Any]:
+    blocked = _sitla_guard()
+    if blocked:
+        return blocked
+    from mining_os.sitla_intel.config import sitla_admin_enabled, sitla_jobs_enabled
+    from mining_os.sitla_intel.jobs import run_manual_refresh
+
+    if not (sitla_jobs_enabled() or sitla_admin_enabled()):
+        return {
+            "ok": False,
+            "error": "Enable ENABLE_SITLA_JOBS or ENABLE_SITLA_ADMIN to run refreshes.",
+        }
+    try:
+        return run_manual_refresh(current_account_id())
+    except Exception as e:
+        log.exception("sitla refresh failed")
         return {"ok": False, "error": str(e)}
 
 

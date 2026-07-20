@@ -1114,3 +1114,52 @@ export const taxSales = {
     "/tax-sales/alerts"
   ),
 };
+
+// ---- SITLA Intelligence (Utah Trust Lands) ----------------------------------
+
+export const sitla = {
+  meta: () =>
+    request<{
+      ok: boolean;
+      enabled: boolean;
+      admin_enabled?: boolean;
+      jobs_enabled?: boolean;
+      label?: string;
+      subtitle?: string;
+      error?: string | null;
+    }>("/sitla/meta"),
+  summary: () => request<Record<string, unknown>>("/sitla/summary"),
+  list: (params?: Record<string, string | number | boolean | undefined>) => {
+    const q = new URLSearchParams();
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        if (v === undefined || v === null || v === "") continue;
+        q.set(k, String(v));
+      }
+    }
+    const qs = q.toString();
+    return request<Record<string, unknown>>(`/sitla/opportunities${qs ? `?${qs}` : ""}`);
+  },
+  get: (id: string) => request<Record<string, unknown>>(`/sitla/opportunities/${id}`),
+  coverage: () => request<Record<string, unknown>>("/sitla/coverage"),
+  review: () => request<Record<string, unknown>>("/sitla/review"),
+  watch: (id: string) =>
+    request<{ ok: boolean; error?: string | null; watchlisted?: boolean }>(
+      `/sitla/opportunities/${id}/watch`,
+      { method: "POST" }
+    ),
+  unwatch: (id: string) =>
+    request<{ ok: boolean; error?: string | null; watchlisted?: boolean }>(
+      `/sitla/opportunities/${id}/watch`,
+      { method: "DELETE" }
+    ),
+  promote: (id: string) =>
+    request<{
+      ok: boolean;
+      error?: string | null;
+      area_of_focus_id?: number;
+      already_linked?: boolean;
+    }>(`/sitla/opportunities/${id}/promote-to-target`, { method: "POST" }),
+  refresh: () =>
+    request<Record<string, unknown>>("/sitla/jobs/refresh", { method: "POST" }),
+};

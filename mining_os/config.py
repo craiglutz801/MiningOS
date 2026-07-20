@@ -73,6 +73,15 @@ class Settings(BaseSettings):
     ENABLE_TAX_SALES_PLAYWRIGHT: bool = False
     ENABLE_TAX_SALES_OCR: bool = False
 
+    # SITLA Intelligence — Utah Trust Lands (additive; safe defaults for production)
+    ENABLE_SITLA_API: bool = False
+    ENABLE_SITLA_ADMIN: bool = False
+    ENABLE_SITLA_JOBS: bool = False
+    ENABLE_SITLA_AI_EXTRACTION: bool = False
+    ENABLE_SITLA_PLAYWRIGHT: bool = False
+    ENABLE_SITLA_OCR: bool = False
+    ENABLE_SITLA_NOMINATIONS: bool = False
+
     # ---- parsed lists (use these in code) ------------------------------------
 
     @property

@@ -97,6 +97,7 @@ def init_db() -> None:
         "021_share_links.sql",
         "022_tax_intel.sql",
         "023_tax_intel_phase3.sql",
+        "024_sitla_intel.sql",
     ]
     auth_present = _auth_schema_present()
     base_schema_present = _base_app_schema_present()
@@ -132,6 +133,7 @@ def init_db() -> None:
             "021_share_links.sql",
             "022_tax_intel.sql",
             "023_tax_intel_phase3.sql",
+            "024_sitla_intel.sql",
         ]:
             sql_path = sql_dir / name
             if sql_path.exists():
