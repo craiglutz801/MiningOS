@@ -66,3 +66,26 @@ cd frontend && npm run dev
 | UT | Beaver, Juab, Tooele |
 | ID | Shoshone, Custer, Lemhi |
 | NV | White Pine, Nye, Elko |
+
+## Live-endpoint hardening checklist
+
+Do **not** flip `allow_live_html` / ArcGIS URLs until each feed is validated.
+
+Per county (`source_key`):
+
+1. Confirm treasurer/assessor URL returns a stable list (not a home page with seasonal PDFs only).
+2. Capture a sample artifact under `data_files/tax_intel_artifacts/` and compare field coverage to the packaged fixture.
+3. Set `configuration_json` on `tax_intel.source_registry`:
+   - HTML: `{ "allow_live_html": true, "use_fixture": false, "listing_url": "..." }`
+   - ArcGIS: `{ "layer_url": "...", "parcel_layer_url": "..." }`
+4. Keep `use_fixture: true` as fallback; CSV upload remains available for MANUAL counties.
+5. Run `POST /api/tax-sales/jobs/refresh?source_key=...` and verify source health stays HEALTHY for 3 consecutive runs.
+
+Known starting URLs (still fixture-default until validated):
+
+| source_key | Candidate live URL |
+|------------|--------------------|
+| id_shoshone_tax_deed | https://shoshonecounty.id.gov/tax-deed-auction/ |
+| nv_white_pine_tax_sale | https://www.whitepinecounty.net/331/Tax-Sale |
+| nv_nye_tax_sale | https://www.nyecountynv.gov/1118/2026-Online-Only-Tax-Sale-Auctions |
+| nv_elko_trustee | https://gis.elkocountynv.net/ (ArcGIS) |

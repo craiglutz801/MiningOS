@@ -1,0 +1,33 @@
+{
+  "records": [
+    {
+      "source_record_key": "pn-2026-oba-11",
+      "reference_number": "PN-2026-OBA-11",
+      "title": "Competing application — San Juan County metalliferous",
+      "opportunity_type": "Competing application",
+      "status": "Public notice",
+      "county_name": "San Juan",
+      "commodity": "Metalliferous minerals",
+      "commodities": ["Uranium", "Vanadium"],
+      "acreage": 160,
+      "legal_description": "T37S R22E Sec 16 SLM",
+      "latitude": 37.521,
+      "longitude": -109.478,
+      "application_deadline": "2026-09-01",
+      "detail_url": "https://trustlands.utah.gov/work-with-us/public-notice/"
+    },
+    {
+      "source_record_key": "pn-2026-mm-04",
+      "reference_number": "PN-2026-MM-04",
+      "title": "Mineral material permit notice — Tooele County",
+      "opportunity_type": "Mineral material permit",
+      "status": "Announced",
+      "county_name": "Tooele",
+      "commodity": "Sand and gravel",
+      "commodities": ["Sand", "Gravel"],
+      "acreage": 40,
+      "legal_description": "T1S R7W Sec 36 SLM",
+      "application_deadline": "2026-08-20"
+    }
+  ]
+}

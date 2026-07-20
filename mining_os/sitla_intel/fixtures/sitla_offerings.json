@@ -1,0 +1,37 @@
+{
+  "records": [
+    {
+      "source_record_key": "ml-2026-014",
+      "reference_number": "ML-2026-014",
+      "title": "Juab County metalliferous mineral lease",
+      "opportunity_type": "Metalliferous mineral lease",
+      "status": "Bidding open",
+      "county_name": "Juab",
+      "commodity": "Metalliferous minerals",
+      "commodities": ["Tungsten", "Silver"],
+      "acreage": 640,
+      "legal_description": "T12S R2W Sec 16 SLM",
+      "latitude": 39.812,
+      "longitude": -112.205,
+      "minimum_bid": 1280,
+      "bidding_end": "2026-08-15",
+      "offering_cycle": "2026-JUN"
+    },
+    {
+      "source_record_key": "ml-2026-031",
+      "reference_number": "ML-2026-031",
+      "title": "Millard County lithium offering",
+      "opportunity_type": "Lithium lease",
+      "status": "Announced",
+      "county_name": "Millard",
+      "commodity": "Lithium",
+      "commodities": ["Lithium"],
+      "acreage": 2560,
+      "legal_description": "T18S R8W Sec 2,11,14 SLM",
+      "latitude": 39.201,
+      "longitude": -112.812,
+      "minimum_bid": 5120,
+      "offering_cycle": "2026-OCT"
+    }
+  ]
+}

@@ -60,6 +60,14 @@ def _tick() -> None:
         except Exception:
             log.exception("Scheduler: tax sales jobs tick failed")
 
+        # SITLA Intelligence scheduled jobs (feature-flagged).
+        try:
+            from mining_os.sitla_intel.jobs import tick_sitla_jobs
+
+            tick_sitla_jobs()
+        except Exception:
+            log.exception("Scheduler: sitla jobs tick failed")
+
         now = datetime.now(timezone.utc)
         rules = list_rules(all_accounts=True)
         for rule in rules:

@@ -17,8 +17,12 @@ import { SharePage } from "./pages/SharePage";
 const TaxSales = lazy(() =>
   import("./pages/TaxSales").then((m) => ({ default: m.TaxSales }))
 );
+const Sitla = lazy(() =>
+  import("./pages/Sitla").then((m) => ({ default: m.Sitla }))
+);
 
 const taxSalesUiEnabled = import.meta.env.VITE_ENABLE_TAX_SALES === "true";
+const sitlaUiEnabled = import.meta.env.VITE_ENABLE_SITLA === "true";
 
 export default function App() {
   return (
@@ -52,6 +56,20 @@ export default function App() {
                       }
                     >
                       <TaxSales />
+                    </Suspense>
+                  }
+                />
+              )}
+              {sitlaUiEnabled && (
+                <Route
+                  path="sitla"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="p-6 text-sm text-slate-500">Loading SITLA…</div>
+                      }
+                    >
+                      <Sitla />
                     </Suspense>
                   }
                 />

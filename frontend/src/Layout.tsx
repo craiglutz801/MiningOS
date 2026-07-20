@@ -5,6 +5,7 @@ import { useAuth } from "./auth";
 import { automations, formatApiNetworkError, type AutomationRun } from "./api";
 
 const taxSalesUiEnabled = import.meta.env.VITE_ENABLE_TAX_SALES === "true";
+const sitlaUiEnabled = import.meta.env.VITE_ENABLE_SITLA === "true";
 
 const nav = [
   { to: "/", label: "Dashboard" },
@@ -14,6 +15,7 @@ const nav = [
   { to: "/map", label: "Map" },
   { to: "/automations", label: "Automations" },
   ...(taxSalesUiEnabled ? [{ to: "/tax-sales", label: "Tax Sales" }] : []),
+  ...(sitlaUiEnabled ? [{ to: "/sitla", label: "SITLA" }] : []),
 ];
 
 export function Layout() {

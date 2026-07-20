@@ -549,6 +549,9 @@ def _sync_source_adapter_config(conn) -> None:
                 "use_fixture": True,
                 "fixture_file": f"{src['source_key']}.json",
                 "refresh_cron": "0 6 * * *",
+                "allow_live_html": False,
+                "live_candidate_url": src.get("listing_url"),
+                "live_status": "pending_validation",
             }
         )
         if has_adapter_col:
@@ -658,6 +661,9 @@ def ensure_demo_seed(account_id: int) -> dict[str, Any]:
                             "use_fixture": True,
                             "fixture_file": f"{src['source_key']}.json",
                             "refresh_cron": "0 6 * * *",
+                            "allow_live_html": False,
+                            "live_candidate_url": src.get("listing_url"),
+                            "live_status": "pending_validation",
                         }
                     ),
                 },
