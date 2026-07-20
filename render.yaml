@@ -37,8 +37,14 @@ services:
         value: "true"
       - key: ENABLE_TAX_SALES_ADMIN
         value: "true"
-      # Bake Tax Sales tab into the Vite production build (Render buildCommand)
+      # Bake feature tabs into the Vite production build (Render buildCommand)
       - key: VITE_ENABLE_TAX_SALES
+        value: "true"
+      - key: VITE_ENABLE_SITLA
+        value: "true"
+      - key: ENABLE_SITLA_API
+        value: "true"
+      - key: ENABLE_SITLA_JOBS
         value: "true"
       - key: DATABASE_URL
         sync: false
