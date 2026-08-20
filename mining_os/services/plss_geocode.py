@@ -299,7 +299,16 @@ def reverse_geocode_plss(latitude: float, longitude: float) -> dict[str, Any] | 
             location_plss = f"{st} T{twp_h} R{rng_h} Sec {sec}"
         else:
             location_plss = f"{st} T{twp_h} R{rng_h}"
-        return {**parts, "location_plss": location_plss}
+        # Return human T/R (T8S / R17W), not ×10 storage (80S / 170W), so
+        # callers that paste township into location_plss cannot create T80S.
+        return {
+            **parts,
+            "township": twp_h,
+            "range": rng_h,
+            "location_plss": location_plss,
+            "township_storage": twp,
+            "range_storage": rng,
+        }
 
     log.debug("No parseable PLSS at %.6f,%.6f (%d features)", lat, lon, len(features))
     return None

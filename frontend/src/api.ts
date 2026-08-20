@@ -19,7 +19,7 @@ export function formatApiNetworkError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
   if (msg === "Failed to fetch" || msg === "Load failed" || msg.includes("NetworkError")) {
     return import.meta.env.DEV
-      ? "Could not reach the API. Keep uvicorn on port 8000 (.venv/bin/uvicorn mining_os.api.main:app --host 127.0.0.1 --port 8000). With npm run dev, try http://127.0.0.1:5173 if localhost fails."
+      ? "Could not reach the API on port 8010. In the project root run: ENABLE_TAX_SALES_API=true .venv/bin/uvicorn mining_os.api.main:app --host 127.0.0.1 --port 8010 — then open http://127.0.0.1:5173 (not only localhost)."
       : "Could not reach the API. Check that the server is running.";
   }
   return msg;
@@ -105,16 +105,28 @@ export interface AdminCreateAccountResult {
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const isForm = options?.body instanceof FormData;
   let res: Response;
+  // Auth calls should fail fast when the API is down (Vite proxy can otherwise hang).
+  const timeoutMs = path.startsWith("/auth/") ? 8_000 : undefined;
+  const controller = timeoutMs ? new AbortController() : null;
+  const timer = controller ? window.setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
     res = await fetch(`${BASE}${path}`, {
+      ...options,
       headers: isForm ? { ...options?.headers } : { "Content-Type": "application/json", ...options?.headers },
       credentials: "include",
-      ...options,
+      signal: controller?.signal ?? options?.signal,
     });
-  } catch {
-    throw new ApiError(formatApiNetworkError(new TypeError("Failed to fetch")), 0, {
-      error: "network_error",
-    });
+  } catch (err) {
+    const aborted = err instanceof DOMException && err.name === "AbortError";
+    throw new ApiError(
+      aborted
+        ? "API did not respond. Is uvicorn running on port 8010?"
+        : formatApiNetworkError(new TypeError("Failed to fetch")),
+      0,
+      { error: "network_error" },
+    );
+  } finally {
+    if (timer != null) window.clearTimeout(timer);
   }
   const text = await res.text();
   if (!res.ok) {
@@ -1162,4 +1174,78 @@ export const sitla = {
     }>(`/sitla/opportunities/${id}/promote-to-target`, { method: "POST" }),
   refresh: () =>
     request<Record<string, unknown>>("/sitla/jobs/refresh", { method: "POST" }),
+};
+
+// ---- Active Mine Search (NV/UT unpatented claims) ---------------------------
+
+export const activeMines = {
+  meta: () =>
+    request<{
+      ok: boolean;
+      enabled: boolean;
+      admin_enabled?: boolean;
+      jobs_enabled?: boolean;
+      supported_states?: string[];
+      label?: string;
+      subtitle?: string;
+      error?: string | null;
+    }>("/active-mines/meta"),
+  pull: (body: { state: string; refresh?: boolean }) =>
+    request<{
+      ok: boolean;
+      run_id?: string;
+      status?: string;
+      already_running?: boolean;
+      message?: string;
+      error?: string | null;
+    }>("/active-mines/pull", { method: "POST", body: JSON.stringify(body) }),
+  getRun: (id: string) =>
+    request<{ ok: boolean; run?: Record<string, unknown>; error?: string | null }>(
+      `/active-mines/runs/${id}`
+    ),
+  latestRun: (params?: { state?: string; running_only?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.state) q.set("state", params.state);
+    if (params?.running_only) q.set("running_only", "true");
+    const qs = q.toString();
+    return request<{ ok: boolean; run?: Record<string, unknown> | null; error?: string | null }>(
+      `/active-mines/runs/latest${qs ? `?${qs}` : ""}`
+    );
+  },
+  list: (params?: Record<string, string | number | boolean | undefined>) => {
+    const q = new URLSearchParams();
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        if (v === undefined || v === null || v === "") continue;
+        q.set(k, String(v));
+      }
+    }
+    const qs = q.toString();
+    return request<{
+      ok: boolean;
+      total?: number;
+      sites?: Record<string, unknown>[];
+      error?: string | null;
+    }>(`/active-mines/sites${qs ? `?${qs}` : ""}`);
+  },
+  get: (id: string) =>
+    request<{ ok: boolean; site?: Record<string, unknown>; error?: string | null }>(
+      `/active-mines/sites/${id}`
+    ),
+  fetchUnpaid: (body?: { state?: string; site_ids?: string[] }) =>
+    request<{
+      ok: boolean;
+      job_id?: string;
+      status?: string;
+      target_count?: number;
+      target_ids?: number[];
+      error?: string | null;
+    }>("/active-mines/fetch-unpaid", {
+      method: "POST",
+      body: JSON.stringify(body || {}),
+    }),
+  getFetchJob: (id: string) =>
+    request<{ ok: boolean; job?: Record<string, unknown>; error?: string | null }>(
+      `/active-mines/fetch-jobs/${id}`
+    ),
 };

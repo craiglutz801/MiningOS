@@ -98,6 +98,11 @@ def init_db() -> None:
         "022_tax_intel.sql",
         "023_tax_intel_phase3.sql",
         "024_sitla_intel.sql",
+        "025_sitla_multi_state.sql",
+        "026_active_mine_intel.sql",
+        "027_active_mine_mlrs_claim_count.sql",
+        "028_active_mine_fetch_progress.sql",
+        "029_active_mine_paid_unknown_counts.sql",
     ]
     auth_present = _auth_schema_present()
     base_schema_present = _base_app_schema_present()
@@ -134,6 +139,11 @@ def init_db() -> None:
             "022_tax_intel.sql",
             "023_tax_intel_phase3.sql",
             "024_sitla_intel.sql",
+            "025_sitla_multi_state.sql",
+            "026_active_mine_intel.sql",
+            "027_active_mine_mlrs_claim_count.sql",
+            "028_active_mine_fetch_progress.sql",
+            "029_active_mine_paid_unknown_counts.sql",
         ]:
             sql_path = sql_dir / name
             if sql_path.exists():

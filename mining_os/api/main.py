@@ -56,6 +56,7 @@ _PUBLIC_API_PATHS = {
     "/api/auth/login",
     "/api/tax-sales/meta",  # feature-flag probe; does not expose tax data
     "/api/sitla/meta",  # feature-flag probe; does not expose SITLA data
+    "/api/active-mines/meta",  # feature-flag probe; does not expose mine data
 }
 _PUBLIC_API_PREFIXES = (
     "/api/diag/",
@@ -1250,7 +1251,7 @@ def api_batch_fetch_claim_records(body: BatchAreaIdsBody = Body(...)) -> Dict[st
     """Run MLRS scrape (BLM_ClaimAgent path) for each target id, sequentially."""
     from mining_os.services.area_batch_actions import batch_fetch_claim_records
 
-    return batch_fetch_claim_records(body.ids)
+    return batch_fetch_claim_records(body.ids, account_id=current_account_id())
 
 
 @api_app.post("/areas-of-focus/batch/lr2000-geographic-report")
@@ -1881,7 +1882,12 @@ def api_tax_sales_opportunities(
     search: Optional[str] = None,
     min_score: Optional[float] = None,
     auction_within_days: Optional[int] = None,
+    auction_timing: str = Query(
+        "upcoming",
+        description="upcoming (default) | past | all",
+    ),
     active_only: bool = True,
+    include_demo: bool = False,
     watchlisted: Optional[bool] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
@@ -1906,7 +1912,9 @@ def api_tax_sales_opportunities(
             search=search,
             min_score=min_score,
             auction_within_days=auction_within_days,
+            auction_timing=auction_timing,
             active_only=active_only,
+            include_demo=include_demo,
             watchlisted=watchlisted,
             page=page,
             page_size=page_size,
@@ -2153,6 +2161,7 @@ def api_sitla_summary() -> Dict[str, Any]:
 
 @api_app.get("/sitla/opportunities")
 def api_sitla_opportunities(
+    state: Optional[str] = None,
     county: Optional[str] = None,
     status: Optional[str] = None,
     opportunity_type: Optional[str] = None,
@@ -2161,7 +2170,12 @@ def api_sitla_opportunities(
     search: Optional[str] = None,
     min_score: Optional[float] = None,
     deadline_within_days: Optional[int] = None,
+    deadline_timing: str = Query(
+        "upcoming",
+        description="upcoming (default) | past | all",
+    ),
     active_only: bool = True,
+    include_demo: bool = False,
     historical: Optional[bool] = None,
     watchlisted: Optional[bool] = None,
     page: int = Query(1, ge=1),
@@ -2177,6 +2191,7 @@ def api_sitla_opportunities(
     try:
         return list_opportunities(
             current_account_id(),
+            state=state,
             county=county,
             status=status,
             opportunity_type=opportunity_type,
@@ -2185,7 +2200,9 @@ def api_sitla_opportunities(
             search=search,
             min_score=min_score,
             deadline_within_days=deadline_within_days,
+            deadline_timing=deadline_timing,
             active_only=active_only,
+            include_demo=include_demo,
             historical=historical,
             watchlisted=watchlisted,
             page=page,
@@ -2319,6 +2336,187 @@ def api_sitla_refresh() -> Dict[str, Any]:
         return run_manual_refresh(current_account_id())
     except Exception as e:
         log.exception("sitla refresh failed")
+        return {"ok": False, "error": str(e)}
+
+
+# ---- Active Mine Search (feature-flagged) ------------------------------------
+
+
+def _active_mines_guard() -> Dict[str, Any] | None:
+    from mining_os.active_mine_intel.config import active_mines_enabled, disabled_payload
+
+    if not active_mines_enabled():
+        return disabled_payload()
+    return None
+
+
+@api_app.get("/active-mines/meta")
+def api_active_mines_meta() -> Dict[str, Any]:
+    from mining_os.active_mine_intel.config import (
+        SUPPORTED_STATES,
+        active_mines_admin_enabled,
+        active_mines_enabled,
+        active_mines_jobs_enabled,
+    )
+
+    return {
+        "ok": True,
+        "error": None,
+        "enabled": active_mines_enabled(),
+        "admin_enabled": active_mines_admin_enabled(),
+        "jobs_enabled": active_mines_jobs_enabled(),
+        "supported_states": list(SUPPORTED_STATES),
+        "label": "Active Mine Search",
+        "subtitle": "Active mines on unpatented claims (NV / UT)",
+    }
+
+
+@api_app.post("/active-mines/pull")
+def api_active_mines_pull(body: Dict[str, Any] = Body(default_factory=dict)) -> Dict[str, Any]:
+    blocked = _active_mines_guard()
+    if blocked:
+        return blocked
+    from mining_os.active_mine_intel.jobs import start_pull_async
+
+    state = str((body or {}).get("state") or "").upper().strip()
+    refresh = bool((body or {}).get("refresh", True))
+    if not state:
+        return {"ok": False, "error": "Provide state: NV or UT."}
+    try:
+        return start_pull_async(current_account_id(), state, refresh=refresh)
+    except Exception as e:
+        log.exception("active-mines pull failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.get("/active-mines/runs/latest")
+def api_active_mines_latest_run(
+    state: Optional[str] = None,
+    running_only: bool = False,
+) -> Dict[str, Any]:
+    blocked = _active_mines_guard()
+    if blocked:
+        return blocked
+    from mining_os.active_mine_intel import store
+
+    try:
+        run = store.get_latest_run(
+            current_account_id(),
+            state=state.upper() if state else None,
+            running_only=running_only,
+        )
+        return {"ok": True, "run": run}
+    except Exception as e:
+        log.exception("active-mines latest run failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.get("/active-mines/runs/{run_id}")
+def api_active_mines_run(run_id: str) -> Dict[str, Any]:
+    blocked = _active_mines_guard()
+    if blocked:
+        return blocked
+    from mining_os.active_mine_intel import store
+
+    try:
+        run = store.get_run(run_id, account_id=current_account_id())
+        if not run:
+            return {"ok": False, "error": "Run not found."}
+        return {"ok": True, "run": run}
+    except Exception as e:
+        log.exception("active-mines run get failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.get("/active-mines/sites")
+def api_active_mines_sites(
+    state: Optional[str] = None,
+    min_score: Optional[float] = 55.0,
+    confidence: Optional[str] = None,
+    include_low: bool = False,
+    unpaid_only: bool = False,
+    search: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(100, ge=1, le=500),
+) -> Dict[str, Any]:
+    blocked = _active_mines_guard()
+    if blocked:
+        return blocked
+    from mining_os.active_mine_intel import store
+
+    try:
+        return store.list_sites(
+            current_account_id(),
+            state=state,
+            min_score=min_score,
+            confidence=confidence,
+            include_low=include_low,
+            unpaid_only=unpaid_only,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except Exception as e:
+        log.exception("active-mines sites list failed")
+        return {"ok": False, "error": str(e), "sites": [], "total": 0}
+
+
+@api_app.get("/active-mines/sites/{site_id}")
+def api_active_mines_site(site_id: str) -> Dict[str, Any]:
+    blocked = _active_mines_guard()
+    if blocked:
+        return blocked
+    from mining_os.active_mine_intel import store
+
+    try:
+        site = store.get_site(current_account_id(), site_id)
+        if not site:
+            return {"ok": False, "error": "Site not found."}
+        return {"ok": True, "site": site}
+    except Exception as e:
+        log.exception("active-mines site get failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.post("/active-mines/fetch-unpaid")
+def api_active_mines_fetch_unpaid(body: Dict[str, Any] = Body(default_factory=dict)) -> Dict[str, Any]:
+    blocked = _active_mines_guard()
+    if blocked:
+        return blocked
+    from mining_os.active_mine_intel.jobs import start_fetch_unpaid_async
+
+    payload = body or {}
+    state = payload.get("state")
+    site_ids = payload.get("site_ids")
+    if state is not None:
+        state = str(state).upper().strip() or None
+    if site_ids is not None and not isinstance(site_ids, list):
+        return {"ok": False, "error": "site_ids must be an array of strings."}
+    try:
+        return start_fetch_unpaid_async(
+            current_account_id(),
+            state=state,
+            site_ids=[str(s) for s in site_ids] if site_ids else None,
+        )
+    except Exception as e:
+        log.exception("active-mines fetch-unpaid failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.get("/active-mines/fetch-jobs/{job_id}")
+def api_active_mines_fetch_job(job_id: str) -> Dict[str, Any]:
+    blocked = _active_mines_guard()
+    if blocked:
+        return blocked
+    from mining_os.active_mine_intel import store
+
+    try:
+        job = store.get_fetch_job(job_id, account_id=current_account_id())
+        if not job:
+            return {"ok": False, "error": "Fetch job not found."}
+        return {"ok": True, "job": job}
+    except Exception as e:
+        log.exception("active-mines fetch job get failed")
         return {"ok": False, "error": str(e)}
 
 
@@ -2486,7 +2684,7 @@ def plss_from_coordinates_batch_toplevel() -> Dict[str, Any]:
 def batch_fetch_claim_records_toplevel(body: BatchAreaIdsBody = Body(...)) -> Dict[str, Any]:
     from mining_os.services.area_batch_actions import batch_fetch_claim_records
 
-    return batch_fetch_claim_records(body.ids)
+    return batch_fetch_claim_records(body.ids, account_id=current_account_id())
 
 
 @app.post("/api/areas-of-focus/batch/lr2000-geographic-report")
@@ -3041,6 +3239,15 @@ def _start_automation_scheduler() -> None:
         reconcile_stuck_runs()
     except Exception as e:
         log.warning("Automation run reconciliation failed: %s", e)
+    try:
+        from mining_os.active_mine_intel import store as ami_store
+        n = ami_store.fail_stale_fetch_jobs(
+            reason="Fetch unpaid abandoned after API restart (daemon thread gone).",
+        )
+        if n:
+            log.info("Failed %s orphaned active-mine fetch job(s) on startup", n)
+    except Exception as e:
+        log.warning("Active-mine fetch job reconciliation failed: %s", e)
     try:
         from mining_os.services.automation_scheduler import start_scheduler
         start_scheduler()

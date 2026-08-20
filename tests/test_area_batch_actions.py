@@ -22,8 +22,10 @@ class TestBatchFetchClaimRecords:
 
     def test_dedupes_and_calls_fetch(self, monkeypatch):
         calls: list[int] = []
+        account_ids: list[int | None] = []
 
-        def fake_get_area(aid):
+        def fake_get_area(aid, account_id=None):
+            account_ids.append(account_id)
             if aid in (1, 2):
                 return {
                     "id": aid,
@@ -36,22 +38,23 @@ class TestBatchFetchClaimRecords:
                 }
             return None
 
-        def fake_fetch(aid, name, location_plss, **kwargs):
+        def fake_run(aid, account_id=None, progress_cb=None):
             calls.append(aid)
             return {"ok": True, "claims": [{"x": 1}], "log": "ok", "error": None, "fetched_at": "t"}
 
         monkeypatch.setattr("mining_os.services.areas_of_focus.get_area", fake_get_area)
         monkeypatch.setattr(
-            "mining_os.services.fetch_claim_records.fetch_claim_records_for_area",
-            fake_fetch,
+            "mining_os.services.fetch_claim_records.run_fetch_claim_records_for_area_id",
+            fake_run,
         )
 
-        out = batch_fetch_claim_records([1, 1, 2, 99])
+        out = batch_fetch_claim_records([1, 1, 2, 99], account_id=42)
         assert out["ok"] is True
         assert out["processed"] == 3  # duplicate id 1 removed
         assert out["succeeded"] == 2
         assert out["failed"] == 1
         assert calls == [1, 2]
+        assert all(a == 42 for a in account_ids)
         by_id = {r["id"]: r for r in out["results"]}
         assert by_id[1]["ok"] is True
         assert by_id[1]["claims_count"] == 1

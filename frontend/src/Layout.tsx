@@ -6,6 +6,7 @@ import { automations, formatApiNetworkError, type AutomationRun } from "./api";
 
 const taxSalesUiEnabled = import.meta.env.VITE_ENABLE_TAX_SALES === "true";
 const sitlaUiEnabled = import.meta.env.VITE_ENABLE_SITLA === "true";
+const activeMinesUiEnabled = import.meta.env.VITE_ENABLE_ACTIVE_MINES === "true";
 
 const nav = [
   { to: "/", label: "Dashboard" },
@@ -15,7 +16,8 @@ const nav = [
   { to: "/map", label: "Map" },
   { to: "/automations", label: "Automations" },
   ...(taxSalesUiEnabled ? [{ to: "/tax-sales", label: "Tax Sales" }] : []),
-  ...(sitlaUiEnabled ? [{ to: "/sitla", label: "SITLA" }] : []),
+  ...(sitlaUiEnabled ? [{ to: "/sitla", label: "Trust Lands" }] : []),
+  ...(activeMinesUiEnabled ? [{ to: "/active-mines", label: "Active Mine Search" }] : []),
 ];
 
 export function Layout() {

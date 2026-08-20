@@ -552,6 +552,29 @@ def fetch_claim_records_for_area(
                 log.warning("fetch_claim_records: spatial fallback failed: %s", e)
                 log_text += f"\n[spatial] error: {e}"
 
+        # ── Checkpoint: persist ArcGIS claims before payment scrape ──
+        # Payment enrichment (Selenium/Playwright) can hang for many minutes per
+        # Target. Saving first means a timeout / kill still leaves Claims populated.
+        if claims:
+            from mining_os.services.areas_of_focus import merge_area_characteristics
+
+            checkpoint_at = datetime.now(timezone.utc).isoformat()
+            merge_area_characteristics(
+                area_id,
+                {
+                    "claim_records": {
+                        "fetched_at": checkpoint_at,
+                        "log": (log_text.strip() + "\n[checkpoint] Saved ArcGIS claims before payment enrichment."),
+                        "claims": claims,
+                        "plss": location_plss,
+                        "query_method": query_method,
+                        "ok": True,
+                        "payment_enrichment": "pending",
+                    }
+                },
+                account_id=account_id,
+            )
+
         # ── Step 3 (same as BLM_ClaimAgent get_mlrs_from_PLSS): MLRS case-page banner ──
         # ArcGIS does not include payment text; scrape case_page for the maintenance-fee message.
         if claims:
@@ -589,14 +612,25 @@ def fetch_claim_records_for_area(
                 claims = enrich_claims_from_mlrs_case_pages(claims, progress_cb=progress_cb)
             else:
                 claims = enrich_claims_from_mlrs_case_pages(claims)
-            after = sum(
+            after_unpaid = sum(
                 1
                 for c in claims
                 if isinstance(c, dict) and (c.get("payment_status") or "").strip().lower() == "unpaid"
             )
+            after_paid = sum(
+                1
+                for c in claims
+                if isinstance(c, dict) and (c.get("payment_status") or "").strip().lower() == "paid"
+            )
+            after_unknown = sum(
+                1
+                for c in claims
+                if isinstance(c, dict)
+                and (c.get("payment_status") or "").strip().lower() not in {"paid", "unpaid"}
+            )
             log_text += (
                 f"\n[case-page payment] Enriched {len(claims)} claim(s); "
-                f"unpaid count {before} → {after}."
+                f"unpaid {before} → {after_unpaid}; paid={after_paid}; unknown={after_unknown}."
             )
             _progress(
                 progress_cb,

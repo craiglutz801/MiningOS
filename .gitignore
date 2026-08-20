@@ -53,3 +53,6 @@ backups/
 target_audit_report.csv
 data_files/tax_intel_artifacts/
 data_files/sitla_intel_artifacts/
+data_files/active_mines/data/
+data_files/active_mines/outputs/
+data_files/active_mines/logs/

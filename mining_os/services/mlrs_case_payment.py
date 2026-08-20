@@ -97,6 +97,16 @@ def _resolve_large_batch_chunk_size() -> int:
     except ValueError:
         size = int(default_size)
     return max(1, min(size, 100))
+def _resolve_enrich_subprocess_timeout_sec() -> int:
+    """Hard cap for one payment-enrich subprocess (default 8 minutes)."""
+    raw = (os.getenv("MINING_OS_MLRS_ENRICH_SUBPROCESS_TIMEOUT_SEC") or "480").strip()
+    try:
+        sec = int(raw)
+    except ValueError:
+        sec = 480
+    return max(60, min(sec, 45 * 60))
+
+
 def _resolve_cache_ttl_seconds() -> int:
     raw = (os.getenv("MINING_OS_MLRS_PAYMENT_CACHE_TTL_HOURS") or "24").strip()
     try:
@@ -326,6 +336,24 @@ def _body_looks_like_loaded_case(body_lower: str) -> bool:
     return hits >= 3
 
 
+def _body_is_shellish(body_lower: str) -> bool:
+    """True when page text is still the Salesforce SPA shell (not a real case record)."""
+    text = (body_lower or "").strip()
+    if not text:
+        return True
+    if text == "loading" or text.startswith("loading\n") or text.startswith("loading "):
+        return True
+    if "sorry to interrupt" in text and "css error" in text:
+        return True
+    if "css error" in text and not _body_looks_like_loaded_case(text):
+        return True
+    # Title-only bootstrap HTML without case fields (common for plain HTTP GETs).
+    if "mlrs virtual public room" in text and not _body_looks_like_loaded_case(text):
+        if _UNPAID_LOWER not in text and "maintenance fee" not in text:
+            return True
+    return False
+
+
 _IFRAME_SRC_RE = re.compile(r'<iframe[^>]+src\s*=\s*["\']([^"\']+)["\']', re.IGNORECASE)
 
 
@@ -513,8 +541,7 @@ def _evaluate_playwright_case_page(page: Any, case_url: str, timeout_ms: int | N
         }
 
     comb_l = combined.strip().lower()
-    shellish = ("sorry to interrupt" in comb_l and "css error" in comb_l) or comb_l == "loading"
-    if shellish:
+    if _body_is_shellish(comb_l):
         return {
             "payment_status": "unknown",
             "payment_message": None,
@@ -640,22 +667,55 @@ def _close_selenium_driver(driver: Any | None) -> None:
 
 
 def _payment_from_selenium_driver(driver: Any, case_url: str, timeout: int | None = None) -> dict[str, Any]:
+    """
+    Load case page via Selenium.
+
+    Unpaid is only set when the maintenance-fee phrase is present (unchanged rule).
+    Paid requires a loaded case page (not a Salesforce shell) and no unpaid banner —
+    never mark paid on "Loading / CSS Error" shells.
+    """
     if timeout is None:
         timeout = _resolve_selenium_timeout()
     try:
         driver.set_page_load_timeout(timeout)
         driver.get(case_url)
-        time.sleep(min(4, max(2, timeout // 4)))
+        # Initial settle, then poll until case fields appear or time runs out.
+        time.sleep(min(3.0, max(1.5, timeout / 6.0)))
+        deadline = time.monotonic() + min(float(timeout), 20.0)
+        page_text = ""
+        while time.monotonic() < deadline:
+            page_text = (driver.page_source or "").lower()
+            if _body_implies_unpaid(page_text):
+                return {
+                    "payment_status": "unpaid",
+                    "payment_message": _STANDARD_MESSAGE,
+                    "payment_check_source": "mlrs_case_selenium",
+                }
+            if _body_looks_like_loaded_case(page_text):
+                return {
+                    "payment_status": "paid",
+                    "payment_message": None,
+                    "payment_check_source": "mlrs_case_selenium",
+                }
+            time.sleep(0.75)
+
         page_text = (driver.page_source or "").lower()
-        if _UNPAID_LOWER in page_text:
+        if _body_implies_unpaid(page_text):
             return {
                 "payment_status": "unpaid",
                 "payment_message": _STANDARD_MESSAGE,
                 "payment_check_source": "mlrs_case_selenium",
             }
+        if _body_looks_like_loaded_case(page_text):
+            return {
+                "payment_status": "paid",
+                "payment_message": None,
+                "payment_check_source": "mlrs_case_selenium",
+            }
         return {
-            "payment_status": "paid",
+            "payment_status": "unknown",
             "payment_message": None,
+            "payment_check_error": "mlrs case page did not finish loading in selenium (shell or no case fields)",
             "payment_check_source": "mlrs_case_selenium",
         }
     except Exception as e:
@@ -929,9 +989,12 @@ def _run_enrich_subprocess_chunk(
             pass
 
     try:
-        proc.wait(timeout=45 * 60)
+        proc.wait(timeout=_resolve_enrich_subprocess_timeout_sec())
     except subprocess.TimeoutExpired:
-        log.warning("mlrs enrich subprocess exceeded 45-min cap; killing")
+        log.warning(
+            "mlrs enrich subprocess exceeded %ss cap; killing (leaving payment_status as-is)",
+            _resolve_enrich_subprocess_timeout_sec(),
+        )
         try:
             proc.kill()
             proc.wait(timeout=10)
@@ -939,29 +1002,37 @@ def _run_enrich_subprocess_chunk(
             pass
         t_out.join(timeout=2)
         t_err.join(timeout=2)
+        # Do NOT fall back to in-process Selenium — that doubles the hang.
         return claims
 
     t_out.join(timeout=5)
     t_err.join(timeout=5)
 
     if proc.returncode != 0:
-        log.warning("mlrs enrich subprocess exit code %s; returning claims unchanged", proc.returncode)
-        return claims
+        log.warning(
+            "mlrs enrich subprocess exit code %s; falling back to in-process enrichment",
+            proc.returncode,
+        )
+        return _enrich_claims_inproc(claims, progress_cb=progress_cb)
 
     out = b"".join(stdout_chunks)
     try:
         enriched = json.loads(out.decode("utf-8") or "[]")
     except Exception as e:
-        log.warning("mlrs enrich subprocess produced invalid JSON: %s", e)
-        return claims
+        log.warning(
+            "mlrs enrich subprocess produced invalid JSON (%s); falling back to in-process enrichment",
+            e,
+        )
+        return _enrich_claims_inproc(claims, progress_cb=progress_cb)
 
     if not isinstance(enriched, list) or len(enriched) != len(claims):
         log.warning(
-            "mlrs enrich subprocess returned unexpected shape (got %s rows, expected %d); discarding",
-            type(enriched).__name__,
+            "mlrs enrich subprocess returned unexpected shape (got %s rows, expected %d); "
+            "falling back to in-process enrichment",
+            type(enriched).__name__ if not isinstance(enriched, list) else len(enriched),
             len(claims),
         )
-        return claims
+        return _enrich_claims_inproc(claims, progress_cb=progress_cb)
 
     return enriched
 

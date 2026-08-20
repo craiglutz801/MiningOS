@@ -25,13 +25,19 @@ def _normalize_ids(raw: List[Any]) -> List[int]:
     return out
 
 
-def batch_fetch_claim_records(ids: List[Any]) -> dict[str, Any]:
+def batch_fetch_claim_records(
+    ids: List[Any],
+    *,
+    account_id: int | None = None,
+) -> dict[str, Any]:
     """
-    Run fetch_claim_records_for_area for each id in order.
-    Returns { ok, error?, processed, succeeded, failed, results: [{ id, name, ok, error?, claims_count }] }.
+    Run Fetch Claim Records for each id in order (same path as Targets drilldown).
+
+    Pass ``account_id`` for background jobs (no request auth context). Returns
+    ``{ ok, error?, processed, succeeded, failed, results: [{ id, name, ok, error?, claims_count }] }``.
     """
     from mining_os.services.areas_of_focus import get_area
-    from mining_os.services.fetch_claim_records import fetch_claim_records_for_area
+    from mining_os.services.fetch_claim_records import run_fetch_claim_records_for_area_id
 
     clean = _normalize_ids(ids)
     if not clean:
@@ -45,24 +51,16 @@ def batch_fetch_claim_records(ids: List[Any]) -> dict[str, Any]:
 
     results: list[dict[str, Any]] = []
     for aid in clean:
-        area = get_area(aid)
+        try:
+            area = get_area(aid, account_id=account_id)
+        except TypeError:
+            area = get_area(aid)
         if not area:
             results.append({"id": aid, "name": None, "ok": False, "error": "Target not found", "claims_count": 0})
             continue
         name = (area.get("name") or "").strip() or f"#{aid}"
         try:
-            out = fetch_claim_records_for_area(
-                aid,
-                name,
-                area.get("location_plss"),
-                state_abbr=area.get("state_abbr"),
-                meridian=area.get("meridian"),
-                township=area.get("township"),
-                range_val=area.get("range"),
-                section=area.get("section"),
-                latitude=area.get("latitude"),
-                longitude=area.get("longitude"),
-            )
+            out = run_fetch_claim_records_for_area_id(aid, account_id=account_id)
         except Exception as e:
             log.exception("batch_fetch_claim_records id=%s", aid)
             results.append({"id": aid, "name": name, "ok": False, "error": str(e), "claims_count": 0})
@@ -117,12 +115,11 @@ def batch_lr2000_geographic_report(ids: List[Any]) -> dict[str, Any]:
             log.exception("batch_lr2000_geographic_report id=%s", aid)
             results.append({"id": aid, "name": name, "ok": False, "error": str(e), "claims_count": 0})
             continue
-        ok = bool(out.get("ok"))
         claims = out.get("claims") or []
         results.append({
             "id": aid,
             "name": name,
-            "ok": ok,
+            "ok": bool(out.get("ok")),
             "error": out.get("error"),
             "claims_count": len(claims) if isinstance(claims, list) else 0,
         })

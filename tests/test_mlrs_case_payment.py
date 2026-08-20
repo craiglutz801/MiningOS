@@ -31,6 +31,56 @@ def test_http_unknown_when_no_banner():
     assert out["payment_status"] == "unknown"
 
 
+def test_body_is_shellish_for_sf_bootstrap():
+    shell = "mlrs virtual public room loading css error sorry to interrupt"
+    assert mcp._body_is_shellish(shell) is True
+    loaded = (
+        "blm case serial number case disposition case customers related records "
+        "active claim without overdue banner"
+    )
+    assert mcp._body_is_shellish(loaded) is False
+    assert mcp._body_looks_like_loaded_case(loaded) is True
+
+
+def test_selenium_does_not_mark_paid_on_shell():
+    """Unpaid phrase rule unchanged; shell pages must stay unknown (not false paid)."""
+    driver = MagicMock()
+    driver.page_source = "<html><title>MLRS Virtual Public Room</title><body>Loading CSS Error</body></html>"
+
+    with patch("mining_os.services.mlrs_case_payment.time.sleep", return_value=None):
+        with patch("mining_os.services.mlrs_case_payment.time.monotonic", side_effect=[0.0, 0.0, 100.0, 100.0]):
+            out = mcp._payment_from_selenium_driver(driver, "https://mlrs.blm.gov/s/blm-case/x/y", timeout=5)
+
+    assert out["payment_status"] == "unknown"
+    assert out.get("payment_check_source") == "mlrs_case_selenium"
+
+
+def test_selenium_marks_paid_when_case_loaded_without_banner():
+    loaded = (
+        "<html><body>BLM Case Serial Number Case Disposition "
+        "Case Customers Related Records Active</body></html>"
+    )
+    driver = MagicMock()
+    driver.page_source = loaded
+    with patch("mining_os.services.mlrs_case_payment.time.sleep", return_value=None):
+        out = mcp._payment_from_selenium_driver(driver, "https://mlrs.blm.gov/s/blm-case/x/y", timeout=5)
+    assert out["payment_status"] == "paid"
+
+
+def test_selenium_marks_unpaid_when_banner_present():
+    html = (
+        "<html><body>BLM Case Serial Number Case Disposition "
+        "Maintenance fee payment was not received and may result in the closing of the claim."
+        "</body></html>"
+    )
+    driver = MagicMock()
+    driver.page_source = html
+    with patch("mining_os.services.mlrs_case_payment.time.sleep", return_value=None):
+        out = mcp._payment_from_selenium_driver(driver, "https://mlrs.blm.gov/s/blm-case/x/y", timeout=5)
+    assert out["payment_status"] == "unpaid"
+    assert "Maintenance fee payment was not received" in (out.get("payment_message") or "")
+
+
 def test_ras_iframe_detects_unpaid():
     """report.cfm is a shell; unpaid text is inside the iframe (real BLM layout)."""
     wrapper = """<html><iframe id="dispReport" src="/iReport/RAS/1/?serial_number=UT101527746"></iframe></html>"""

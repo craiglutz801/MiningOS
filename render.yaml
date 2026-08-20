@@ -42,9 +42,16 @@ services:
         value: "true"
       - key: VITE_ENABLE_SITLA
         value: "true"
+      - key: VITE_ENABLE_ACTIVE_MINES
+        value: "true"
       - key: ENABLE_SITLA_API
         value: "true"
       - key: ENABLE_SITLA_JOBS
+        value: "true"
+      # Active Mine Search (NV/UT)
+      - key: ENABLE_ACTIVE_MINES_API
+        value: "true"
+      - key: ENABLE_ACTIVE_MINES_JOBS
         value: "true"
       - key: DATABASE_URL
         sync: false
