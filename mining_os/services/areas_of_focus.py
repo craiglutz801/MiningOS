@@ -26,17 +26,23 @@ def _effective_account_id(account_id: int | None = None) -> int:
 
 
 def _display_trs(val: str | None, kind: str = "tr") -> str | None:
-    """Strip zero-padding from stored PLSS components for display.
-    Township/Range: '0300S' → '30S', '0040S' → '4S'.
-    Section: '010' → '10', '002' → '2'.
+    """Strip CadNSDI zero-padding from stored PLSS components for display.
+
+    Township/Range CadNSDI form uses a 4-digit field where the last digit is
+    tenths (``0280S`` → ``28S``, ``0120W`` → ``12W``). Values already in display
+    form (``80S``, ``17W``) must not be divided — that wrongly yields ``8S``/``1W``.
+    Section: ``010`` → ``10``, ``002`` → ``2``.
     """
     if not val:
         return val
     if kind == "sec":
         return str(int(val)) if val.isdigit() else val
-    m = re.match(r"^(\d+)([NSEW])$", val)
+    m = re.match(r"^(\d+)([NSEW])$", str(val).strip().upper())
     if m:
-        return f"{int(m.group(1)) // 10}{m.group(2)}"
+        digits, direction = m.group(1), m.group(2)
+        if len(digits) >= 4:
+            return f"{int(digits) // 10}{direction}"
+        return f"{int(digits)}{direction}"
     return val
 
 
@@ -69,7 +75,7 @@ def _normalize_retrieval_type(value: str | None, source: str | None = None) -> s
         return RETRIEVAL_TYPE_KNOWN_MINE
     if v in {"user added", "user_added", "user-added", "manual"}:
         return RETRIEVAL_TYPE_USER_ADDED
-    if (source or "").strip().lower() == "mrds_auto":
+    if (source or "").strip().lower() in {"mrds_auto", "active_mine_plss", "usmin_auto"}:
         return RETRIEVAL_TYPE_KNOWN_MINE
     return RETRIEVAL_TYPE_USER_ADDED
 

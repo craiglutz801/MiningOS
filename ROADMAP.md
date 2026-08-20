@@ -40,6 +40,7 @@ Items are checked off when completed, with the completion date noted.
 - [x] **Tax Sales — Phase 3+ pipeline** — Nine pilot-county adapters (fixture/CSV/HTML-opt-in/ArcGIS), ingest runs + artifacts, parcel geometry versions, legal/MS/PLSS + GLO review tasks, MLRS enrichment, promote-to-Target, watchlist alerts, jobs scheduler hook (`ENABLE_TAX_SALES_JOBS`). See `docs/tax_sales/OVERVIEW.md`. *(Completed 2026-07-18)*
 - [x] **SITLA Intelligence foundation** — Additive `sitla_intel` schema, feature-flagged `/api/sitla/*`, lazy SITLA tab (summary, filters, detail, review, sources), scoring `sitla-v1.0`, Utah Trust Lands demo fixtures, promote-to-Target, jobs hook. Production flags default off. See `docs/sitla/OVERVIEW.md`. *(Completed 2026-07-19)*
 - [x] **SITLA — Trust Lands discovery pipeline** — Multi-source ingest (hub / past auctions / public notices / offerings), fixture adapters + opt-in `HtmlHubAdapter`, MLRS/geometry enrichment, historical offering matches, watchlist alerts, jobs refresh. Live HTML remains opt-in per source until each hub is validated. *(Completed 2026-07-19)*
+- [x] **Active Mine Search (NV/UT)** — Live matcher methodology ported into Mining OS; regenerable Pull; PLSS section Target linking; batch Fetch unpaid claims. See `docs/active_mines/OVERVIEW.md`. *(Completed 2026-08-14)*
 
 ---
 
@@ -47,11 +48,15 @@ Items are checked off when completed, with the completion date noted.
 
 *Add new initiatives below. Prioritize by moving items up.*
 
-- [ ] **Tax Sales — harden live county endpoints** — Swap pilot fixtures for validated per-county live feeds as each treasurer/assessor URL proves stable (`allow_live_html` / ArcGIS `layer_url` / `parcel_layer_url`). Keep manual CSV fallback. Checklist in `docs/tax_sales/OVERVIEW.md`.
-- [ ] **SITLA — validated live hub parsers** — Flip `allow_live_html` per Trust Lands hub after field coverage matches fixtures; add PDF/results parsers and nomination candidates.
+- [x] **Tax Sales — statewide UT/ID/NV county registry** — Register all Utah, Idaho, and Nevada counties in `tax_intel.source_registry` (catalog in `mining_os/tax_intel/counties.py`). Live pulls remain opt-in per validated feed. *(Completed 2026-07-29)*
+- [ ] **Tax Sales — harden live county endpoints** — Wire validated per-county live feeds for remaining UT/ID/NV counties as each treasurer/assessor URL proves stable (`allow_live_pdf` / `allow_live_html` / ArcGIS / CSV). Keep manual CSV fallback. Checklist in `docs/tax_sales/OVERVIEW.md`.
+- [x] **SITLA — live PDF inventory (real dates)** — Schedule + tract-list + bid-summary PDF adapters; demos hidden by default; closable drilldown with official PDF/hub/portal links; Utah county filter (all 29); `scripts/pull_live_sitla.py`. *(Completed 2026-07-18)*
+- [x] **Trust Lands — Idaho IDL + Nevada NDSL** — Multi-state `sitla_intel` (`state`/`agency_code`); IDL ArcGIS mineral auctions + O&G schedule; NDSL school-trust inventory; Trust Lands UI state filter. *(Completed 2026-07-30)*
+- [ ] **SITLA — validated live hub parsers** — Flip `allow_live_html` for public notices / nomination hubs after field coverage is validated.
 - [ ] **Fetch Claim Records: payment status enrichment on production (no Selenium)** — Localhost surfaces "Maintenance fee payment was not received and may result in the closing of the claim" via `BLM_ClaimAgent` + Selenium scraping `mlrs.blm.gov/s/blm-case`. Render has neither, so the built-in ArcGIS fallback returns claim metadata only and `payment_status` defaults to `unknown`. Need a Render-safe enrichment: probe Salesforce Aura RPC at `/s/sfsites/aura` for the public case record, or parse the RAS Serial Register Page once we have a stable URL/template. Until then, payment status is only authoritative when the localhost Fetch Claim Records run is propagated to prod (UI now displays `payment_status`/`payment_message` whenever present, including the "(unpaid)" banner with the maintenance-fee text).
 - [ ] **Idaho MRDS → targets (production)** — Run `python -m target_pipeline.mines_to_targets --states ID` against the production `DATABASE_URL` with the same flags Nevada used (`--workers 24 --pause 0 --fast-blm --fast-timeout 5`). After the first run writes `target_pipeline/data/mines_to_targets/raw/mrds_ID.json`, future re-runs can add `--use-cached-mrds`. Tee to `logs/id_import.log`.
-
+- [ ] **Active Mine Search — Idaho** — Add ID adapters once matcher/spec covers Idaho (v1 is NV/UT only).
+- [ ] **Active Mine Search — cache TTL / degraded-mode hardening** — Document and tune BLM/MSHA download TTL; clearer UI when state sources fail.
 ---
 
 ## Ideas / Someday

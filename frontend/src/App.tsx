@@ -20,9 +20,13 @@ const TaxSales = lazy(() =>
 const Sitla = lazy(() =>
   import("./pages/Sitla").then((m) => ({ default: m.Sitla }))
 );
+const ActiveMines = lazy(() =>
+  import("./pages/ActiveMines").then((m) => ({ default: m.ActiveMines }))
+);
 
 const taxSalesUiEnabled = import.meta.env.VITE_ENABLE_TAX_SALES === "true";
 const sitlaUiEnabled = import.meta.env.VITE_ENABLE_SITLA === "true";
+const activeMinesUiEnabled = import.meta.env.VITE_ENABLE_ACTIVE_MINES === "true";
 
 export default function App() {
   return (
@@ -70,6 +74,22 @@ export default function App() {
                       }
                     >
                       <Sitla />
+                    </Suspense>
+                  }
+                />
+              )}
+              {activeMinesUiEnabled && (
+                <Route
+                  path="active-mines"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="p-6 text-sm text-slate-500">
+                          Loading Active Mine Search…
+                        </div>
+                      }
+                    >
+                      <ActiveMines />
                     </Suspense>
                   }
                 />

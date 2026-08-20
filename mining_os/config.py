@@ -82,6 +82,11 @@ class Settings(BaseSettings):
     ENABLE_SITLA_OCR: bool = False
     ENABLE_SITLA_NOMINATIONS: bool = False
 
+    # Active Mine Search — NV/UT live matcher → PLSS Targets (additive; safe defaults OFF)
+    ENABLE_ACTIVE_MINES_API: bool = False
+    ENABLE_ACTIVE_MINES_ADMIN: bool = False
+    ENABLE_ACTIVE_MINES_JOBS: bool = False
+
     # ---- parsed lists (use these in code) ------------------------------------
 
     @property
