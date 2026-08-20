@@ -38,6 +38,10 @@ def patched_persist(monkeypatch):
         lambda area_id, state, meridian, **kwargs: True,
     )
     monkeypatch.setattr(
+        "mining_os.services.fetch_claim_records._sync_active_mine_claim_counts",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
         "mining_os.services.areas_of_focus.update_area_status",
         lambda area_id, status, **kwargs: True,
     )

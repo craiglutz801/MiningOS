@@ -29,6 +29,31 @@ log = logging.getLogger("mining_os.fetch_claim_records")
 
 DEFAULT_STATE = "UT"
 
+
+def _sync_active_mine_claim_counts(
+    area_id: int,
+    account_id: int | None,
+    *,
+    claims_count_hint: int | None = None,
+) -> None:
+    """Push Paid/Unpaid/Unknown from this Target's claim_records onto Active Mine rows."""
+    if account_id is None:
+        return
+    try:
+        from mining_os.active_mine_intel.jobs import apply_claim_rollup_for_area
+
+        apply_claim_rollup_for_area(
+            int(account_id),
+            int(area_id),
+            claims_count_hint=claims_count_hint,
+        )
+    except Exception:
+        log.exception(
+            "active mine claim rollup failed after fetch area_id=%s account_id=%s",
+            area_id,
+            account_id,
+        )
+
 # Primary BLM Principal Meridian number per state.
 # https://www.blm.gov/services/land-survey/principal-meridians
 STATE_MERIDIAN = {
@@ -574,6 +599,11 @@ def fetch_claim_records_for_area(
                 },
                 account_id=account_id,
             )
+            _sync_active_mine_claim_counts(
+                area_id,
+                account_id,
+                claims_count_hint=len(claims),
+            )
 
         # ── Step 3 (same as BLM_ClaimAgent get_mlrs_from_PLSS): MLRS case-page banner ──
         # ArcGIS does not include payment text; scrape case_page for the maintenance-fee message.
@@ -666,6 +696,11 @@ def fetch_claim_records_for_area(
 
         from mining_os.services.areas_of_focus import merge_area_characteristics, update_area_status
         merge_area_characteristics(area_id, {"claim_records": payload}, account_id=account_id)
+        _sync_active_mine_claim_counts(
+            area_id,
+            account_id,
+            claims_count_hint=len(claims),
+        )
 
         from mining_os.services.areas_of_focus import update_area_state_meridian
         update_area_state_meridian(

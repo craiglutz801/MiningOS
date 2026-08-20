@@ -686,12 +686,13 @@ def _progress_payload(
     }
 
 
-def _apply_rollup_for_area(
+def apply_claim_rollup_for_area(
     account_id: int,
     area_id: int,
     *,
     claims_count_hint: int | None = None,
 ) -> None:
+    """Recompute Paid/Unpaid/Unknown on linked Active Mine rows from Target claim_records."""
     from mining_os.services.areas_of_focus import get_area
 
     area = get_area(int(area_id), account_id=account_id)
@@ -708,6 +709,10 @@ def _apply_rollup_for_area(
         rollup=rollup,
         mlrs_claim_count=total,
     )
+
+
+# Back-compat alias used inside this module.
+_apply_rollup_for_area = apply_claim_rollup_for_area
 
 
 def _run_fetch_unpaid_worker(
