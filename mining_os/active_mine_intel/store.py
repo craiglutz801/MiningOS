@@ -14,6 +14,87 @@ from mining_os.db import get_engine
 log = logging.getLogger("mining_os.active_mine_intel.store")
 
 
+def _overlay_live_claim_counts(
+    account_id: int,
+    sites: list[dict[str, Any]],
+    *,
+    heal: bool = True,
+) -> list[dict[str, Any]]:
+    """Force table Paid/Unpaid/Unknown to match Target claim_records (drilldown source)."""
+    if not sites:
+        return sites
+    area_ids = sorted(
+        {
+            int(s["area_of_focus_id"])
+            for s in sites
+            if s.get("area_of_focus_id") is not None
+        }
+    )
+    if not area_ids:
+        return sites
+
+    from mining_os.active_mine_intel.claim_rollup import rollup_from_characteristics
+
+    eng = get_engine()
+    with eng.connect() as conn:
+        rows = conn.execute(
+            text(
+                """
+                SELECT id, characteristics
+                FROM areas_of_focus
+                WHERE account_id = :aid AND id = ANY(:ids)
+                """
+            ),
+            {"aid": account_id, "ids": area_ids},
+        ).mappings().all()
+
+    live_by_area: dict[int, tuple[int, int, int, int, str]] = {}
+    for row in rows:
+        rolled = rollup_from_characteristics(row.get("characteristics"))
+        if rolled is None:
+            continue
+        live_by_area[int(row["id"])] = rolled
+
+    for site in sites:
+        aid = site.get("area_of_focus_id")
+        if aid is None:
+            continue
+        live = live_by_area.get(int(aid))
+        if live is None:
+            continue
+        total, unpaid, paid, unknown, rollup = live
+        stale = (
+            int(site.get("mlrs_claim_count") or 0) != total
+            or int(site.get("unpaid_claim_count") or 0) != unpaid
+            or int(site.get("paid_claim_count") or 0) != paid
+            or int(site.get("unknown_claim_count") or 0) != unknown
+            or (site.get("claim_status_rollup") or "") != rollup
+        )
+        site["mlrs_claim_count"] = total
+        site["unpaid_claim_count"] = unpaid
+        site["paid_claim_count"] = paid
+        site["unknown_claim_count"] = unknown
+        site["claim_status_rollup"] = rollup
+        if heal and stale:
+            try:
+                update_site_claim_rollup(
+                    account_id,
+                    int(aid),
+                    unpaid_count=unpaid,
+                    paid_count=paid,
+                    unknown_count=unknown,
+                    rollup=rollup,
+                    mlrs_claim_count=total,
+                )
+            except Exception:
+                log.exception(
+                    "heal claim rollup failed account_id=%s area_id=%s",
+                    account_id,
+                    aid,
+                )
+    return sites
+
+
 def _jsonable(val: Any) -> Any:
     if val is None:
         return None
@@ -395,12 +476,14 @@ def list_sites(
             ),
             params,
         ).mappings().all()
+    sites = [dict(r) for r in rows]
+    _overlay_live_claim_counts(account_id, sites, heal=True)
     return {
         "ok": True,
         "total": int(total),
         "page": page,
         "page_size": page_size,
-        "sites": [dict(r) for r in rows],
+        "sites": sites,
     }
 
 
@@ -460,6 +543,8 @@ def get_site(account_id: int, site_id: str) -> dict[str, Any] | None:
                 {"id": site["area_of_focus_id"], "aid": account_id},
             ).mappings().first()
             site["target"] = dict(target) if target else None
+            # Keep table columns aligned with the same claim_records the drilldown shows.
+            _overlay_live_claim_counts(account_id, [site], heal=True)
     return site
 
 

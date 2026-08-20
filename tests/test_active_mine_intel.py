@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from mining_os.active_mine_intel.claim_rollup import rollup_from_characteristics, rollup_from_claims
 from mining_os.active_mine_intel.matcher.config import get_config
 from mining_os.active_mine_intel.matcher.scoring import MATCH_BASE_POINTS, score_candidate
 from mining_os.active_mine_intel.plss_bridge import (
@@ -11,6 +12,33 @@ from mining_os.active_mine_intel.plss_bridge import (
     parse_cse_meta,
     resolve_site_plss,
 )
+
+
+def test_claim_rollup_counts_match_drilldown_statuses():
+    total, unpaid, paid, unknown, rollup = rollup_from_claims(
+        [
+            {"payment_status": "paid"},
+            {"payment_status": "Paid"},
+            {"payment_status": "unpaid"},
+            {"payment_status": "unknown"},
+            {"payment_status": ""},
+            {"serial": "x"},
+        ]
+    )
+    assert total == 6
+    assert paid == 2
+    assert unpaid == 1
+    assert unknown == 3
+    assert rollup == "unpaid"
+
+
+def test_claim_rollup_from_characteristics_string_json():
+    chars = (
+        '{"claim_records":{"fetched_at":"2026-08-20T00:00:00Z","claims":['
+        '{"payment_status":"paid"},{"payment_status":"paid"}]}}'
+    )
+    out = rollup_from_characteristics(chars)
+    assert out == (2, 0, 2, 0, "paid")
 
 
 def test_active_mines_meta_reports_disabled_by_default(monkeypatch):

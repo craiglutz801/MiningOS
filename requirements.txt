@@ -43,6 +43,8 @@ pandas>=2.2.2
 shapely>=2.0.4
 pyproj>=3.6.1
 geopandas>=0.14.4
+rapidfuzz>=3.0.0
+beautifulsoup4>=4.12.0
 
 # Dashboard (kept for parity; Streamlit UI lives in mining_os/dashboard)
 streamlit>=1.36.0

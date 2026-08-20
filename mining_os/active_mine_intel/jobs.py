@@ -516,34 +516,12 @@ def _run_pull_into(run_id: str, account_id: int, state: str, refresh: bool = Tru
 
 def _rollup_from_characteristics(chars: Any) -> tuple[int, int, int, int, str]:
     """Return (mlrs_total, unpaid_count, paid_count, unknown_count, rollup_status)."""
-    unpaid = paid = unknown = 0
-    total = 0
-    statuses: set[str] = set()
-    if isinstance(chars, dict):
-        cr = chars.get("claim_records") or {}
-        claims = cr.get("claims") if isinstance(cr, dict) else None
-        if isinstance(claims, list):
-            total = len(claims)
-            for c in claims:
-                if not isinstance(c, dict):
-                    continue
-                st = (c.get("payment_status") or "unknown").strip().lower()
-                statuses.add(st)
-                if st == "unpaid":
-                    unpaid += 1
-                elif st == "paid":
-                    paid += 1
-                else:
-                    unknown += 1
-    if "unpaid" in statuses:
-        rollup = "unpaid"
-    elif statuses and statuses <= {"paid"}:
-        rollup = "paid"
-    elif statuses:
-        rollup = "mixed" if "paid" in statuses else "unknown"
-    else:
-        rollup = "unknown"
-    return total, unpaid, paid, unknown, rollup
+    from mining_os.active_mine_intel.claim_rollup import rollup_from_characteristics
+
+    out = rollup_from_characteristics(chars)
+    if out is None:
+        return 0, 0, 0, 0, "unknown"
+    return out
 
 
 def _per_target_timeout_sec() -> int:
