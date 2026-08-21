@@ -171,10 +171,13 @@ def run_pipeline(
         qc["msha_mines_in_state"] = len(msha_mines)
 
         # Stage 6: MSHA inspections and quarterly (core nonfatal).
+        # These national files can be huge; bound wall time so Pull cannot stall forever.
         _emit(progress_cb, 6, "Fetch MSHA inspections and employment")
         inspections = quarterly = None
-        try:
-            inspections, insp_status = msha_adapter.load_inspections(
+        stage6_timeout = int(os.getenv("MINING_OS_AMI_MSHA_SECONDARY_TIMEOUT_SEC") or "180")
+
+        def _load_insp():
+            return msha_adapter.load_inspections(
                 cfg,
                 common_cache,
                 manual_common,
@@ -182,15 +185,9 @@ def run_pipeline(
                 refresh=refresh,
                 fixture_path=_fixture(fixture_dir, "sample_msha_inspections.csv"),
             )
-            result.sources["msha_inspections"] = insp_status
-        except SourceUnavailableError as exc:
-            result.sources["msha_inspections"] = SourceStatus(
-                source_id="msha_inspections", status="failed", message=str(exc)
-            )
-            result.add_warning(f"MSHA inspections unavailable: {exc}")
-            qc["degraded_sources"].append("msha_inspections")
-        try:
-            quarterly, q_status = msha_adapter.load_quarterly(
+
+        def _load_qtr():
+            return msha_adapter.load_quarterly(
                 cfg,
                 common_cache,
                 manual_common,
@@ -198,12 +195,63 @@ def run_pipeline(
                 refresh=refresh,
                 fixture_path=_fixture(fixture_dir, "sample_msha_quarterly.csv"),
             )
+
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+
+        try:
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                fut = pool.submit(_load_insp)
+                inspections, insp_status = fut.result(timeout=max(60, stage6_timeout))
+            result.sources["msha_inspections"] = insp_status
+        except FuturesTimeout:
+            result.sources["msha_inspections"] = SourceStatus(
+                source_id="msha_inspections",
+                status="failed",
+                message=f"Timed out after {stage6_timeout}s",
+            )
+            result.add_warning(
+                f"MSHA inspections timed out after {stage6_timeout}s; continuing without them."
+            )
+            qc["degraded_sources"].append("msha_inspections")
+        except SourceUnavailableError as exc:
+            result.sources["msha_inspections"] = SourceStatus(
+                source_id="msha_inspections", status="failed", message=str(exc)
+            )
+            result.add_warning(f"MSHA inspections unavailable: {exc}")
+            qc["degraded_sources"].append("msha_inspections")
+        except Exception as exc:  # noqa: BLE001
+            result.sources["msha_inspections"] = SourceStatus(
+                source_id="msha_inspections", status="failed", message=str(exc)
+            )
+            result.add_warning(f"MSHA inspections failed: {exc}")
+            qc["degraded_sources"].append("msha_inspections")
+
+        try:
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                fut = pool.submit(_load_qtr)
+                quarterly, q_status = fut.result(timeout=max(60, stage6_timeout))
             result.sources["msha_quarterly"] = q_status
+        except FuturesTimeout:
+            result.sources["msha_quarterly"] = SourceStatus(
+                source_id="msha_quarterly",
+                status="failed",
+                message=f"Timed out after {stage6_timeout}s",
+            )
+            result.add_warning(
+                f"MSHA quarterly employment timed out after {stage6_timeout}s; continuing without it."
+            )
+            qc["degraded_sources"].append("msha_quarterly")
         except SourceUnavailableError as exc:
             result.sources["msha_quarterly"] = SourceStatus(
                 source_id="msha_quarterly", status="failed", message=str(exc)
             )
             result.add_warning(f"MSHA quarterly employment unavailable: {exc}")
+            qc["degraded_sources"].append("msha_quarterly")
+        except Exception as exc:  # noqa: BLE001
+            result.sources["msha_quarterly"] = SourceStatus(
+                source_id="msha_quarterly", status="failed", message=str(exc)
+            )
+            result.add_warning(f"MSHA quarterly employment failed: {exc}")
             qc["degraded_sources"].append("msha_quarterly")
         msha_mines = msha_adapter.aggregate_evidence(msha_mines, inspections, quarterly, cfg)
 

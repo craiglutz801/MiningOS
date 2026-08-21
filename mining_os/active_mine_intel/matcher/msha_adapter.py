@@ -139,7 +139,13 @@ def _fetch_dataset_bytes(
                 f"No configured or discovered URL for {source_id}"
             )
         status.resolved_url = url
-        raw = download_bytes(url)
+        # Inspections/quarterly national dumps are large; fail faster than mines.
+        timeout = (10.0, 300.0)
+        retries = 3
+        if source_id in ("msha_inspections", "msha_quarterly"):
+            timeout = (10.0, 120.0)
+            retries = 1
+        raw = download_bytes(url, timeout=timeout, max_retries=retries)
         return extract_tabular_bytes(raw, url)
 
     try:
@@ -278,6 +284,16 @@ def load_inspections(
     for col in ("inspection_start_date", "inspection_end_date"):
         df[col] = pd.to_datetime(df[col], errors="coerce", format="mixed")
     df = df.dropna(subset=["inspection_start_date"])
+    # Keep recent history only — national dump is huge and stalls Pull on small hosts.
+    cutoff = pd.Timestamp(utc_now().replace(tzinfo=None)) - pd.DateOffset(months=36)
+    before = len(df)
+    df = df[df["inspection_start_date"] >= cutoff]
+    if before and len(df) < before:
+        log.info(
+            "msha_inspections: kept %d/%d rows from last 36 months",
+            len(df),
+            before,
+        )
     status.record_count = len(df)
     return df.reset_index(drop=True), status
 

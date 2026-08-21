@@ -2402,6 +2402,10 @@ def api_active_mines_latest_run(
     from mining_os.active_mine_intel import store
 
     try:
+        try:
+            store.fail_stale_pull_runs(current_account_id(), stale_after_minutes=25)
+        except Exception:
+            pass
         run = store.get_latest_run(
             current_account_id(),
             state=state.upper() if state else None,

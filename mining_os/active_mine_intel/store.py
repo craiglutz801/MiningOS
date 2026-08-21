@@ -611,6 +611,51 @@ def linked_targets_in_site_order(
     return out
 
 
+def fail_stale_pull_runs(
+    account_id: int | None = None,
+    *,
+    stale_after_minutes: int = 25,
+    reason: str = "Pull timed out or stalled (no progress). Safe to retry.",
+) -> int:
+    """Mark orphaned running/pending pull runs as failed. Returns rows updated."""
+    eng = get_engine()
+    mins = max(5, int(stale_after_minutes))
+    clauses = [
+        "status IN ('running', 'pending')",
+        f"updated_at < now() - interval '{mins} minutes'",
+    ]
+    params: dict[str, Any] = {"reason": reason}
+    if account_id is not None:
+        clauses.append("account_id = :aid")
+        params["aid"] = account_id
+    prog = json.dumps(
+        {
+            "progress": {
+                "stage": 20,
+                "total_stages": 20,
+                "percent": 100,
+                "message": f"Failed: {reason}",
+            }
+        }
+    )
+    with eng.begin() as conn:
+        result = conn.execute(
+            text(
+                f"""
+                UPDATE active_mine_intel.runs
+                SET status = 'failed',
+                    finished_at = COALESCE(finished_at, now()),
+                    error_message = COALESCE(error_message, :reason),
+                    qc_json = COALESCE(qc_json, '{{}}'::jsonb) || CAST(:prog AS jsonb),
+                    updated_at = now()
+                WHERE {' AND '.join(clauses)}
+                """
+            ),
+            {**params, "prog": prog},
+        )
+        return int(result.rowcount or 0)
+
+
 def fail_stale_fetch_jobs(
     account_id: int | None = None,
     *,

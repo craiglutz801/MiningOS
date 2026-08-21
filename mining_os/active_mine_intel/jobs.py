@@ -19,7 +19,7 @@ from mining_os.active_mine_intel.target_link import resolve_or_create_section_ta
 
 log = logging.getLogger("mining_os.active_mine_intel.jobs")
 
-_pull_lock = threading.Lock()
+_pull_lock = threading.Lock()  # short critical section for starting a pull only
 _fetch_lock = threading.Lock()
 _active_pull: dict[str, Any] = {}  # run_id, account_id, state
 
@@ -316,55 +316,39 @@ def start_pull_async(account_id: int, state: str, refresh: bool = True) -> dict[
     if state not in SUPPORTED_STATES:
         return {"ok": False, "error": f"Unsupported state {state!r}. Use NV or UT."}
 
-    # If a pull is already in flight, reattach instead of erroring.
-    if not _pull_lock.acquire(blocking=False):
-        existing = _active_pull.get("run_id") or (
-            (store.get_latest_run(account_id, state=state, running_only=True) or {}).get("id")
+    # Clear pulls that stalled (e.g. hung MSHA download) so the UI can retry.
+    try:
+        store.fail_stale_pull_runs(
+            account_id,
+            stale_after_minutes=int(
+                os.getenv("MINING_OS_AMI_PULL_STALE_MINUTES") or "25"
+            ),
+            reason="Pull stalled with no progress (often MSHA inspections download). Retry.",
         )
-        if existing:
-            return {
-                "ok": True,
-                "run_id": str(existing),
-                "status": "running",
-                "already_running": True,
-                "message": "A pull is already in progress — showing live status.",
-            }
-        # Lock held but no known run (stale) — fall through after a short wait is unsafe;
-        # report clearly so the UI can poll latest.
+    except Exception:
+        log.debug("fail_stale_pull_runs failed", exc_info=True)
+
+    with _pull_lock:
         latest = store.get_latest_run(account_id, state=state, running_only=True)
         if latest:
             return {
                 "ok": True,
-                "run_id": latest["id"],
+                "run_id": str(latest["id"]),
                 "status": "running",
                 "already_running": True,
                 "message": "A pull is already in progress — showing live status.",
             }
-        return {
-            "ok": False,
-            "error": "A pull lock is held but no active run was found. Wait a moment and retry.",
-        }
 
-    # Clear orphaned "running" rows from a prior crashed process (lock was free).
-    orphan = store.get_latest_run(account_id, state=state, running_only=True)
-    if orphan:
-        store.update_run(
-            orphan["id"],
-            status="failed",
-            finished_at=datetime.now(timezone.utc),
-            error_message="Superseded: previous pull did not finish (server restart or crash).",
-        )
-
-    run_id = store.create_run(account_id, state, refresh=refresh)
-    _active_pull.update({"run_id": run_id, "account_id": account_id, "state": state})
-    _progress(run_id, 0, f"Starting Active Mine Search pull for {state}…")
+        run_id = store.create_run(account_id, state, refresh=refresh)
+        _active_pull.update({"run_id": run_id, "account_id": account_id, "state": state})
+        _progress(run_id, 0, f"Starting Active Mine Search pull for {state}…")
 
     def _worker() -> None:
         try:
             _run_pull_into(run_id, account_id, state, refresh=refresh)
         finally:
-            _active_pull.clear()
-            _pull_lock.release()
+            if _active_pull.get("run_id") == run_id:
+                _active_pull.clear()
 
     threading.Thread(target=_worker, name=f"ami-pull-{state}", daemon=True).start()
     return {
