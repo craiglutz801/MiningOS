@@ -43,6 +43,7 @@ pandas>=2.2.2
 shapely>=2.0.4
 pyproj>=3.6.1
 geopandas>=0.14.4
+# Active Mine Search matcher (NV/UT Pull) — required on Render
 rapidfuzz>=3.0.0
 beautifulsoup4>=4.12.0
 

@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import io
 import random
+import re
 import time
 import zipfile
 from pathlib import Path
 from typing import Callable
 
 import requests
-from bs4 import BeautifulSoup
 
 from mining_os.active_mine_intel.matcher.logging_setup import get_logger
 from mining_os.active_mine_intel.matcher.models import SourceUnavailableError
@@ -21,6 +21,33 @@ log = get_logger("mcm.download")
 USER_AGENT = "MineClaimMatcher/0.1 (research tool; local use)"
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 DATA_EXTENSIONS = (".zip", ".csv", ".txt", ".tsv")
+_HREF_RE = re.compile(
+    r"""<a\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*>(.*?)</a>""",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _iter_anchor_hrefs(html: bytes) -> list[tuple[str, str]]:
+    """Return (href, link_text) pairs. Prefer BeautifulSoup; regex fallback if bs4 missing."""
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        log.warning(
+            "beautifulsoup4 (bs4) is not installed — using regex HTML fallback. "
+            "Install beautifulsoup4 so MSHA portal discovery is reliable."
+        )
+        text = html.decode("utf-8", errors="ignore")
+        out: list[tuple[str, str]] = []
+        for href, inner in _HREF_RE.findall(text):
+            clean = re.sub(r"<[^>]+>", " ", inner)
+            out.append((href.strip(), " ".join(clean.split())))
+        return out
+
+    soup = BeautifulSoup(html, "html.parser")
+    return [
+        (str(anchor.get("href") or ""), anchor.get_text() or "")
+        for anchor in soup.find_all("a", href=True)
+    ]
 
 
 def download_bytes(
@@ -100,12 +127,9 @@ def discover_msha_url(
         except SourceUnavailableError as exc:
             log.warning("MSHA portal %s unavailable: %s", portal, exc)
             continue
-        soup = BeautifulSoup(html, "html.parser")
         best_url: str | None = None
         best_score = 0.0
-        for anchor in soup.find_all("a", href=True):
-            href: str = anchor["href"]
-            text = (anchor.get_text() or "").lower()
+        for href, text in _iter_anchor_hrefs(html):
             haystack = (href + " " + text).lower()
             if "definition" in haystack:
                 continue

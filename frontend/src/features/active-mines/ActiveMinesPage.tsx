@@ -65,6 +65,47 @@ function claimRecordsFromSite(site: Record<string, unknown> | null | undefined):
   return null;
 }
 
+/** Same Paid/Unpaid/Unknown rules as ClaimPaymentBadge / backend claim_rollup. */
+function countsFromClaimRecords(cr: ClaimRecordsPayload | null | undefined): {
+  total: number;
+  unpaid: number;
+  paid: number;
+  unknown: number;
+} | null {
+  if (!cr || !Array.isArray(cr.claims)) return null;
+  let unpaid = 0;
+  let paid = 0;
+  let unknown = 0;
+  for (const rawClaim of cr.claims) {
+    const c = (rawClaim && typeof rawClaim === "object" ? rawClaim : {}) as Record<string, unknown>;
+    const st = (c.payment_status ?? "").toString().trim().toLowerCase();
+    if (st === "paid") paid += 1;
+    else if (st === "unpaid") unpaid += 1;
+    else unknown += 1;
+  }
+  return { total: cr.claims.length, unpaid, paid, unknown };
+}
+
+/** Prefer live drilldown claim_records over denormalized table columns. */
+function rowWithLiveClaimCounts(
+  row: SiteRow,
+  cr: ClaimRecordsPayload | null | undefined
+): SiteRow {
+  const counts = countsFromClaimRecords(cr);
+  if (!counts) return row;
+  return {
+    ...row,
+    mlrs_claim_count: counts.total,
+    unpaid_claim_count: counts.unpaid,
+    paid_claim_count: counts.paid,
+    unknown_claim_count: counts.unknown,
+    claims_fetched_at:
+      (typeof cr?.fetched_at === "string" && cr.fetched_at) ||
+      row.claims_fetched_at ||
+      new Date().toISOString(),
+  };
+}
+
 type RunInfo = {
   id: string;
   status: string;
@@ -403,8 +444,13 @@ export function ActiveMinesPage() {
     try {
       const res = await activeMines.get(siteId);
       if (res.ok && res.site) {
-        const cr = claimRecordsFromSite(res.site as Record<string, unknown>);
+        const site = res.site as Record<string, unknown>;
+        const cr = claimRecordsFromSite(site);
         setClaimsBySite((prev) => ({ ...prev, [siteId]: cr }));
+        // Keep the home-table Paid/Unpaid/Unknown cells identical to drilldown.
+        setSites((prev) =>
+          prev.map((row) => (row.id === siteId ? rowWithLiveClaimCounts(row, cr) : row))
+        );
         return cr;
       }
       setClaimsBySite((prev) => ({ ...prev, [siteId]: null }));
@@ -500,6 +546,9 @@ export function ActiveMinesPage() {
         setSelected(site);
         const cr = claimRecordsFromSite(site);
         setClaimsBySite((prev) => ({ ...prev, [row.id]: cr }));
+        setSites((prev) =>
+          prev.map((r) => (r.id === row.id ? rowWithLiveClaimCounts(r, cr) : r))
+        );
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -520,7 +569,15 @@ export function ActiveMinesPage() {
       const siteId = String(selected?.id || selected?.mine_site_id || "");
       if (siteId) {
         const res = await activeMines.get(siteId);
-        if (res.ok && res.site) setSelected(res.site as Record<string, unknown>);
+        if (res.ok && res.site) {
+          const site = res.site as Record<string, unknown>;
+          setSelected(site);
+          const cr = claimRecordsFromSite(site);
+          setClaimsBySite((prev) => ({ ...prev, [siteId]: cr }));
+          setSites((prev) =>
+            prev.map((r) => (r.id === siteId ? rowWithLiveClaimCounts(r, cr) : r))
+          );
+        }
       }
       void loadSites();
     } catch (e) {
@@ -777,6 +834,7 @@ export function ActiveMinesPage() {
                 const isExpanded = expandedId === row.id;
                 const claims = claimsBySite[row.id];
                 const claimsLoading = claimsLoadingId === row.id;
+                const display = rowWithLiveClaimCounts(row, claims);
                 return (
                   <Fragment key={row.id}>
                     <tr
@@ -834,10 +892,10 @@ export function ActiveMinesPage() {
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-2">{claimsTotalCell(row)}</td>
-                      <td className="px-3 py-2">{paidBadge(row)}</td>
-                      <td className="px-3 py-2">{unpaidBadge(row)}</td>
-                      <td className="px-3 py-2">{unknownBadge(row)}</td>
+                      <td className="px-3 py-2">{claimsTotalCell(display)}</td>
+                      <td className="px-3 py-2">{paidBadge(display)}</td>
+                      <td className="px-3 py-2">{unpaidBadge(display)}</td>
+                      <td className="px-3 py-2">{unknownBadge(display)}</td>
                     </tr>
                     {isExpanded && (
                       <tr className="border-t border-emerald-100 bg-emerald-50/20">

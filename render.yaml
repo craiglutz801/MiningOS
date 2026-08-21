@@ -7,6 +7,7 @@
 #
 # Dashboard manual overrides should match:
 #   Build Command:  pip install … && python -m playwright install chromium && cd frontend && npm ci && npm run build
+# Cache-bust 2026-08-21: ensure beautifulsoup4 + rapidfuzz install for Active Mine Pull.
 #   Start Command:  python -m mining_os.pipelines.run_all --init-db && uvicorn mining_os.api.main:app --host 0.0.0.0 --port $PORT
 #
 # Playwright Chromium is required so Fetch Claim Records can read the MLRS Lightning SPA

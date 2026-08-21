@@ -305,6 +305,8 @@ def diag_environment() -> Dict[str, Any]:
         "fastapi", "pydantic", "sqlalchemy", "psycopg",
         "requests", "openai", "duckduckgo_search",
         "croniter", "fitz", "pypdf", "dotenv",
+        # Active Mine Search matcher (NV/UT Pull)
+        "bs4", "rapidfuzz",
     ]
     module_status: Dict[str, Any] = {}
     missing: list[str] = []
