@@ -25,6 +25,41 @@ def _row(d: Any) -> dict[str, Any]:
     return out
 
 
+def build_source_listing(
+    *,
+    source_row: dict[str, Any] | None,
+    bidding_end_at: Any = None,
+    record_detail_url: str | None = None,
+    listing_fallback: str | None = None,
+    bid_portal_url: str | None = None,
+    is_demo: bool = False,
+) -> dict[str, Any]:
+    """Normalize source trail for opportunity detail (official PDF / hub links)."""
+    name = (source_row or {}).get("name")
+    listing_url = (source_row or {}).get("listing_url") or listing_fallback
+    source_key = (source_row or {}).get("source_key")
+    auction = bidding_end_at
+    if hasattr(auction, "isoformat"):
+        auction = auction.isoformat()
+    detail = (record_detail_url or "").strip() or None
+    listing = (listing_url or "").strip() or None
+    portal = (bid_portal_url or "").strip() or None
+    open_url = detail or listing
+    if is_demo:
+        open_url = detail
+    return {
+        "name": name,
+        "source_key": source_key,
+        "listing_url": listing,
+        "record_detail_url": detail,
+        "bid_portal_url": portal,
+        "open_url": open_url,
+        "bidding_end_at": auction,
+        "is_demo": is_demo,
+        "verified_publication": not is_demo and bool(open_url),
+    }
+
+
 def disabled_payload(message: str = "SITLA Intelligence module is disabled.") -> dict[str, Any]:
     return {"ok": False, "error": message, "enabled": False}
 
@@ -54,20 +89,21 @@ def get_summary(account_id: int) -> dict[str, Any]:
         rows = conn.execute(
             text("""
                 SELECT
-                  COUNT(*) FILTER (WHERE is_active AND lifecycle_status = ANY(:active)) AS active_opportunities,
-                  COUNT(*) FILTER (WHERE is_active AND lifecycle_status = 'BIDDING_OPEN') AS bidding_now,
+                  COUNT(*) FILTER (WHERE is_active AND NOT is_demo AND lifecycle_status = ANY(:active)) AS active_opportunities,
+                  COUNT(*) FILTER (WHERE is_active AND NOT is_demo AND lifecycle_status = 'BIDDING_OPEN') AS bidding_now,
                   COUNT(*) FILTER (
-                    WHERE is_active AND (
+                    WHERE is_active AND NOT is_demo AND (
                       (bidding_end_at IS NOT NULL AND bidding_end_at <= :soon AND bidding_end_at >= :now)
                       OR (application_deadline IS NOT NULL AND application_deadline <= :soon AND application_deadline >= :now)
                     )
                   ) AS deadlines_within_30_days,
-                  COUNT(*) FILTER (WHERE is_active AND last_observed_at >= :week) AS new_this_week,
-                  COUNT(*) FILTER (WHERE is_active AND priority_tier = 'A') AS high_priority,
-                  COUNT(*) FILTER (WHERE is_active AND opportunity_type = 'COMPETITIVE_MINERAL_LEASE') AS competitive_leases,
-                  COUNT(*) FILTER (WHERE is_active AND opportunity_type = 'COMPETING_APPLICATION_NOTICE') AS competing_applications,
-                  COUNT(*) FILTER (WHERE is_active AND opportunity_type IN ('MINERAL_MATERIAL_PERMIT', 'SAND_GRAVEL_PERMIT')) AS mineral_material_permits,
-                  COUNT(*) FILTER (WHERE review_status = 'OPEN') AS needing_review
+                  COUNT(*) FILTER (WHERE is_active AND NOT is_demo AND last_observed_at >= :week) AS new_this_week,
+                  COUNT(*) FILTER (WHERE is_active AND NOT is_demo AND priority_tier = 'A') AS high_priority,
+                  COUNT(*) FILTER (WHERE is_active AND NOT is_demo AND opportunity_type = 'COMPETITIVE_MINERAL_LEASE') AS competitive_leases,
+                  COUNT(*) FILTER (WHERE is_active AND NOT is_demo AND opportunity_type = 'COMPETING_APPLICATION_NOTICE') AS competing_applications,
+                  COUNT(*) FILTER (WHERE is_active AND NOT is_demo AND opportunity_type IN ('MINERAL_MATERIAL_PERMIT', 'SAND_GRAVEL_PERMIT')) AS mineral_material_permits,
+                  COUNT(*) FILTER (WHERE NOT is_demo AND review_status = 'OPEN') AS needing_review,
+                  COUNT(*) FILTER (WHERE is_demo AND is_active) AS demo_fixtures
                 FROM sitla_intel.opportunities
                 WHERE account_id = :aid
             """),
@@ -108,11 +144,15 @@ def get_summary(account_id: int) -> dict[str, Any]:
         "error": None,
         "enabled": True,
         "coverage_banner": {
-            "message": "All publicly available records from enabled and healthy SITLA sources.",
-            "detail": "Utah Trust Lands Energy & Minerals programs — not a complete inventory of all state lands.",
+            "message": "Live Trust Lands publications only (demo fixtures hidden by default).",
+            "detail": (
+                "Utah SITLA competitive mineral auctions, Idaho IDL endowment mineral/oil-gas leasing, "
+                "and Nevada NDSL school-trust inventory (~3k acres; not a SITLA-scale auction program)."
+            ),
             "enabled_sources": coverage.get("enabled_sources") or 0,
             "healthy_sources": coverage.get("healthy_sources") or 0,
             "failed_or_stale": coverage.get("failed_or_stale") or 0,
+            "demo_fixtures": summary.get("demo_fixtures") or 0,
         },
         "cards": cards,
         "disclaimer": (
@@ -125,6 +165,7 @@ def get_summary(account_id: int) -> dict[str, Any]:
 def list_opportunities(
     account_id: int,
     *,
+    state: str | None = None,
     county: str | None = None,
     status: str | None = None,
     opportunity_type: str | None = None,
@@ -133,7 +174,9 @@ def list_opportunities(
     search: str | None = None,
     min_score: float | None = None,
     deadline_within_days: int | None = None,
+    deadline_timing: str | None = "upcoming",
     active_only: bool = True,
+    include_demo: bool = False,
     historical: bool | None = None,
     watchlisted: bool | None = None,
     page: int = 1,
@@ -144,24 +187,56 @@ def list_opportunities(
     err = ensure_ready(account_id)
     if err:
         return err
+    timing = (deadline_timing or "upcoming").strip().lower()
+    if timing not in {"upcoming", "past", "all"}:
+        timing = "upcoming"
     allowed_sort = {
         "overall_priority_score", "bidding_end_at", "application_deadline", "minimum_bid",
         "county_name", "acreage", "last_observed_at", "best_title", "priority_tier",
     }
     if sort not in allowed_sort:
         sort = "overall_priority_score"
+    if sort == "overall_priority_score":
+        if timing == "upcoming":
+            sort = "bidding_end_at"
+            order = "asc"
+        elif timing == "past":
+            sort = "bidding_end_at"
+            order = "desc"
     order_sql = "ASC" if str(order).lower() == "asc" else "DESC"
     page = max(1, int(page or 1))
     page_size = max(1, min(200, int(page_size or 50)))
     offset = (page - 1) * page_size
     clauses = ["o.account_id = :aid"]
     params: dict[str, Any] = {"aid": account_id, "limit": page_size, "offset": offset}
-    if active_only:
+    # Upcoming: active pipeline only. Past/all: include closed sales that still have real dates.
+    if timing == "upcoming" and active_only:
         clauses.append("o.is_active = true")
         clauses.append("o.lifecycle_status = ANY(:active)")
         params["active"] = list(ACTIVE_LIFECYCLE)
+    elif timing == "all" and active_only:
+        clauses.append("(o.is_active = true OR o.is_historical = true)")
+    if not include_demo:
+        clauses.append("o.is_demo = false")
+    if timing == "upcoming":
+        clauses.append("""(
+            (o.bidding_end_at IS NOT NULL AND (o.bidding_end_at AT TIME ZONE 'UTC')::date >= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date)
+            OR (o.application_deadline IS NOT NULL AND (o.application_deadline AT TIME ZONE 'UTC')::date >= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date)
+        )""")
+    elif timing == "past":
+        clauses.append("""(
+            (o.bidding_end_at IS NOT NULL AND (o.bidding_end_at AT TIME ZONE 'UTC')::date < (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date)
+            OR (
+              o.bidding_end_at IS NULL
+              AND o.application_deadline IS NOT NULL
+              AND (o.application_deadline AT TIME ZONE 'UTC')::date < (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date
+            )
+        )""")
     if historical is True:
         clauses.append("o.is_historical = true")
+    if state:
+        clauses.append("o.state = :state")
+        params["state"] = state.strip().upper()[:2]
     if county:
         clauses.append("o.county_name ILIKE :county")
         params["county"] = f"%{county.strip()}%"
@@ -204,12 +279,14 @@ def list_opportunities(
         rows = conn.execute(
             text(f"""
                 SELECT o.id::text, o.reference_number, o.best_title, o.opportunity_type, o.lifecycle_status,
-                       o.county_name, o.published_commodity, o.commodities, o.acreage, o.plss_key,
+                       o.state, o.agency_code, o.county_name, o.published_commodity, o.commodities,
+                       o.acreage, o.plss_key,
                        o.latitude, o.longitude, o.offering_cycle,
                        o.bidding_start_at, o.bidding_end_at, o.application_deadline,
                        o.minimum_bid, o.winning_bid, o.overall_priority_score, o.priority_tier,
                        o.mineral_potential_score, o.acquisition_readiness_score, o.review_status,
-                       o.official_detail_url, o.is_active, o.is_historical, o.last_observed_at,
+                       o.official_detail_url, o.external_bid_url, o.is_active, o.is_demo,
+                       o.is_historical, o.last_observed_at,
                        EXISTS (
                          SELECT 1 FROM sitla_intel.watchlists w
                          WHERE w.opportunity_id = o.id AND w.account_id = :aid
@@ -318,10 +395,45 @@ def get_opportunity(account_id: int, opportunity_id: str) -> dict[str, Any]:
             """),
             {"oid": opportunity_id},
         ).mappings().all()
+        source_listing_row = conn.execute(
+            text("""
+                SELECT s.name, s.listing_url, s.source_key
+                FROM sitla_intel.opportunity_observations obs
+                JOIN sitla_intel.sources s ON s.id = obs.source_id
+                WHERE obs.opportunity_id = CAST(:oid AS uuid)
+                  AND obs.source_id IS NOT NULL
+                ORDER BY obs.observed_at DESC
+                LIMIT 1
+            """),
+            {"oid": opportunity_id},
+        ).mappings().first()
+
+    detail = _row(opp)
+    detail["id"] = opportunity_id
+    record_detail = detail.get("official_detail_url")
+    listing_fallback = None
+    for e in evidence:
+        url = e.get("source_url")
+        if url and str(url).startswith("http"):
+            listing_fallback = str(url)
+            break
+    source_row = dict(source_listing_row) if source_listing_row else None
+    source_listing = build_source_listing(
+        source_row=source_row,
+        bidding_end_at=detail.get("bidding_end_at") or detail.get("application_deadline"),
+        record_detail_url=record_detail,
+        listing_fallback=listing_fallback or "https://trustlands.utah.gov/work-with-us/energy-minerals/",
+        bid_portal_url=detail.get("external_bid_url"),
+        is_demo=bool(detail.get("is_demo")),
+    )
+    detail["listing_url"] = source_listing.get("open_url")
+    detail["source_name"] = source_listing.get("name")
+
     return {
         "ok": True,
         "error": None,
-        "opportunity": _row(opp),
+        "opportunity": detail,
+        "source_listing": source_listing,
         "timeline": [_row(r) for r in timeline],
         "mineral_evidence": [_row(r) for r in mineral],
         "claim_context": [_row(r) for r in claims],
@@ -346,9 +458,10 @@ def get_coverage(account_id: int) -> dict[str, Any]:
         rows = conn.execute(
             text("""
                 SELECT id::text, source_key, name, listing_url, parser_kind, enabled, manual_only,
+                       state, agency_code,
                        health_status, last_success_at, last_failure_at, consecutive_failures, notes
                 FROM sitla_intel.sources
-                ORDER BY name
+                ORDER BY COALESCE(state, 'ZZ'), name
             """)
         ).mappings().all()
     items = [_row(r) for r in rows]
@@ -357,7 +470,10 @@ def get_coverage(account_id: int) -> dict[str, Any]:
         "error": None,
         "sources": items,
         "jurisdictions": items,
-        "coverage_language": "Utah Trust Lands Energy & Minerals sources monitored by Mining OS.",
+        "coverage_language": (
+            "Trust Lands agencies: Utah SITLA, Idaho IDL endowment leasing, "
+            "Nevada NDSL school-trust inventory."
+        ),
     }
 
 
@@ -372,7 +488,7 @@ def get_map_features(account_id: int, *, limit: int = 500) -> dict[str, Any]:
                 SELECT id::text, best_title, opportunity_type, lifecycle_status, county_name,
                        latitude, longitude, overall_priority_score, priority_tier, acreage
                 FROM sitla_intel.opportunities
-                WHERE account_id = :aid AND is_active = true
+                WHERE account_id = :aid AND is_active = true AND is_demo = false
                   AND latitude IS NOT NULL AND longitude IS NOT NULL
                 ORDER BY overall_priority_score DESC NULLS LAST
                 LIMIT :lim
@@ -401,7 +517,7 @@ def list_review_tasks(account_id: int) -> dict[str, Any]:
                        t.title, t.instructions, o.best_title, o.county_name, o.priority_tier
                 FROM sitla_intel.review_tasks t
                 JOIN sitla_intel.opportunities o ON o.id = t.opportunity_id
-                WHERE o.account_id = :aid AND t.status = 'OPEN'
+                WHERE o.account_id = :aid AND t.status = 'OPEN' AND o.is_demo = false
                 ORDER BY t.priority ASC, t.created_at DESC
             """),
             {"aid": account_id},
