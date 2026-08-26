@@ -11,6 +11,10 @@ type ClaimPaymentBadgeProps = {
 export function getClaimPaymentText(c: Record<string, unknown>): {
   status: "paid" | "unpaid" | "unknown";
   message: string | null;
+  evidenceText: string | null;
+  evidenceCode: string | null;
+  sourceUrl: string | null;
+  checkedAt: string | null;
 } {
   const raw = (c.payment_status ?? "").toString().trim().toLowerCase();
   let status: "paid" | "unpaid" | "unknown";
@@ -22,7 +26,30 @@ export function getClaimPaymentText(c: Record<string, unknown>): {
   const message =
     typeof messageRaw === "string" && messageRaw.trim() ? messageRaw.trim() : null;
 
-  return { status, message };
+  const evidenceRaw = c.payment_evidence_text;
+  const evidenceText =
+    typeof evidenceRaw === "string" && evidenceRaw.trim() ? evidenceRaw.trim() : null;
+
+  const codeRaw = c.payment_evidence_code;
+  const evidenceCode =
+    typeof codeRaw === "string" && codeRaw.trim() ? codeRaw.trim() : null;
+
+  const sourceRaw = c.payment_source_url;
+  const sourceUrl =
+    typeof sourceRaw === "string" && sourceRaw.trim() ? sourceRaw.trim() : null;
+
+  const checkedRaw = c.payment_checked_at;
+  const checkedAt =
+    typeof checkedRaw === "string" && checkedRaw.trim() ? checkedRaw.trim() : null;
+
+  return { status, message, evidenceText, evidenceCode, sourceUrl, checkedAt };
+}
+
+export function formatPaymentCheckedAt(checkedAt: string | null): string | null {
+  if (!checkedAt) return null;
+  const dt = new Date(checkedAt);
+  if (Number.isNaN(dt.getTime())) return checkedAt;
+  return dt.toLocaleString();
 }
 
 export function ClaimPaymentBadge({ status, message }: ClaimPaymentBadgeProps) {
@@ -50,5 +77,38 @@ export function ClaimPaymentBadge({ status, message }: ClaimPaymentBadgeProps) {
     >
       {label}
     </span>
+  );
+}
+
+type ClaimPaymentEvidenceProps = {
+  claim: Record<string, unknown>;
+  showUnpaidMessage?: boolean;
+};
+
+export function ClaimPaymentEvidence({
+  claim,
+  showUnpaidMessage = false,
+}: ClaimPaymentEvidenceProps) {
+  const payInfo = getClaimPaymentText(claim);
+  const checkedLabel = formatPaymentCheckedAt(payInfo.checkedAt);
+  const evidence = payInfo.evidenceText;
+  const showMessage = showUnpaidMessage && payInfo.status === "unpaid" && payInfo.message;
+
+  if (!evidence && !checkedLabel && !showMessage) return null;
+
+  return (
+    <div className="mt-0.5 space-y-0.5 max-w-[18rem]">
+      {showMessage ? (
+        <p className="text-[10px] text-blue-900 leading-tight">{payInfo.message}</p>
+      ) : null}
+      {evidence ? (
+        <p className="text-[10px] text-slate-600 leading-tight" title={payInfo.evidenceCode ?? undefined}>
+          {evidence}
+        </p>
+      ) : null}
+      {checkedLabel ? (
+        <p className="text-[10px] text-slate-500 leading-tight">Observed {checkedLabel}</p>
+      ) : null}
+    </div>
   );
 }

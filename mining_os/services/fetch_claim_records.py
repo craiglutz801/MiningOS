@@ -672,6 +672,9 @@ def fetch_claim_records_for_area(
 
         # ── Save results ──
         fetched_at = datetime.now(timezone.utc).isoformat()
+        from mining_os.services.mlrs_payment_truth import summarize_claim_payments
+
+        payment = summarize_claim_payments(claims)
         payload: dict[str, Any] = {
             "fetched_at": fetched_at,
             "log": log_text.strip(),
@@ -679,6 +682,10 @@ def fetch_claim_records_for_area(
             "plss": location_plss,
             "query_method": query_method,
             "ok": True,
+            "paid_count": payment["paid_count"],
+            "unpaid_count": payment["unpaid_count"],
+            "unknown_count": payment["unknown_count"],
+            "payment_checked_at": payment["payment_checked_at"],
         }
         if fatal_env_error and not claims:
             payload["error"] = fatal_env_error
@@ -735,6 +742,10 @@ def fetch_claim_records_for_area(
             "claims": payload["claims"],
             "error": payload.get("error"),
             "fetched_at": payload["fetched_at"],
+            "paid_count": payload["paid_count"],
+            "unpaid_count": payload["unpaid_count"],
+            "unknown_count": payload["unknown_count"],
+            "payment_checked_at": payload["payment_checked_at"],
         }
     except subprocess.TimeoutExpired:
         return {"ok": False, "log": "", "claims": [], "error": "Script timed out (10 minutes).", "fetched_at": None}

@@ -99,6 +99,8 @@ tests/
 ├── test_automation_engine.py         # rules engine CRUD + execution
 ├── test_blm_plss.py                  # PLSS string parsing
 ├── test_fetch_claim_records.py       # ★ no-BLM-agent fallback (prod fix)
+├── test_mlrs_case_payment.py         # HTTP/Playwright payment helpers
+├── test_mlrs_payment_truth.py        # ★ production Aura payment truth layer
 ├── test_mlrs_geographic_index.py     # ★ LR2000 always-structured-JSON (prod fix)
 └── test_plss_ai_lookup.py            # AI PLSS preview/apply flow
 ```

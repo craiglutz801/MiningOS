@@ -32,6 +32,10 @@ export interface BatchAreaActionRow {
   ok: boolean;
   error?: string | null;
   claims_count?: number;
+  paid_count?: number;
+  unpaid_count?: number;
+  unknown_count?: number;
+  payment_checked_at?: string | null;
 }
 
 export interface BatchAreaActionResponse {

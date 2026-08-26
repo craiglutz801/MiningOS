@@ -43,6 +43,8 @@ from urllib.parse import urljoin
 
 import requests
 
+from mining_os.services.mlrs_payment_truth import MlrsAuraClient, payment_from_mlrs_aura
+
 log = logging.getLogger("mining_os.mlrs_case_payment")
 
 # Same phrase ``get_mlrs_links.check_payment_status_and_owner_from_case_page`` searches for.
@@ -172,6 +174,9 @@ def _payment_cache_payload(claim: dict[str, Any]) -> dict[str, Any] | None:
         "payment_message": claim.get("payment_message"),
         "payment_check_source": claim.get("payment_check_source"),
         "payment_checked_at": claim.get("payment_checked_at"),
+        "payment_source_url": claim.get("payment_source_url"),
+        "payment_evidence_text": claim.get("payment_evidence_text"),
+        "payment_evidence_code": claim.get("payment_evidence_code"),
     }
 
 
@@ -260,6 +265,9 @@ def _merge_payment_fields(dst: dict[str, Any], src: dict[str, Any]) -> None:
         "payment_check_error",
         "payment_check_source",
         "payment_checked_at",
+        "payment_source_url",
+        "payment_evidence_text",
+        "payment_evidence_code",
     ):
         if key in src and src[key] is not None:
             dst[key] = src[key]
@@ -1100,15 +1108,18 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
         return claims
 
     try_headless = _should_try_headless()
+    skip_selenium = _paas_host()
     log.info(
-        "mlrs payment enrich: %d claim row(s), headless=%s "
-        "(prod needs MINING_OS_MLRS_PAYMENT_HEADLESS=1 + playwright install chromium)",
+        "mlrs payment enrich: %d claim row(s), headless=%s selenium=%s "
+        "(production uses the Aura case-record truth layer; Selenium is never used on PaaS)",
         len(claims),
         try_headless,
+        not skip_selenium,
     )
     pw_batch: dict[str, Any] = {}
     sel_batch: dict[str, Any] = {}
     pw_launch_logged = False
+    aura_client = None
 
     def _playwright_page_or_none():
         if pw_batch.get("launch_failed"):
@@ -1200,8 +1211,26 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
                 _progress()
                 continue
 
+            if aura_client is None:
+                aura_client = MlrsAuraClient()
+            aura_info = payment_from_mlrs_aura(url.strip(), client=aura_client)
+            _merge_payment_fields(c, aura_info)
+
+            if (c.get("payment_status") or "unknown").strip().lower() in ("paid", "unpaid"):
+                log.debug(
+                    "mlrs payment: %s via aura %s",
+                    c.get("payment_status"),
+                    c.get("serial_number"),
+                )
+                _mark_payment_checked(c)
+                _remember_payment_cache(c)
+                done += 1
+                _progress()
+                continue
+
             http_info = _payment_from_http(url.strip())
-            _merge_payment_fields(c, http_info)
+            if (http_info.get("payment_status") or "").strip().lower() == "unpaid":
+                _merge_payment_fields(c, http_info)
 
             if (c.get("payment_status") or "unknown").strip().lower() == "unpaid":
                 log.debug("mlrs payment: unpaid via case HTTP %s", c.get("serial_number"))
@@ -1223,7 +1252,8 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
                     report_u.strip(),
                     serial_number=str(c.get("serial_number") or "") or None,
                 )
-                _merge_payment_fields(c, ras_info)
+                if (ras_info.get("payment_status") or "").strip().lower() == "unpaid":
+                    _merge_payment_fields(c, ras_info)
 
             if (c.get("payment_status") or "unknown").strip().lower() == "unpaid":
                 log.debug("mlrs payment: unpaid via RAS %s", c.get("serial_number"))
@@ -1251,7 +1281,10 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
                             },
                         )
 
-                if (c.get("payment_status") or "unknown").strip().lower() == "unknown":
+                if (
+                    not skip_selenium
+                    and (c.get("payment_status") or "unknown").strip().lower() == "unknown"
+                ):
                     sel_info = _selenium_shared_check(url.strip())
                     _merge_payment_fields(c, sel_info)
                 time.sleep(0.35)
@@ -1285,6 +1318,10 @@ def check_payment_for_url(case_url: str) -> dict[str, Any]:
         "payment_message": row.get("payment_message"),
         "payment_check_source": row.get("payment_check_source"),
         "payment_check_error": row.get("payment_check_error"),
+        "payment_source_url": row.get("payment_source_url"),
+        "payment_checked_at": row.get("payment_checked_at"),
+        "payment_evidence_text": row.get("payment_evidence_text"),
+        "payment_evidence_code": row.get("payment_evidence_code"),
     }
 
 

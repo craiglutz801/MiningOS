@@ -473,3 +473,103 @@ class TestDerivedAreaStatus:
 
         assert result["ok"] is True
         assert captured["status"] == "unpaid"
+
+
+class TestZeroClaimsAndPaymentTruth:
+    def test_successful_zero_claims_is_ok_not_error(self, monkeypatch, patched_persist):
+        monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
+        enrich_calls: list[list] = []
+
+        def fake_enrich(claims, progress_cb=None):
+            enrich_calls.append(list(claims))
+            return claims
+
+        monkeypatch.setattr(
+            "mining_os.services.blm_plss.query_claims_by_plss_with_status",
+            lambda **kw: (True, []),
+        )
+        monkeypatch.setattr(
+            "mining_os.services.blm_plss.query_claims_by_coords",
+            lambda *a, **kw: [],
+        )
+        monkeypatch.setattr(
+            "mining_os.services.mlrs_case_payment.enrich_claims_from_mlrs_case_pages",
+            fake_enrich,
+        )
+
+        result = fcr.fetch_claim_records_for_area(
+            area_id=9,
+            area_name="Empty PLSS",
+            location_plss=None,
+            state_abbr="UT",
+            meridian="26",
+            township="12S",
+            range_val="14E",
+            section="23",
+            latitude=None,
+            longitude=None,
+        )
+
+        assert result["ok"] is True
+        assert result["claims"] == []
+        assert not result.get("error")
+        assert result["paid_count"] == 0
+        assert result["unpaid_count"] == 0
+        assert result["unknown_count"] == 0
+        assert enrich_calls == []
+
+    def test_persists_aura_payment_evidence(self, monkeypatch, patched_persist):
+        monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
+
+        def fake_enrich(claims, progress_cb=None):
+            for claim in claims:
+                claim["payment_status"] = "unpaid"
+                claim["payment_message"] = (
+                    "Maintenance fee payment was not received and may result in the closing of the claim."
+                )
+                claim["payment_check_source"] = "mlrs_case_aura"
+                claim["payment_source_url"] = claim.get("case_page")
+                claim["payment_checked_at"] = "2026-08-26T12:00:00Z"
+                claim["payment_evidence_text"] = "Next_Payment_Due_Date__c=2024-09-03"
+                claim["payment_evidence_code"] = "NEXT_PAYMENT_DUE_OVERDUE"
+            return claims
+
+        monkeypatch.setattr(
+            "mining_os.services.blm_plss.query_claims_by_plss_with_status",
+            lambda **kw: (
+                True,
+                [
+                    {
+                        "claim_name": "PEBBLE # 5",
+                        "serial_number": "UT101527746",
+                        "case_page": "https://mlrs.blm.gov/s/blm-case/a02t000000593dSAAQ/UT101527746",
+                    }
+                ],
+            ),
+        )
+        monkeypatch.setattr(
+            "mining_os.services.mlrs_case_payment.enrich_claims_from_mlrs_case_pages",
+            fake_enrich,
+        )
+
+        result = fcr.fetch_claim_records_for_area(
+            area_id=10,
+            area_name="Evidence target",
+            location_plss=None,
+            state_abbr="UT",
+            meridian="26",
+            township="12S",
+            range_val="14E",
+            section="23",
+            latitude=None,
+            longitude=None,
+        )
+
+        assert result["ok"] is True
+        claim = result["claims"][0]
+        assert claim["payment_status"] == "unpaid"
+        assert claim["payment_source_url"]
+        assert claim["payment_checked_at"] == "2026-08-26T12:00:00Z"
+        assert claim["payment_evidence_code"] == "NEXT_PAYMENT_DUE_OVERDUE"
+        assert result["unpaid_count"] == 1
+        assert result["paid_count"] == 0

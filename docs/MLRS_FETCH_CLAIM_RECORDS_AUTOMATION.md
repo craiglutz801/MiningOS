@@ -163,8 +163,11 @@ Shape:
       "BLM_PROD": "Lode",
       "payment_status": "paid|unpaid|unknown",
       "payment_message": "Maintenance fee payment was not received and may result in the closing of the claim.",
-      "payment_check_source": "mlrs_case_playwright",
-      "payment_checked_at": "2026-07-16T00:00:00Z"
+      "payment_check_source": "mlrs_case_aura",
+      "payment_source_url": "https://mlrs.blm.gov/s/blm-case/...",
+      "payment_checked_at": "2026-08-26T12:00:00Z",
+      "payment_evidence_text": "BLM MLRS case record Next_Payment_Due_Date__c=2024-09-03 is on or before observation date 2026-08-26.",
+      "payment_evidence_code": "NEXT_PAYMENT_DUE_OVERDUE"
     }
   ],
   "plss": "original location_plss string",
@@ -792,8 +795,10 @@ If the page remains shell-like, the claim stays `unknown`.
 
 By default:
 
-- Local/dev machines try headless browser enrichment.
-- PaaS hosts such as Render/Railway do not try headless browser enrichment unless explicitly enabled.
+- Every Fetch Claim Records run first uses the **production truth layer**: public MLRS case record via Salesforce Aura `DetailController.getRecord` (no browser).
+- Classification uses authoritative `Next_Payment_Due_Date__c` only. A missing due date, timeout, or upstream failure stays `unknown` and is never treated as unpaid.
+- Local/dev machines may still try headless Playwright if Aura leaves the claim unknown.
+- PaaS hosts such as Render/Railway never use Selenium. Playwright stays off unless `MINING_OS_MLRS_PAYMENT_HEADLESS=1`.
 
 The host check looks for:
 
@@ -1165,6 +1170,7 @@ This makes the process auditable and allows the payment cache to reuse recent kn
 | --- | --- |
 | `MINING_OS_FETCH_CLAIM_RECORDS_USE_AGENT=1` | Enables legacy sibling `BLM_ClaimAgent/get_mlrs_from_PLSS.py` path. Disabled by default. |
 | `MINING_OS_BLM_AGENT_PATH=/path/to/BLM_ClaimAgent` | Custom path to sibling agent repo. |
+| `MINING_OS_MLRS_PAYMENT_AURA_TIMEOUT_SEC=12` | HTTP timeout for the production Aura case-record truth layer. |
 | `MINING_OS_MLRS_PAYMENT_HEADLESS=1` | Forces Playwright/Selenium payment-page enrichment even on PaaS. |
 | `MINING_OS_MLRS_PAYMENT_HEADLESS=0` | Disables browser payment-page enrichment. |
 | `MINING_OS_MLRS_PLAYWRIGHT_MAX_MS=30000` | Per-case Playwright polling cap, clamped between 12s and 120s. |

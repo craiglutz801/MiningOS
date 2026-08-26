@@ -10,6 +10,23 @@ import pytest
 from mining_os.services import mlrs_case_payment as mcp
 
 
+@pytest.fixture(autouse=True)
+def _stub_aura_truth_layer(monkeypatch):
+    """Existing HTTP/Playwright tests should not hit the live Aura RPC."""
+    monkeypatch.setattr(
+        mcp,
+        "payment_from_mlrs_aura",
+        lambda case_url, client=None, observed_on=None: {
+            "payment_status": "unknown",
+            "payment_message": None,
+            "payment_check_source": "mlrs_case_aura",
+            "payment_source_url": case_url,
+            "payment_evidence_text": "Aura truth layer stubbed in unit test.",
+            "payment_evidence_code": "CASE_RECORD_UNAVAILABLE",
+        },
+    )
+
+
 def test_http_detects_unpaid_banner():
     html = "<html><body><div>Maintenance fee payment was not received and may result in the closing of the claim.</div></body></html>"
     with patch("mining_os.services.mlrs_case_payment.requests.get") as mock_get:
@@ -206,14 +223,18 @@ def test_enrich_reports_progress(monkeypatch):
 
     progress_events: list[dict[str, object]] = []
 
-    def fake_http(_url: str, timeout: float = 28.0):
+    def fake_aura(case_url, client=None, observed_on=None):
         return {
             "payment_status": "paid",
             "payment_message": None,
-            "payment_check_source": "mlrs_case_http",
+            "payment_check_source": "mlrs_case_aura",
+            "payment_source_url": case_url,
+            "payment_checked_at": "2026-08-26T12:00:00Z",
+            "payment_evidence_text": "Next payment due 2027-09-01",
+            "payment_evidence_code": "NEXT_PAYMENT_DUE_CURRENT",
         }
 
-    monkeypatch.setattr(mcp, "_payment_from_http", fake_http)
+    monkeypatch.setattr(mcp, "payment_from_mlrs_aura", fake_aura)
 
     claims = [
         {"serial_number": "A", "payment_status": "unknown", "case_page": "https://mlrs.blm.gov/s/blm-case/a/a"},
@@ -287,3 +308,68 @@ def test_merge_payment_fields_clears_stale_error_on_paid():
     mcp._merge_payment_fields(dst, src)
     assert dst["payment_status"] == "paid"
     assert "payment_check_error" not in dst
+
+
+def test_enrich_uses_aura_truth_layer_paid(monkeypatch):
+    monkeypatch.setenv("MINING_OS_MLRS_ENRICH_INPROC", "1")
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_HEADLESS", "0")
+    with mcp._PAYMENT_CACHE_LOCK:
+        mcp._PAYMENT_CACHE.clear()
+    monkeypatch.setattr(
+        mcp,
+        "payment_from_mlrs_aura",
+        lambda case_url, client=None, observed_on=None: {
+            "payment_status": "paid",
+            "payment_message": None,
+            "payment_check_source": "mlrs_case_aura",
+            "payment_source_url": case_url,
+            "payment_checked_at": "2026-08-26T12:00:00Z",
+            "payment_evidence_text": "Next payment due 2027-09-01",
+            "payment_evidence_code": "NEXT_PAYMENT_DUE_CURRENT",
+        },
+    )
+    with patch("mining_os.services.mlrs_case_payment.requests.get") as mock_get:
+        out = mcp.enrich_claims_from_mlrs_case_pages(
+            [
+                {
+                    "serial_number": "UT1",
+                    "payment_status": "unknown",
+                    "case_page": "https://mlrs.blm.gov/s/blm-case/a02t000000593dSAAQ/UT1",
+                }
+            ]
+        )
+    assert out[0]["payment_status"] == "paid"
+    assert out[0]["payment_evidence_code"] == "NEXT_PAYMENT_DUE_CURRENT"
+    assert out[0]["payment_checked_at"] == "2026-08-26T12:00:00Z"
+    assert not mock_get.called
+
+
+def test_enrich_skips_selenium_on_paas(monkeypatch):
+    monkeypatch.setenv("MINING_OS_MLRS_ENRICH_INPROC", "1")
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_HEADLESS", "1")
+    selenium_launches: list[str] = []
+
+    def _no_launch(timeout=None):
+        selenium_launches.append("launched")
+        return None, "selenium must not run on PaaS"
+
+    monkeypatch.setattr(mcp, "_launch_selenium_driver", _no_launch)
+    monkeypatch.setattr(
+        mcp,
+        "_payment_from_http",
+        lambda url, timeout=None: {"payment_status": "unknown", "payment_message": None},
+    )
+
+    out = mcp._enrich_claims_inproc(
+        [
+            {
+                "serial_number": "UT1",
+                "payment_status": "unknown",
+                "case_page": "https://mlrs.blm.gov/s/blm-case/a02t000000593dSAAQ/UT1",
+            }
+        ]
+    )
+    assert selenium_launches == []
+    assert out[0]["payment_status"] == "unknown"
+    assert out[0].get("payment_check_source") != "mlrs_case_selenium"

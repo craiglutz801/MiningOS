@@ -1,7 +1,7 @@
 /**
  * MLRS scrape claim records table — same layout as Targets detail drilldown.
  */
-import { ClaimPaymentBadge, getClaimPaymentText } from "./claimPaymentBadge";
+import { ClaimPaymentBadge, ClaimPaymentEvidence, getClaimPaymentText } from "./claimPaymentBadge";
 
 export type ClaimRecordsPayload = {
   fetched_at?: string | null;
@@ -101,6 +101,7 @@ export function ClaimRecordsMlrsPanel({
                     <td className="px-3 py-1.5 font-mono text-slate-700">{sn}</td>
                     <td className="px-3 py-1.5 whitespace-nowrap">
                       <ClaimPaymentBadge status={payInfo.status} message={payInfo.message} />
+                      <ClaimPaymentEvidence claim={c} />
                     </td>
                     <td
                       className="px-3 py-1.5 text-slate-600 min-w-[16rem] whitespace-normal break-words"

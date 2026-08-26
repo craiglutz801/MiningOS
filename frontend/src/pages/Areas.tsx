@@ -5,7 +5,7 @@ import L from "leaflet";
 import { api, ApiError, type Area, type BatchAreaActionRow, type FetchClaimRecordsProgress } from "../api";
 import { useAuth } from "../auth";
 import { parseCsvForPreview, type CsvInspectResult } from "../csvInspectLocal";
-import { ClaimPaymentBadge, getClaimPaymentText } from "../areas/claimPaymentBadge";
+import { ClaimPaymentBadge, ClaimPaymentEvidence, getClaimPaymentText } from "../areas/claimPaymentBadge";
 
 /** Server-enforced max ids per batch POST. */
 const AREA_BATCH_MAX_CHUNK = 25;
@@ -37,6 +37,10 @@ type BatchResultsRow = {
   name: string | null;
   fetchOk?: boolean;
   fetchClaims?: number;
+  fetchPaid?: number;
+  fetchUnpaid?: number;
+  fetchUnknown?: number;
+  fetchPaymentCheckedAt?: string | null;
   fetchError?: string | null;
   lrOk?: boolean;
   lrClaims?: number;
@@ -52,6 +56,10 @@ function mergeBatchRow(
   if (kind === "fetch") {
     prev.fetchOk = r.ok;
     prev.fetchClaims = r.claims_count;
+    prev.fetchPaid = r.paid_count;
+    prev.fetchUnpaid = r.unpaid_count;
+    prev.fetchUnknown = r.unknown_count;
+    prev.fetchPaymentCheckedAt = r.payment_checked_at ?? null;
     prev.fetchError = r.error ?? null;
   } else {
     prev.lrOk = r.ok;
@@ -3584,6 +3592,7 @@ export function Areas() {
                                     <td className="px-3 py-1.5 font-mono text-slate-700">{sn}</td>
                                     <td className="px-3 py-1.5 whitespace-nowrap">
                                       <ClaimPaymentBadge status={payInfo.status} message={payInfo.message} />
+                                      <ClaimPaymentEvidence claim={c} />
                                     </td>
                                     <td className="px-3 py-1.5 text-slate-600 min-w-[16rem] whitespace-normal break-words" title={plss}>{plss}</td>
                                     <td className="px-3 py-1.5 space-x-2 whitespace-nowrap">
@@ -3690,9 +3699,7 @@ export function Areas() {
                                     <td className="px-3 py-1.5 font-mono text-slate-700">{sn}</td>
                                     <td className="px-3 py-1.5">
                                       <ClaimPaymentBadge status={payInfo.status} message={payInfo.message} />
-                                      {payInfo.status === "unpaid" && payInfo.message && (
-                                        <p className="mt-0.5 text-[10px] text-blue-900 leading-tight max-w-[18rem]">{payInfo.message}</p>
-                                      )}
+                                      <ClaimPaymentEvidence claim={c} showUnpaidMessage />
                                     </td>
                                     <td className="px-3 py-1.5 text-slate-600 max-w-[10rem] truncate" title={plss}>{plss}</td>
                                     <td className="px-3 py-1.5 text-slate-600">{prod}</td>
@@ -4478,6 +4485,8 @@ export function Areas() {
                       <>
                         <th className="text-left py-2 px-2 font-semibold text-slate-700">Fetch</th>
                         <th className="text-left py-2 px-2 font-semibold text-slate-700">Claims</th>
+                        <th className="text-left py-2 px-2 font-semibold text-slate-700">Payment</th>
+                        <th className="text-left py-2 px-2 font-semibold text-slate-700">Observed</th>
                         <th className="text-left py-2 px-2 font-semibold text-slate-700">Fetch error</th>
                       </>
                     )}
@@ -4501,6 +4510,18 @@ export function Areas() {
                             {r.fetchOk === undefined ? "—" : r.fetchOk ? "Yes" : "No"}
                           </td>
                           <td className="py-1.5 px-2">{r.fetchClaims ?? "—"}</td>
+                          <td className="py-1.5 px-2 text-xs text-slate-700">
+                            {r.fetchClaims === 0
+                              ? "No claims"
+                              : r.fetchPaid == null && r.fetchUnpaid == null && r.fetchUnknown == null
+                                ? "—"
+                                : `Paid ${r.fetchPaid ?? 0} · Unpaid ${r.fetchUnpaid ?? 0} · Unknown ${r.fetchUnknown ?? 0}`}
+                          </td>
+                          <td className="py-1.5 px-2 text-xs text-slate-600 whitespace-nowrap">
+                            {r.fetchPaymentCheckedAt
+                              ? new Date(r.fetchPaymentCheckedAt).toLocaleString()
+                              : "—"}
+                          </td>
                           <td className="py-1.5 px-2 text-xs text-red-700 break-words max-w-[12rem]">
                             {r.fetchError || "—"}
                           </td>
