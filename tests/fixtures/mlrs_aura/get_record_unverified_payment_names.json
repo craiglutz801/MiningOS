@@ -1,0 +1,28 @@
+{
+  "comment": "Hypothetical custom payment/waiver field names with positive-looking values. These must stay diagnostic-only (never Paid or Current-by-waiver) until a verified live receipt field is captured.",
+  "actions": [
+    {
+      "id": "1;a",
+      "state": "SUCCESS",
+      "returnValue": {
+        "record": {
+          "apiName": "BLM_Case__c",
+          "id": "a02t000000593dSAAQ",
+          "fields": {
+            "Id": { "displayValue": null, "value": "a02t000000593dSAAQ" },
+            "Name": { "displayValue": "UT101527746", "value": "UT101527746" },
+            "Serial_Number__c": { "displayValue": "UT101527746", "value": "UT101527746" },
+            "Lead_File_Number__c": { "displayValue": "UT101527746", "value": "UT101527746" },
+            "Case_Status__c": { "displayValue": "Active", "value": "Active" },
+            "Next_Payment_Due_Date__c": { "displayValue": "September 1, 2027", "value": "2027-09-01" },
+            "Last_Payment_Date__c": { "displayValue": "August 1, 2026", "value": "2026-08-01" },
+            "Date_Paid__c": { "displayValue": "August 1, 2026", "value": "2026-08-01" },
+            "Fees_Paid__c": { "displayValue": "true", "value": true },
+            "Small_Miner_Waiver__c": { "displayValue": "true", "value": true }
+          }
+        }
+      },
+      "error": []
+    }
+  ]
+}

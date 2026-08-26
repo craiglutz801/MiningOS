@@ -181,7 +181,42 @@ def test_enrich_sets_unpaid_from_http(monkeypatch):
     assert mock_get.called
 
 
-def test_enrich_skips_when_already_unpaid(monkeypatch):
+def test_enrich_rechecks_legacy_unpaid_without_evidence_code(monkeypatch):
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_SELENIUM", "0")
+    monkeypatch.setenv("MINING_OS_MLRS_ENRICH_INPROC", "1")
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_HEADLESS", "0")
+    with mcp._PAYMENT_CACHE_LOCK:
+        mcp._PAYMENT_CACHE.clear()
+    monkeypatch.setattr(
+        mcp,
+        "payment_from_mlrs_aura",
+        lambda case_url, client=None, observed_on=None, expected_serial=None: {
+            "payment_status": "current",
+            "payment_check_source": "mlrs_case_aura",
+            "payment_source_url": case_url,
+            "payment_evidence_code": "NEXT_PAYMENT_DUE_CURRENT",
+            "payment_due_date": "2027-09-01",
+        },
+    )
+    fake_http = MagicMock()
+    fake_http.text = "<html>no banner</html>"
+    fake_http.raise_for_status = MagicMock()
+    with patch("mining_os.services.mlrs_case_payment.request_approved_url", return_value=fake_http) as mock_get:
+        claims = [
+            {
+                "serial_number": "X",
+                "payment_status": "unpaid",
+                "payment_message": "existing",
+                "case_page": "https://mlrs.blm.gov/s/blm-case/a02t000000593dSAAQ/b",
+            }
+        ]
+        out = mcp.enrich_claims_from_mlrs_case_pages(claims)
+    assert mock_get.called
+    assert out[0]["payment_status"] == "current"
+    assert out[0]["payment_evidence_code"] == "NEXT_PAYMENT_DUE_CURRENT"
+
+
+def test_enrich_skips_when_authoritative_unpaid(monkeypatch):
     monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_SELENIUM", "0")
     monkeypatch.setenv("MINING_OS_MLRS_ENRICH_INPROC", "1")
     with patch("mining_os.services.mlrs_case_payment.requests.get") as mock_get:
@@ -190,6 +225,7 @@ def test_enrich_skips_when_already_unpaid(monkeypatch):
                 "serial_number": "X",
                 "payment_status": "unpaid",
                 "payment_message": "existing",
+                "payment_evidence_code": "NONPAYMENT_WARNING",
                 "case_page": "https://mlrs.blm.gov/s/blm-case/a02t000000593dSAAQ/b",
             }
         ]
@@ -214,6 +250,7 @@ def test_enrich_reuses_recent_cached_payment_result(monkeypatch):
                 "payment_status": "unpaid",
                 "payment_message": "cached unpaid",
                 "payment_check_source": "seed",
+                "payment_evidence_code": "NONPAYMENT_WARNING",
                 "payment_checked_at": now_iso,
             }
         ],
@@ -326,7 +363,11 @@ def test_check_payment_for_url_uses_enriched_row(monkeypatch):
 
 def test_merge_payment_fields_clears_stale_error_on_paid():
     dst = {"payment_check_error": "old error", "payment_status": "unknown"}
-    src = {"payment_status": "paid", "payment_check_source": "mlrs_case_playwright"}
+    src = {
+        "payment_status": "paid",
+        "payment_check_source": "mlrs_case_playwright",
+        "payment_evidence_code": "PAYMENT_RECORDED",
+    }
     mcp._merge_payment_fields(dst, src)
     assert dst["payment_status"] == "paid"
     assert "payment_check_error" not in dst
@@ -416,6 +457,7 @@ def test_cache_current_is_not_reused_after_due_date(monkeypatch):
                 "case_page": "https://mlrs.blm.gov/s/blm-case/a02t000000593dSAAQ/b",
                 "payment_status": "current",
                 "payment_due_date": "1999-01-01",
+                "payment_evidence_code": "NEXT_PAYMENT_DUE_CURRENT",
                 "payment_check_source": "seed",
                 "payment_checked_at": now_iso,
             }
@@ -461,3 +503,72 @@ def test_subprocess_timeout_marks_remaining_unknown(monkeypatch):
     out = mcp._mark_claims_timeout_unknown(claims)
     assert out[0]["payment_status"] == "unknown"
     assert out[0]["payment_evidence_code"] == "TIMEOUT"
+
+
+def test_legacy_paid_cache_is_not_reused(monkeypatch):
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_SELENIUM", "0")
+    monkeypatch.setenv("MINING_OS_MLRS_ENRICH_INPROC", "1")
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_CACHE_TTL_HOURS", "24")
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_HEADLESS", "0")
+    with mcp._PAYMENT_CACHE_LOCK:
+        mcp._PAYMENT_CACHE.clear()
+
+    now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    seeded = mcp.prime_payment_cache(
+        [
+            {
+                "serial_number": "UT-1",
+                "case_page": "https://mlrs.blm.gov/s/blm-case/a02t000000593dSAAQ/b",
+                "payment_status": "paid",
+                "payment_evidence_code": "NEXT_PAYMENT_DUE_CURRENT",
+                "payment_check_source": "seed",
+                "payment_checked_at": now_iso,
+            },
+            {
+                "serial_number": "UT-2",
+                "case_page": "https://mlrs.blm.gov/s/blm-case/a02t000000593dSAAQ/c",
+                "payment_status": "unpaid",
+                "payment_evidence_code": "NEXT_PAYMENT_DUE_OVERDUE",
+                "payment_check_source": "seed",
+                "payment_checked_at": now_iso,
+            },
+            {
+                "serial_number": "UT-3",
+                "case_page": "https://mlrs.blm.gov/s/blm-case/a02t000000593dSAAQ/d",
+                "payment_status": "paid",
+                "payment_check_source": "seed",
+                "payment_checked_at": now_iso,
+            },
+        ],
+        fetched_at=now_iso,
+    )
+    assert seeded == 0
+
+    monkeypatch.setattr(
+        mcp,
+        "payment_from_mlrs_aura",
+        lambda case_url, client=None, observed_on=None, expected_serial=None: {
+            "payment_status": "current",
+            "payment_check_source": "mlrs_case_aura",
+            "payment_source_url": case_url,
+            "payment_evidence_code": "NEXT_PAYMENT_DUE_CURRENT",
+            "payment_due_date": "2027-09-01",
+        },
+    )
+    fake_http = MagicMock()
+    fake_http.text = "<html>no banner</html>"
+    fake_http.raise_for_status = MagicMock()
+    with patch("mining_os.services.mlrs_case_payment.request_approved_url", return_value=fake_http):
+        out = mcp.enrich_claims_from_mlrs_case_pages(
+            [
+                {
+                    "serial_number": "UT-1",
+                    "payment_status": "paid",
+                    "payment_evidence_code": "NEXT_PAYMENT_DUE_CURRENT",
+                    "case_page": "https://mlrs.blm.gov/s/blm-case/a02t000000593dSAAQ/b",
+                }
+            ]
+        )
+    assert out[0]["payment_status"] == "current"
+    assert out[0]["payment_check_source"] == "mlrs_case_aura"
+    assert out[0]["payment_evidence_code"] == "NEXT_PAYMENT_DUE_CURRENT"

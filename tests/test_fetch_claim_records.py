@@ -394,7 +394,7 @@ class TestDerivedAreaStatus:
             lambda **kwargs: (
                 True,
                 [
-                    {"claim_name": "PAID CLAIM", "serial_number": "A1", "payment_status": "paid"},
+                    {"claim_name": "PAID CLAIM", "serial_number": "A1", "payment_status": "paid", "payment_evidence_code": "PAYMENT_RECORDED"},
                     {"claim_name": "UNKNOWN CLAIM", "serial_number": "A2", "payment_status": "unknown"},
                 ],
             ),
@@ -447,8 +447,8 @@ class TestDerivedAreaStatus:
             lambda **kwargs: (
                 True,
                 [
-                    {"claim_name": "UNPAID CLAIM", "serial_number": "B1", "payment_status": "unpaid"},
-                    {"claim_name": "PAID CLAIM", "serial_number": "B2", "payment_status": "paid"},
+                    {"claim_name": "UNPAID CLAIM", "serial_number": "B1", "payment_status": "unpaid", "payment_evidence_code": "NONPAYMENT_WARNING"},
+                    {"claim_name": "PAID CLAIM", "serial_number": "B2", "payment_status": "paid", "payment_evidence_code": "PAYMENT_RECORDED"},
                     {"claim_name": "UNKNOWN CLAIM", "serial_number": "B3", "payment_status": "unknown"},
                 ],
             ),
@@ -473,6 +473,72 @@ class TestDerivedAreaStatus:
 
         assert result["ok"] is True
         assert captured["status"] == "unpaid"
+
+
+    def test_legacy_paid_without_evidence_rolls_up_unknown(self, monkeypatch):
+        monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
+        captured: dict[str, str | None] = {"status": None}
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.merge_area_characteristics",
+            lambda area_id, updates, **kwargs: True,
+        )
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.update_area_state_meridian",
+            lambda area_id, state, meridian, **kwargs: True,
+        )
+
+        def fake_update_area_status(area_id, status, **kwargs):
+            captured["status"] = status
+            return True
+
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.update_area_status",
+            fake_update_area_status,
+        )
+        monkeypatch.setattr(
+            "mining_os.services.blm_plss.query_claims_by_plss_with_status",
+            lambda **kwargs: (
+                True,
+                [
+                    {
+                        "claim_name": "LEGACY PAID",
+                        "serial_number": "C1",
+                        "payment_status": "paid",
+                        "payment_evidence_code": "NEXT_PAYMENT_DUE_CURRENT",
+                    },
+                    {
+                        "claim_name": "LEGACY UNPAID",
+                        "serial_number": "C2",
+                        "payment_status": "unpaid",
+                        "payment_evidence_code": "NEXT_PAYMENT_DUE_OVERDUE",
+                    },
+                ],
+            ),
+        )
+        monkeypatch.setattr(
+            "mining_os.services.mlrs_case_payment.enrich_claims_from_mlrs_case_pages",
+            lambda claims, progress_cb=None: claims,
+        )
+
+        result = fcr.fetch_claim_records_for_area(
+            area_id=503,
+            area_name="Legacy snapshot target",
+            location_plss=None,
+            state_abbr="UT",
+            meridian="26",
+            township="12S",
+            range_val="12W",
+            section="35",
+            latitude=None,
+            longitude=None,
+        )
+
+        assert result["ok"] is True
+        assert captured["status"] == "unknown"
+        assert result["paid_count"] == 0
+        assert result["unpaid_count"] == 0
+        assert result["unknown_count"] == 2
+        assert result["payment_rollup"] == "unknown"
 
 
 class TestZeroClaimsAndPaymentTruth:

@@ -10,38 +10,47 @@ HTTP via Salesforce Aura ``DetailController.getRecord`` — the same guest-visib
 Normalized claim labels
 -----------------------
 ``payment_status`` is **not** inferred as Paid/Unpaid from the due date alone.
+Rollup, cache reuse, and UI badges use the claim object **plus**
+``payment_evidence_code`` — a status string by itself is never enough.
 
-- ``paid``: explicit payment evidence in the case record (a maintenance-fee
-  payment date / received flag). A future due date is **not** a receipt.
-- ``unpaid``: explicit BLM nonpayment warning (the standard maintenance-fee
-  phrase, or an equivalent nonpayment field). A stale past due date is **not**
-  that warning.
+- ``paid``: reserved for an approved maintenance-fee **receipt** evidence code
+  (``PAYMENT_RECORDED``). No Aura field has been verified with a positive live
+  payment value, so the Aura classifier currently **never** emits Paid.
+- ``unpaid``: the explicit BLM nonpayment warning phrase
+  (``NONPAYMENT_WARNING``) in a case-record field value or on the public page.
+  A stale past due date is **not** that warning. Generic ``*payment*`` /
+  ``Date_Paid__c`` field names are not unpaid evidence.
 - ``current``: open case whose next-payment due date is strictly after the
-  observation date. Supporting evidence only — includes small-miner waiver
-  holdings that keep a claim current without a cash payment.
+  observation date (``NEXT_PAYMENT_DUE_CURRENT``). Supporting evidence only.
 - ``due_today``: open case whose due date **equals** the observation date.
   BLM treats fees/waivers as timely on or before the due date, so this is
   not overdue and not unpaid.
 - ``past_due``: open case whose due date is strictly before the observation
-  date, with no explicit nonpayment warning.
-- ``closed``: case status is closed / void / forfeited / abandoned / equivalent.
-  Historical due dates on closed cases are not unpaid.
+  date, with no explicit nonpayment warning (``NEXT_PAYMENT_DUE_PAST``).
+- ``closed``: case status is closed / void / forfeited / abandoned / equivalent
+  (``CASE_CLOSED``). Historical due dates on closed cases are not unpaid.
 - ``unknown``: missing record, identity mismatch, unparseable/missing fields,
-  schema drift, timeout, or upstream failure. Missing data is never unpaid.
+  schema drift, timeout, upstream failure, or a legacy Paid/Unpaid label that
+  lacks an approved evidence code. Missing data is never unpaid.
 
 Source fields (public ``BLM_Case__c`` via Aura getRecord)
 ---------------------------------------------------------
-- Identity: ``Serial_Number__c``, ``Lead_File_Number__c`` (plus Lightning ``Name``)
-- Lifecycle: ``Case_Status__c`` (and ``Status`` if present)
-- Due date (supporting): ``Next_Payment_Due_Date__c``
-- Payment evidence (when present on the layout): ``Last_Payment_Date__c``,
-  ``Maintenance_Fee_Paid_Date__c``, ``Last_Maintenance_Fee_Payment_Date__c``,
-  ``Payment_Received_Date__c``, plus any other custom field whose API name
-  clearly denotes a received maintenance-fee payment
-- Waiver evidence (when present): ``Small_Miner_Waiver__c`` and any custom
-  field whose API name contains ``waiver``
-- Nonpayment evidence (when present): field values containing the BLM
-  maintenance-fee warning, or a dedicated nonpayment/delinquent flag
+**Observed / used for classification** (redacted live-shaped fixture + smoke):
+
+- Identity: ``Serial_Number__c``, ``Lead_File_Number__c`` (Lightning ``Name`` fallback)
+- Lifecycle: ``Case_Status__c`` (and ``Status`` / ``Case_Disposition__c`` if present)
+- Due date (supporting only): ``Next_Payment_Due_Date__c``
+
+**Verified unpaid evidence (not an Aura field name):** the public phrase
+``maintenance fee payment was not received`` in any field **value** or page text.
+
+**Hypothetical / not used as Paid or Current-by-waiver** until a positive live
+value is captured: ``Last_Payment_Date__c``, ``Last_Maintenance_Fee_Payment_Date__c``,
+``Maintenance_Fee_Paid_Date__c``, ``Payment_Received_Date__c``,
+``Maintenance_Fee_Payment_Date__c``, ``Date_Paid__c``, ``Maintenance_Fee_Paid__c``,
+``Payment_Received__c``, ``Fees_Paid__c``, ``Small_Miner_Waiver__c`` and other
+``*waiver*`` / ``*payment*`` custom fields. Those names, when present, are
+reported on ``payment_unverified_fields`` as diagnostics only.
 
 Aura ``/s/sfsites/aura`` is an undocumented Salesforce implementation detail.
 See ``docs/MLRS_FETCH_CLAIM_RECORDS_AUTOMATION.md`` for the live smoke procedure
@@ -98,8 +107,15 @@ EVIDENCE_REDIRECT = "REDIRECT_BLOCKED"
 EVIDENCE_PAID_LEGACY = "NEXT_PAYMENT_DUE_CURRENT"
 EVIDENCE_UNPAID_LEGACY = "NEXT_PAYMENT_DUE_OVERDUE"
 
-AUTHORITATIVE_PAID_CODES = frozenset({EVIDENCE_PAID, "PAYMENT_RECEIVED"})
-AUTHORITATIVE_UNPAID_CODES = frozenset({EVIDENCE_UNPAID, "MAINTENANCE_FEE_WARNING"})
+# Paid is unavailable from Aura until a receipt field is verified live.
+# Keep the code so a future verified emitter (and rollup/cache) share one allow-list.
+AUTHORITATIVE_PAID_CODES = frozenset({EVIDENCE_PAID})
+AUTHORITATIVE_UNPAID_CODES = frozenset({EVIDENCE_UNPAID})
+RESOLVED_CURRENT_CODES = frozenset({EVIDENCE_CURRENT, EVIDENCE_WAIVER_CURRENT})
+RESOLVED_DUE_TODAY_CODES = frozenset({EVIDENCE_DUE_TODAY})
+RESOLVED_PAST_DUE_CODES = frozenset({EVIDENCE_PAST_DUE})
+RESOLVED_CLOSED_CODES = frozenset({EVIDENCE_CLOSED})
+LEGACY_UNPROVEN_CODES = frozenset({EVIDENCE_PAID_LEGACY, EVIDENCE_UNPAID_LEGACY})
 CLOSED_STATUSES = frozenset({
     "closed",
     "void",
@@ -127,26 +143,6 @@ _LOADED_APP_RE = re.compile(
     r'"APPLICATION@markup://siteforce:communityApp"\s*:\s*"([^"]+)"'
 )
 
-_PAYMENT_DATE_FIELDS = (
-    "Last_Payment_Date__c",
-    "Last_Maintenance_Fee_Payment_Date__c",
-    "Maintenance_Fee_Paid_Date__c",
-    "Payment_Received_Date__c",
-    "Maintenance_Fee_Payment_Date__c",
-    "Date_Paid__c",
-)
-_PAYMENT_FLAG_FIELDS = (
-    "Maintenance_Fee_Paid__c",
-    "Payment_Received__c",
-    "Fees_Paid__c",
-)
-_WAIVER_FIELDS = (
-    "Small_Miner_Waiver__c",
-    "Small_Miner_Waiver_Filed__c",
-    "SMW_Waiver__c",
-    "Waiver_Filed__c",
-    "Maintenance_Fee_Waiver__c",
-)
 _STATUS_FIELDS = ("Case_Status__c", "Status", "Case_Disposition__c")
 _SERIAL_FIELDS = ("Serial_Number__c", "Lead_File_Number__c", "Name")
 _DUE_FIELDS = ("Next_Payment_Due_Date__c",)
@@ -155,6 +151,19 @@ _CONTRACT_FIELD_GROUPS = {
     "lifecycle": _STATUS_FIELDS,
     "due_date": _DUE_FIELDS,
 }
+# Names we have actually classified from. Anything else matching payment/waiver
+# is diagnostic-only until a positive live value is captured.
+_VERIFIED_AURA_FIELD_NAMES = frozenset(
+    {
+        "Id",
+        "apiName",
+        "Name",
+        "recordTypeId",
+        *_SERIAL_FIELDS,
+        *_STATUS_FIELDS,
+        *_DUE_FIELDS,
+    }
+)
 
 _BROWSER_HEADERS = {
     "User-Agent": (
@@ -165,13 +174,10 @@ _BROWSER_HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
-_TRUTHY = frozenset({"true", "t", "yes", "y", "1", "on", "filed", "approved", "active", "waived"})
-_PAYMENT_NAME_RE = re.compile(
-    r"(last_.{0,20}payment|payment_.{0,20}(date|received|paid)|fee_paid|fees_paid)",
+_UNVERIFIED_NAME_RE = re.compile(
+    r"(payment|paid|waiver|fee_paid|fees_paid|date_paid)",
     re.I,
 )
-_WAIVER_NAME_RE = re.compile(r"waiver", re.I)
-_NONPAY_NAME_RE = re.compile(r"non[-_ ]?pay|delinquen|unpaid_flag|overdue_flag", re.I)
 
 
 class UnsafeMlrsUrlError(ValueError):
@@ -432,14 +438,6 @@ def request_approved_ras_url(
     raise UnsafeMlrsUrlError("too many RAS redirects")
 
 
-def _truthy_flag(value: Any) -> bool:
-    if value is True:
-        return True
-    if value in (None, False, 0, "0"):
-        return False
-    return str(value).strip().lower() in _TRUTHY
-
-
 def _first_present(flat: dict[str, Any], names: tuple[str, ...]) -> tuple[str | None, Any]:
     for name in names:
         if name in flat and flat.get(name) not in (None, ""):
@@ -472,53 +470,29 @@ def diagnose_aura_schema(flat: dict[str, Any]) -> dict[str, Any]:
 
 
 def _scan_named_evidence(flat: dict[str, Any]) -> dict[str, Any]:
-    payment_date_field = None
-    payment_date = None
-    waiver_field = None
-    waiver = False
+    """Collect verified unpaid phrase hits; never infer a receipt from field names."""
     nonpayment_field = None
     nonpayment = False
-
-    for name in _PAYMENT_DATE_FIELDS:
-        if name in flat and parse_iso_date(flat.get(name)):
-            payment_date_field = name
-            payment_date = parse_iso_date(flat.get(name))
-            break
-    for name in _PAYMENT_FLAG_FIELDS:
-        if _truthy_flag(flat.get(name)):
-            payment_date_field = payment_date_field or name
-            payment_date = payment_date or utc_today()
-            break
-    for name in _WAIVER_FIELDS:
-        if _truthy_flag(flat.get(name)):
-            waiver_field = name
-            waiver = True
-            break
+    unverified_fields: list[str] = []
 
     for name, value in flat.items():
         if not isinstance(name, str):
             continue
         text = str(value or "").strip()
-        low = text.lower()
-        if UNPAID_PHRASE in low or (_NONPAY_NAME_RE.search(name) and _truthy_flag(value)):
+        if UNPAID_PHRASE in text.lower():
             nonpayment_field = name
             nonpayment = True
-        if waiver_field is None and _WAIVER_NAME_RE.search(name) and _truthy_flag(value):
-            waiver_field = name
-            waiver = True
-        if payment_date_field is None and _PAYMENT_NAME_RE.search(name) and "next_payment_due" not in name.lower():
-            parsed = parse_iso_date(value)
-            if parsed or _truthy_flag(value):
-                payment_date_field = name
-                payment_date = parsed or utc_today()
+        if name in _VERIFIED_AURA_FIELD_NAMES:
+            continue
+        if name.lower() == "next_payment_due_date__c":
+            continue
+        if _UNVERIFIED_NAME_RE.search(name):
+            unverified_fields.append(name)
 
     return {
-        "payment_date_field": payment_date_field,
-        "payment_date": payment_date,
-        "waiver_field": waiver_field,
-        "waiver": waiver,
         "nonpayment_field": nonpayment_field,
         "nonpayment": nonpayment,
+        "unverified_fields": sorted(set(unverified_fields)),
     }
 
 
@@ -647,14 +621,8 @@ def interpret_case_record(
         )
 
     evidence_bits = _scan_named_evidence(flat)
-    extra_base["payment_waiver"] = bool(evidence_bits["waiver"])
-    if evidence_bits["payment_date_field"]:
-        extra_base["payment_receipt_field"] = evidence_bits["payment_date_field"]
-        extra_base["payment_receipt_date"] = (
-            evidence_bits["payment_date"].isoformat() if evidence_bits["payment_date"] else None
-        )
-    if evidence_bits["waiver_field"]:
-        extra_base["payment_waiver_field"] = evidence_bits["waiver_field"]
+    if evidence_bits["unverified_fields"]:
+        extra_base["payment_unverified_fields"] = evidence_bits["unverified_fields"]
 
     due = parse_iso_date(due_raw) if due_raw not in (None, "") else None
     if due_raw not in (None, "") and due is None:
@@ -688,43 +656,10 @@ def interpret_case_record(
             code=EVIDENCE_UNPAID,
             evidence=(
                 f"BLM MLRS case record field {evidence_bits['nonpayment_field']} contains "
-                f"explicit nonpayment evidence{serial_note}{status_note}."
+                f"the explicit BLM nonpayment warning{serial_note}{status_note}."
             ),
             checked_at=checked,
             message=STANDARD_UNPAID_MESSAGE,
-            extra=extra_base,
-        )
-
-    if evidence_bits["payment_date"] and due_indicator in {"current", "due_today", "unknown"}:
-        paid_due = (
-            f" Next_Payment_Due_Date__c={due.isoformat()} supports a still-open compliance window."
-            if due
-            else " No next-payment due date was present; payment date is treated as receipt evidence only."
-        )
-        return _payload(
-            status="paid",
-            source_url=source_url,
-            code=EVIDENCE_PAID,
-            evidence=(
-                f"BLM MLRS case record {evidence_bits['payment_date_field']}="
-                f"{evidence_bits['payment_date'].isoformat()} records a maintenance-fee payment."
-                f"{paid_due}{status_note}"
-            ),
-            checked_at=checked,
-            extra=extra_base,
-        )
-
-    if evidence_bits["waiver"] and due_indicator in {"current", "due_today"}:
-        return _payload(
-            status="current",
-            source_url=source_url,
-            code=EVIDENCE_WAIVER_CURRENT,
-            evidence=(
-                f"BLM MLRS case record {evidence_bits['waiver_field']} indicates a small-miner "
-                f"waiver; Next_Payment_Due_Date__c={due.isoformat()} is {due_indicator.replace('_', ' ')}. "
-                f"A waiver keeps the claim current without proving a cash payment.{status_note}"
-            ),
-            checked_at=checked,
             extra=extra_base,
         )
 
@@ -803,29 +738,72 @@ def cache_crosses_due_boundary(payload: dict[str, Any], *, observed_on: date | N
     return False
 
 
-def is_authoritative_paid(claim: dict[str, Any] | None) -> bool:
+def _claim_status_and_code(claim: Any) -> tuple[str, str]:
+    if isinstance(claim, str):
+        return (claim.strip().lower() or "unknown", "")
     if not isinstance(claim, dict):
-        return False
-    status = (claim.get("payment_status") or "").strip().lower()
-    code = (claim.get("payment_evidence_code") or "").strip()
-    return status == "paid" and (not code or code in AUTHORITATIVE_PAID_CODES)
+        return ("unknown", "")
+    status = (claim.get("payment_status") or "").strip().lower() or "unknown"
+    code = str(claim.get("payment_evidence_code") or "").strip()
+    return status, code
+
+
+def canonical_payment_status(claim: Any) -> str:
+    """Status after dropping labels that lack an approved evidence code.
+
+    Bare ``paid`` / ``unpaid`` strings, missing codes, and legacy due-date codes
+    (``NEXT_PAYMENT_DUE_CURRENT`` used as Paid, ``NEXT_PAYMENT_DUE_OVERDUE`` used
+    as Unpaid) become ``unknown``. Rollup and cache reuse must call this rather
+    than reading ``payment_status`` alone.
+    """
+    status, code = _claim_status_and_code(claim)
+    if status == "paid":
+        # NEXT_PAYMENT_DUE_CURRENT as a Paid label is the legacy due-date lie.
+        return "paid" if code in AUTHORITATIVE_PAID_CODES else "unknown"
+    if status == "unpaid":
+        if code in LEGACY_UNPROVEN_CODES:
+            return "unknown"
+        return "unpaid" if code in AUTHORITATIVE_UNPAID_CODES else "unknown"
+    if status == "current":
+        return "current" if code in RESOLVED_CURRENT_CODES else "unknown"
+    if status == "due_today":
+        return "due_today" if code in RESOLVED_DUE_TODAY_CODES else "unknown"
+    if status == "past_due":
+        return "past_due" if code in RESOLVED_PAST_DUE_CODES else "unknown"
+    if status == "closed":
+        return "closed" if code in RESOLVED_CLOSED_CODES else "unknown"
+    if status == "partial":
+        return "partial"
+    return "unknown"
+
+
+def is_authoritative_paid(claim: dict[str, Any] | None) -> bool:
+    return canonical_payment_status(claim) == "paid"
 
 
 def is_authoritative_unpaid(claim: dict[str, Any] | None) -> bool:
-    if not isinstance(claim, dict):
-        return False
-    status = (claim.get("payment_status") or "").strip().lower()
-    code = (claim.get("payment_evidence_code") or "").strip()
-    if status != "unpaid":
-        return False
-    if code in {EVIDENCE_UNPAID_LEGACY, EVIDENCE_PAST_DUE, EVIDENCE_CURRENT, EVIDENCE_PAID_LEGACY}:
-        return False
-    return (not code) or code in AUTHORITATIVE_UNPAID_CODES or code == EVIDENCE_UNPAID
+    return canonical_payment_status(claim) == "unpaid"
 
 
-def rollup_payment_status(statuses: list[str] | None) -> str:
-    """Target-level aggregate. Unknown is never collapsed into Paid."""
-    normalized = [(s or "unknown").strip().lower() or "unknown" for s in (statuses or [])]
+def payment_status_is_resolved(claim: dict[str, Any] | None) -> bool:
+    """True when Aura/HTTP re-enrichment can be skipped for this claim."""
+    return canonical_payment_status(claim) in {
+        "paid",
+        "unpaid",
+        "current",
+        "due_today",
+        "past_due",
+        "closed",
+    }
+
+
+def rollup_payment_status(claims: list[Any] | None) -> str:
+    """Target-level aggregate from claim objects (status + evidence code).
+
+    Unknown is never collapsed into Paid. Legacy/unproven Paid or Unpaid
+    labels are treated as unknown. Bare status strings are not authoritative.
+    """
+    normalized = [canonical_payment_status(c) for c in (claims or [])]
     if not normalized:
         return "unknown"
     if any(s == "unpaid" for s in normalized):
@@ -847,14 +825,14 @@ def summarize_claim_payments(claims: list[dict[str, Any]] | None) -> dict[str, A
     """Roll up claim payment statuses for batch/API summaries. Empty is not unpaid."""
     paid = unpaid = unknown = current = past_due = closed = due_today = 0
     latest: str | None = None
-    statuses: list[str] = []
+    rows: list[Any] = []
     for claim in claims or []:
         if not isinstance(claim, dict):
             unknown += 1
-            statuses.append("unknown")
+            rows.append({"payment_status": "unknown"})
             continue
-        status = (claim.get("payment_status") or "unknown").strip().lower() or "unknown"
-        statuses.append(status)
+        status = canonical_payment_status(claim)
+        rows.append(claim)
         if status == "paid":
             paid += 1
         elif status == "unpaid":
@@ -882,7 +860,7 @@ def summarize_claim_payments(claims: list[dict[str, Any]] | None) -> dict[str, A
         "closed_count": closed,
         "due_today_count": due_today,
         "payment_checked_at": latest,
-        "rollup": rollup_payment_status(statuses),
+        "rollup": rollup_payment_status(rows),
     }
 
 

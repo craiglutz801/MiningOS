@@ -46,6 +46,7 @@ class TestBatchFetchClaimRecords:
                     {
                         "serial_number": "A1",
                         "payment_status": "paid",
+                        "payment_evidence_code": "PAYMENT_RECORDED",
                         "payment_checked_at": "2026-08-26T12:00:00Z",
                     }
                 ],

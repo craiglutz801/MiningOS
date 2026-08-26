@@ -11,8 +11,9 @@ Expect:
   - HTTPS mlrs.blm.gov URLs only (anything else exits unknown/invalid)
   - Schema health reports whether Serial_Number__c / Case_Status__c /
     Next_Payment_Due_Date__c were present on the Aura record
-  - Labels are current / due_today / past_due / paid / unpaid / closed / unknown
-    — never Paid from a future due date alone, never Unpaid from due-today
+  - Labels are current / due_today / past_due / unpaid / closed / unknown
+    — Aura never emits Paid (no verified receipt field). Unpaid only from the
+    BLM nonpayment warning phrase. Never Paid from a future due date.
 """
 
 from __future__ import annotations
@@ -46,6 +47,7 @@ def main(argv: list[str]) -> int:
         "payment_check_error",
         "payment_waiver",
         "payment_receipt_field",
+        "payment_unverified_fields",
     ]
     print("classification:", json.dumps({k: result.get(k) for k in keep}, indent=2, default=str))
     return 0

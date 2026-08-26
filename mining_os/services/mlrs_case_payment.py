@@ -49,8 +49,11 @@ from mining_os.services.mlrs_payment_truth import (
     MlrsAuraClient,
     UnsafeMlrsUrlError,
     cache_crosses_due_boundary,
+    canonical_payment_status,
     is_approved_mlrs_url,
+    is_authoritative_unpaid,
     payment_from_mlrs_aura,
+    payment_status_is_resolved,
     request_approved_ras_url,
     request_approved_url,
     unknown_timeout_payload,
@@ -175,13 +178,9 @@ def _cache_key_variants(claim: dict[str, Any]) -> list[str]:
     return keys
 
 
-_RESOLVED_STATUSES = frozenset(
-    {"paid", "unpaid", "current", "due_today", "past_due", "closed"}
-)
-
-
 def _payment_status_resolved(claim: dict[str, Any]) -> bool:
-    return (claim.get("payment_status") or "").strip().lower() in _RESOLVED_STATUSES
+    """Skip re-enrichment only when status + approved evidence code are present."""
+    return payment_status_is_resolved(claim)
 
 
 def _payment_cache_payload(claim: dict[str, Any]) -> dict[str, Any] | None:
@@ -232,14 +231,14 @@ def _apply_payment_cache(claim: dict[str, Any]) -> bool:
             if not record:
                 continue
             age = now - float(record.get("cached_at_epoch") or 0)
-            if age > ttl or cache_crosses_due_boundary(record):
+            if age > ttl or cache_crosses_due_boundary(record) or not _payment_status_resolved(record):
                 stale_keys.append(key)
                 continue
             hit = record
             break
         for key in stale_keys:
             _PAYMENT_CACHE.pop(key, None)
-    if not hit:
+    if not hit or not _payment_status_resolved(hit) or cache_crosses_due_boundary(hit):
         return False
     _merge_payment_fields(claim, hit)
     claim["payment_check_source"] = f'{claim.get("payment_check_source") or "cache"}_cache'
@@ -298,10 +297,11 @@ def _merge_payment_fields(dst: dict[str, Any], src: dict[str, Any]) -> None:
         "payment_source_health",
         "payment_record_serial",
         "payment_waiver",
+        "payment_unverified_fields",
     ):
         if key in src and src[key] is not None:
             dst[key] = src[key]
-    if (src.get("payment_status") or "").strip().lower() in _RESOLVED_STATUSES and not src.get("payment_check_error"):
+    if payment_status_is_resolved(src) and not src.get("payment_check_error"):
         dst.pop("payment_check_error", None)
 
 _BROWSER_HEADERS = {
@@ -499,6 +499,8 @@ def _payment_from_ras_http(
                 "payment_status": "unpaid",
                 "payment_message": _STANDARD_MESSAGE,
                 "payment_check_source": "ras_http",
+                "payment_evidence_code": "NONPAYMENT_WARNING",
+                "payment_evidence_text": "RAS Serial Register contains the BLM maintenance-fee nonpayment warning.",
             }
     except Exception as e:
         log.debug("ras report chain failed %s: %s", report_url, e)
@@ -633,13 +635,14 @@ def _evaluate_playwright_case_page(page: Any, case_url: str, timeout_ms: int | N
 
         time.sleep(poll_interval_sec)
 
-    # Final decision: banner absent after full wait => PAID (per product rule).
     combined = last_combined or _collect_playwright_page_text(page)
     if _UNPAID_LOWER in combined:
         return {
             "payment_status": "unpaid",
             "payment_message": _STANDARD_MESSAGE,
             "payment_check_source": "mlrs_case_playwright",
+            "payment_evidence_code": "NONPAYMENT_WARNING",
+            "payment_evidence_text": "MLRS case page contains the BLM maintenance-fee nonpayment warning.",
         }
 
     comb_l = combined.strip().lower()
@@ -815,6 +818,8 @@ def _payment_from_selenium_driver(driver: Any, case_url: str, timeout: int | Non
                     "payment_status": "unpaid",
                     "payment_message": _STANDARD_MESSAGE,
                     "payment_check_source": "mlrs_case_selenium",
+                    "payment_evidence_code": "NONPAYMENT_WARNING",
+                    "payment_evidence_text": "MLRS case page contains the BLM maintenance-fee nonpayment warning.",
                 }
             if _body_looks_like_loaded_case(page_text):
                 return {
@@ -835,6 +840,8 @@ def _payment_from_selenium_driver(driver: Any, case_url: str, timeout: int | Non
                 "payment_status": "unpaid",
                 "payment_message": _STANDARD_MESSAGE,
                 "payment_check_source": "mlrs_case_selenium",
+                "payment_evidence_code": "NONPAYMENT_WARNING",
+                "payment_evidence_text": "MLRS case page contains the BLM maintenance-fee nonpayment warning.",
             }
         if _body_looks_like_loaded_case(page_text):
             return {
@@ -912,7 +919,7 @@ def _claim_needs_payment_enrichment(claim: dict[str, Any]) -> bool:
     parsed = validate_mlrs_case_url(url if isinstance(url, str) else None)
     if not parsed.get("ok"):
         return False
-    return (claim.get("payment_status") or "unknown").strip().lower() not in _RESOLVED_STATUSES
+    return not _payment_status_resolved(claim)
 
 
 def enrich_claims_from_mlrs_case_pages(
@@ -1372,8 +1379,7 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
                 _progress()
                 continue
 
-            prev = (c.get("payment_status") or "unknown").strip().lower()
-            if prev in _RESOLVED_STATUSES:
+            if _payment_status_resolved(c):
                 _mark_payment_checked(c)
                 _remember_payment_cache(c)
                 done += 1
@@ -1419,8 +1425,7 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
             )
             _merge_payment_fields(c, aura_info)
 
-            aura_status = (c.get("payment_status") or "unknown").strip().lower()
-            if aura_status in {"paid", "unpaid", "closed"}:
+            if payment_status_is_resolved(c) and canonical_payment_status(c) in {"paid", "unpaid", "closed"}:
                 log.debug(
                     "mlrs payment: %s via aura %s",
                     c.get("payment_status"),
@@ -1436,7 +1441,7 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
             if (http_info.get("payment_status") or "").strip().lower() == "unpaid":
                 _merge_payment_fields(c, http_info)
 
-            if (c.get("payment_status") or "unknown").strip().lower() == "unpaid":
+            if is_authoritative_unpaid(c):
                 log.debug("mlrs payment: unpaid via case HTTP %s", c.get("serial_number"))
                 _mark_payment_checked(c)
                 _remember_payment_cache(c)
@@ -1459,7 +1464,7 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
                 if (ras_info.get("payment_status") or "").strip().lower() == "unpaid":
                     _merge_payment_fields(c, ras_info)
 
-            if (c.get("payment_status") or "unknown").strip().lower() == "unpaid":
+            if is_authoritative_unpaid(c):
                 log.debug("mlrs payment: unpaid via RAS %s", c.get("serial_number"))
                 _mark_payment_checked(c)
                 _remember_payment_cache(c)
@@ -1467,10 +1472,10 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
                 _progress()
                 continue
 
-            if try_headless and (c.get("payment_status") or "unknown").strip().lower() == "unknown":
+            if try_headless and canonical_payment_status(c) == "unknown":
                 pw_ms = _resolve_playwright_max_ms()
 
-                if (c.get("payment_status") or "unknown").strip().lower() == "unknown":
+                if (canonical_payment_status(c) == "unknown"):
                     pg = _playwright_page_or_none()
                     if pg is not None:
                         pw_info = _evaluate_playwright_case_page(pg, url.strip(), timeout_ms=pw_ms)
@@ -1487,7 +1492,7 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
 
                 if (
                     not skip_selenium
-                    and (c.get("payment_status") or "unknown").strip().lower() == "unknown"
+                    and canonical_payment_status(c) == "unknown"
                 ):
                     sel_info = _selenium_shared_check(url.strip())
                     _merge_payment_fields(c, sel_info)
@@ -1531,6 +1536,7 @@ def check_payment_for_url(case_url: str) -> dict[str, Any]:
         "payment_case_status": row.get("payment_case_status"),
         "payment_source_health": row.get("payment_source_health"),
         "payment_record_serial": row.get("payment_record_serial"),
+        "payment_unverified_fields": row.get("payment_unverified_fields"),
     }
 
 

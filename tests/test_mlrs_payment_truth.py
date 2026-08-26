@@ -18,21 +18,27 @@ from mining_os.services.mlrs_payment_truth import (
     EVIDENCE_MISSING_DATE,
     EVIDENCE_NO_RECORD,
     EVIDENCE_PAID,
+    EVIDENCE_PAID_LEGACY,
     EVIDENCE_PAST_DUE,
     EVIDENCE_SCHEMA_DRIFT,
     EVIDENCE_SERIAL_MISMATCH,
     EVIDENCE_TIMEOUT,
     EVIDENCE_UNPAID,
+    EVIDENCE_UNPAID_LEGACY,
     EVIDENCE_UPSTREAM,
     EVIDENCE_WAIVER_CURRENT,
     MlrsAuraClient,
     UnsafeMlrsUrlError,
     cache_crosses_due_boundary,
+    canonical_payment_status,
     diagnose_aura_schema,
     extract_salesforce_id,
     flatten_aura_record,
     interpret_case_record,
+    is_authoritative_paid,
+    is_authoritative_unpaid,
     payment_from_mlrs_aura,
+    payment_status_is_resolved,
     request_approved_url,
     rollup_payment_status,
     summarize_claim_payments,
@@ -139,22 +145,29 @@ def test_interpret_past_due_is_not_unpaid_without_warning():
     assert out["payment_message"] is None
 
 
-def test_interpret_paid_requires_payment_receipt_field():
+def test_interpret_unverified_payment_fields_are_not_paid():
     out = interpret_case_record(
         _record(
             Next_Payment_Due_Date__c="2027-09-01",
             Last_Payment_Date__c="2026-08-01",
+            Date_Paid__c="2026-08-01",
+            Fees_Paid__c=True,
             Case_Status__c="Active",
         ),
         source_url=CASE_URL,
         observed_on=OBSERVED,
         expected_serial="UT101527746",
     )
-    assert out["payment_status"] == "paid"
-    assert out["payment_evidence_code"] == EVIDENCE_PAID
+    assert out["payment_status"] == "current"
+    assert out["payment_evidence_code"] == EVIDENCE_CURRENT
+    assert out["payment_status"] != "paid"
+    unverified = out.get("payment_unverified_fields") or []
+    assert "Last_Payment_Date__c" in unverified
+    assert "Date_Paid__c" in unverified
+    assert "Fees_Paid__c" in unverified
 
 
-def test_interpret_waiver_current_is_not_paid():
+def test_interpret_waiver_flag_is_not_paid_or_waiver_current():
     out = interpret_case_record(
         _record(
             Next_Payment_Due_Date__c="2027-09-01",
@@ -166,8 +179,9 @@ def test_interpret_waiver_current_is_not_paid():
         expected_serial="UT101527746",
     )
     assert out["payment_status"] == "current"
-    assert out["payment_evidence_code"] == EVIDENCE_WAIVER_CURRENT
-    assert "waiver" in (out["payment_evidence_text"] or "").lower()
+    assert out["payment_evidence_code"] == EVIDENCE_CURRENT
+    assert out["payment_evidence_code"] != EVIDENCE_WAIVER_CURRENT
+    assert "Small_Miner_Waiver__c" in (out.get("payment_unverified_fields") or [])
 
 
 def test_interpret_explicit_nonpayment_field_is_unpaid():
@@ -277,11 +291,19 @@ def test_never_infers_unpaid_from_empty_claims_summary():
 def test_payment_summary_counts_each_status():
     summary = summarize_claim_payments(
         [
-            {"payment_status": "paid", "payment_checked_at": "2026-08-26T10:00:00Z"},
-            {"payment_status": "unpaid", "payment_checked_at": "2026-08-26T11:00:00Z"},
+            {
+                "payment_status": "paid",
+                "payment_evidence_code": EVIDENCE_PAID,
+                "payment_checked_at": "2026-08-26T10:00:00Z",
+            },
+            {
+                "payment_status": "unpaid",
+                "payment_evidence_code": EVIDENCE_UNPAID,
+                "payment_checked_at": "2026-08-26T11:00:00Z",
+            },
             {"payment_status": "unknown"},
-            {"payment_status": "current"},
-            {"payment_status": "past_due"},
+            {"payment_status": "current", "payment_evidence_code": EVIDENCE_CURRENT},
+            {"payment_status": "past_due", "payment_evidence_code": EVIDENCE_PAST_DUE},
         ]
     )
     assert summary["paid_count"] == 1
@@ -294,11 +316,92 @@ def test_payment_summary_counts_each_status():
 
 
 def test_rollup_does_not_collapse_paid_plus_unknown_to_paid():
-    assert rollup_payment_status(["paid", "unknown"]) == "partial"
-    assert rollup_payment_status(["paid", "paid"]) == "paid"
-    assert rollup_payment_status(["current", "current"]) == "current"
-    assert rollup_payment_status(["unpaid", "unknown"]) == "unpaid"
-    assert rollup_payment_status(["unknown", "unknown"]) == "unknown"
+    paid = {"payment_status": "paid", "payment_evidence_code": EVIDENCE_PAID}
+    unpaid = {"payment_status": "unpaid", "payment_evidence_code": EVIDENCE_UNPAID}
+    unknown = {"payment_status": "unknown"}
+    current = {"payment_status": "current", "payment_evidence_code": EVIDENCE_CURRENT}
+    assert rollup_payment_status([paid, unknown]) == "partial"
+    assert rollup_payment_status([paid, paid]) == "paid"
+    assert rollup_payment_status([current, current]) == "current"
+    assert rollup_payment_status([unpaid, unknown]) == "unpaid"
+    assert rollup_payment_status([unknown, unknown]) == "unknown"
+    # Bare status strings cannot prove Paid/Unpaid.
+    assert rollup_payment_status(["paid", "paid"]) == "unknown"
+    assert rollup_payment_status(["paid", "unknown"]) == "unknown"
+
+
+def test_legacy_due_date_paid_unpaid_are_not_authoritative():
+    legacy_paid = {
+        "payment_status": "paid",
+        "payment_evidence_code": EVIDENCE_PAID_LEGACY,  # NEXT_PAYMENT_DUE_CURRENT
+    }
+    legacy_unpaid = {
+        "payment_status": "unpaid",
+        "payment_evidence_code": EVIDENCE_UNPAID_LEGACY,  # NEXT_PAYMENT_DUE_OVERDUE
+    }
+    missing_code_paid = {"payment_status": "paid"}
+    missing_code_unpaid = {"payment_status": "unpaid"}
+    for claim in (legacy_paid, missing_code_paid):
+        assert is_authoritative_paid(claim) is False
+        assert canonical_payment_status(claim) == "unknown"
+        assert payment_status_is_resolved(claim) is False
+    for claim in (legacy_unpaid, missing_code_unpaid):
+        assert is_authoritative_unpaid(claim) is False
+        assert canonical_payment_status(claim) == "unknown"
+        assert payment_status_is_resolved(claim) is False
+    assert rollup_payment_status([legacy_paid, missing_code_paid]) == "unknown"
+    assert rollup_payment_status([legacy_unpaid, {"payment_status": "unknown"}]) == "unknown"
+    summary = summarize_claim_payments([legacy_paid, legacy_unpaid, missing_code_paid])
+    assert summary["paid_count"] == 0
+    assert summary["unpaid_count"] == 0
+    assert summary["unknown_count"] == 3
+    assert summary["rollup"] == "unknown"
+
+
+def test_current_due_date_code_is_not_paid():
+    claim = {
+        "payment_status": "current",
+        "payment_evidence_code": EVIDENCE_CURRENT,
+    }
+    assert canonical_payment_status(claim) == "current"
+    assert is_authoritative_paid(claim) is False
+    assert payment_status_is_resolved(claim) is True
+
+
+def test_unverified_payment_name_fixture_stays_current_not_paid():
+    envelope = json.loads(
+        (Path(__file__).parent / "fixtures" / "mlrs_aura" / "get_record_unverified_payment_names.json").read_text()
+    )
+    record = envelope["actions"][0]["returnValue"]["record"]
+    out = interpret_case_record(
+        record,
+        source_url=CASE_URL,
+        observed_on=OBSERVED,
+        expected_serial="UT101527746",
+    )
+    assert out["payment_status"] == "current"
+    assert out["payment_evidence_code"] == EVIDENCE_CURRENT
+    assert set(out.get("payment_unverified_fields") or []) >= {
+        "Last_Payment_Date__c",
+        "Date_Paid__c",
+        "Fees_Paid__c",
+        "Small_Miner_Waiver__c",
+    }
+
+
+def test_nonpayment_phrase_fixture_is_unpaid():
+    envelope = json.loads(
+        (Path(__file__).parent / "fixtures" / "mlrs_aura" / "get_record_nonpayment_phrase.json").read_text()
+    )
+    record = envelope["actions"][0]["returnValue"]["record"]
+    out = interpret_case_record(
+        record,
+        source_url=CASE_URL,
+        observed_on=OBSERVED,
+        expected_serial="UT101527746",
+    )
+    assert out["payment_status"] == "unpaid"
+    assert out["payment_evidence_code"] == EVIDENCE_UNPAID
 
 
 def test_cache_cannot_carry_current_label_across_due_date():

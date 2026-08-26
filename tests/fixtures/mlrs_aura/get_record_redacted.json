@@ -1,5 +1,5 @@
 {
-  "comment": "Redacted production-shaped Aura DetailController.getRecord payload. Field values are illustrative; Salesforce ids and serials are public MLRS identifiers. Captured shape matches Lightning record.fields.{apiName}.{value,displayValue}.",
+  "comment": "Redacted production-shaped Aura DetailController.getRecord payload. Observed classifier fields only: Id, Name, Serial_Number__c, Lead_File_Number__c, Case_Status__c, Next_Payment_Due_Date__c. Hypothetical Last_Payment_Date__c / Small_Miner_Waiver__c values are omitted because no positive live payment or waiver evidence has been verified. Salesforce ids and serials are public MLRS identifiers. Captured shape matches Lightning record.fields.{apiName}.{value,displayValue}.",
   "actions": [
     {
       "id": "1;a",
@@ -15,9 +15,7 @@
             "Serial_Number__c": { "displayValue": "UT101527746", "value": "UT101527746" },
             "Lead_File_Number__c": { "displayValue": "UT101527746", "value": "UT101527746" },
             "Case_Status__c": { "displayValue": "Closed", "value": "Closed" },
-            "Next_Payment_Due_Date__c": { "displayValue": "September 3, 2024", "value": "2024-09-03" },
-            "Small_Miner_Waiver__c": { "displayValue": "false", "value": false },
-            "Last_Payment_Date__c": { "displayValue": null, "value": null }
+            "Next_Payment_Due_Date__c": { "displayValue": "September 3, 2024", "value": "2024-09-03" }
           }
         }
       },

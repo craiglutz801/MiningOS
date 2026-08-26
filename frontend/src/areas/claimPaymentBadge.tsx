@@ -21,6 +21,28 @@ type ClaimPaymentBadgeProps = {
   message?: unknown;
 };
 
+const AUTHORITATIVE_PAID_CODES = new Set(["PAYMENT_RECORDED"]);
+const AUTHORITATIVE_UNPAID_CODES = new Set(["NONPAYMENT_WARNING"]);
+const RESOLVED_CURRENT_CODES = new Set(["NEXT_PAYMENT_DUE_CURRENT", "SMALL_MINER_WAIVER_CURRENT"]);
+const RESOLVED_DUE_TODAY_CODES = new Set(["NEXT_PAYMENT_DUE_TODAY"]);
+const RESOLVED_PAST_DUE_CODES = new Set(["NEXT_PAYMENT_DUE_PAST"]);
+const RESOLVED_CLOSED_CODES = new Set(["CASE_CLOSED"]);
+
+function canonicalClaimPaymentStatus(
+  raw: string,
+  evidenceCode: string | null,
+): ClaimPaymentStatus {
+  const code = evidenceCode || "";
+  if (raw === "paid") return AUTHORITATIVE_PAID_CODES.has(code) ? "paid" : "unknown";
+  if (raw === "unpaid") return AUTHORITATIVE_UNPAID_CODES.has(code) ? "unpaid" : "unknown";
+  if (raw === "current") return RESOLVED_CURRENT_CODES.has(code) ? "current" : "unknown";
+  if (raw === "due_today") return RESOLVED_DUE_TODAY_CODES.has(code) ? "due_today" : "unknown";
+  if (raw === "past_due") return RESOLVED_PAST_DUE_CODES.has(code) ? "past_due" : "unknown";
+  if (raw === "closed") return RESOLVED_CLOSED_CODES.has(code) ? "closed" : "unknown";
+  if (raw === "partial") return "partial";
+  return "unknown";
+}
+
 export function getClaimPaymentText(c: Record<string, unknown>): {
   status: ClaimPaymentStatus;
   message: string | null;
@@ -40,7 +62,7 @@ export function getClaimPaymentText(c: Record<string, unknown>): {
     "partial",
     "unknown",
   ];
-  const status: ClaimPaymentStatus = allowed.includes(raw as ClaimPaymentStatus)
+  const parsed: ClaimPaymentStatus = allowed.includes(raw as ClaimPaymentStatus)
     ? (raw as ClaimPaymentStatus)
     : "unknown";
 
@@ -55,6 +77,8 @@ export function getClaimPaymentText(c: Record<string, unknown>): {
   const codeRaw = c.payment_evidence_code;
   const evidenceCode =
     typeof codeRaw === "string" && codeRaw.trim() ? codeRaw.trim() : null;
+
+  const status = canonicalClaimPaymentStatus(parsed, evidenceCode);
 
   const sourceRaw = c.payment_source_url;
   const sourceUrl =

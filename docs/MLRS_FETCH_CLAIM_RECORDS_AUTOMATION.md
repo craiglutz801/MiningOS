@@ -727,12 +727,14 @@ payment_status = paid | unpaid | current | due_today | past_due | closed | unkno
 
 Meaning:
 
-- `unpaid`: explicit BLM nonpayment warning (page banner or case-record field).
-- `paid`: explicit maintenance-fee payment date/flag on the case record.
-- `current` / `due_today`: next-payment due date is still in the compliance window (due date is supporting evidence, not a receipt). Small-miner waiver + current due date is `current`, not Paid.
-- `past_due`: due date is strictly before the observation date on an open case, without the nonpayment warning.
-- `closed`: case status is closed/void/forfeited/abandoned.
-- `unknown`: missing record, serial mismatch, schema drift, timeout, or upstream failure.
+- `unpaid`: explicit BLM nonpayment warning phrase (`NONPAYMENT_WARNING`) on the page or in a case-record field **value**.
+- `paid`: reserved for `PAYMENT_RECORDED`. Aura currently never emits Paid — no receipt field has a verified positive live value.
+- `current` / `due_today`: next-payment due date is still in the compliance window (`NEXT_PAYMENT_DUE_CURRENT` / `NEXT_PAYMENT_DUE_TODAY`). Due date is supporting evidence, not a receipt. Unverified `*waiver*` flags are diagnostic only.
+- `past_due`: due date is strictly before the observation date on an open case, without the nonpayment warning (`NEXT_PAYMENT_DUE_PAST`).
+- `closed`: case status is closed/void/forfeited/abandoned (`CASE_CLOSED`).
+- `unknown`: missing record, serial mismatch, schema drift, timeout, upstream failure, or a legacy Paid/Unpaid label that lacks an approved evidence code.
+
+Rollup, cache reuse, and the Targets badge read the claim object **plus** `payment_evidence_code`. A status string alone is never enough. Legacy `NEXT_PAYMENT_DUE_CURRENT` used as Paid, `NEXT_PAYMENT_DUE_OVERDUE` used as Unpaid, and missing evidence codes are Unknown.
 
 ### Unpaid Detection Rule
 
@@ -790,7 +792,7 @@ Playwright then polls:
 3. all frame contents/text
 4. a text locator for `maintenance fee payment was not received`
 
-If case details appear loaded and the unpaid phrase is absent, the claim is treated as `paid`.
+If case details appear loaded and the unpaid phrase is absent, the claim stays `unknown`. Absence of the banner is not a payment receipt.
 
 If the page remains shell-like, the claim stays `unknown`.
 
@@ -800,7 +802,9 @@ By default:
 
 - Every Fetch Claim Records run first uses the **production truth layer**: public MLRS case record via Salesforce Aura `DetailController.getRecord` (no browser).
 - **Paid / Unpaid are not inferred from `Next_Payment_Due_Date__c` alone.** A future due date is a compliance deadline (Current), not a payment receipt. Fees/waivers are timely on or before the due date, so due-today is not Unpaid. A stale past due date is a Past-due indicator, not the BLM nonpayment warning.
-- Exact Aura fields used: `Serial_Number__c`, `Lead_File_Number__c`, `Case_Status__c`, `Next_Payment_Due_Date__c`, plus payment/waiver/nonpayment fields when present (`Last_Payment_Date__c`, `Small_Miner_Waiver__c`, …). See `mining_os/services/mlrs_payment_truth.py`.
+- **Paid / Unpaid also are not inferred from generic field names** (`Date_Paid__c`, `Last_Payment_Date__c`, `*waiver*`, regex `*payment*`). Those names, when present, are listed on `payment_unverified_fields` only.
+- Exact Aura fields used for classification: `Serial_Number__c`, `Lead_File_Number__c`, `Case_Status__c`, `Next_Payment_Due_Date__c`. Unpaid additionally requires the verified BLM phrase `maintenance fee payment was not received` in a field value or page text (`NONPAYMENT_WARNING`). See `mining_os.services.mlrs_payment_truth`.
+- Legacy persisted/cached `payment_status="paid"|"unpaid"` without an approved evidence code is rechecked (not treated as resolved) and rolls up as Unknown/Partial.
 - Serial mismatch and closed/void/forfeited/abandoned cases fail closed (Unknown or Closed). Missing/failed Aura data stays unknown and is never unpaid.
 - HTTP/Playwright/Selenium may still apply **Unpaid** when the public page contains the explicit BLM nonpayment warning. They no longer treat “page loaded, no banner” as Paid.
 - Local/dev machines may still try headless Playwright if Aura leaves the claim unknown.
@@ -872,7 +876,7 @@ Check:
 4. A due date equal to today returns `due_today`, not `unpaid`.
 5. `GET /api/diag/check-payment?case_url=…` returns the same evidence fields.
 
-A redacted production-shaped Aura envelope lives at `tests/fixtures/mlrs_aura/get_record_redacted.json`.
+A redacted production-shaped Aura envelope lives at `tests/fixtures/mlrs_aura/get_record_redacted.json` (observed identity/lifecycle/due-date fields only). `get_record_nonpayment_phrase.json` covers Unpaid from the verified warning phrase. `get_record_unverified_payment_names.json` proves hypothetical `Last_Payment_Date__c` / `Date_Paid__c` / `Small_Miner_Waiver__c` values stay diagnostic and never emit Paid.
 
 ### Batch Isolation
 
@@ -901,10 +905,10 @@ After claims are fetched and enriched, `fetch_claim_records_for_area()` computes
 ```python
 from mining_os.services.mlrs_payment_truth import rollup_payment_status
 
-derived_status = rollup_payment_status(
-    [(c.get("payment_status") or "unknown").lower() for c in claims]
-)
+derived_status = rollup_payment_status(claims)
 ```
+
+`rollup_payment_status` reads each claim's `payment_status` **and** `payment_evidence_code`. Paid requires `PAYMENT_RECORDED`; Unpaid requires `NONPAYMENT_WARNING`. Bare status strings and legacy due-date codes are Unknown.
 
 Then:
 
@@ -1265,13 +1269,18 @@ def fetch_claim_records_for_target(target):
     }
     target.characteristics["claim_records"] = snapshot
 
-    statuses = {claim.get("payment_status", "unknown") for claim in claims}
+    from mining_os.services.mlrs_payment_truth import (
+        canonical_payment_status,
+        rollup_payment_status,
+    )
+
+    statuses = [canonical_payment_status(claim) for claim in claims]
     if "unpaid" in statuses:
         target.status = "unpaid"
-    elif "paid" in statuses:
+    elif statuses and all(s == "paid" for s in statuses):
         target.status = "paid"
     elif claims:
-        target.status = "unknown"
+        target.status = rollup_payment_status(claims)
 
     return snapshot
 ```
@@ -1294,8 +1303,9 @@ The tests cover:
 - spatial fallback and spatial augmentation
 - broadening from section to township/range
 - claim normalization
-- `unpaid` winning Target status roll-up
-- `paid` roll-up when only paid/unknown claims exist
+- `unpaid` winning Target status roll-up (requires `NONPAYMENT_WARNING`)
+- mixed authoritative Paid + Unknown → `partial` (never Paid)
+- legacy Paid/Unpaid snapshots (`NEXT_PAYMENT_DUE_CURRENT` / `NEXT_PAYMENT_DUE_OVERDUE` / missing evidence codes) → Unknown
 - payment-page enrichment behavior
 
 ## Common Misunderstandings
@@ -1322,7 +1332,7 @@ Maintenance fee payment was not received and may result in the closing of the cl
 
 ### "What exactly means paid?"
 
-Mining OS treats a claim as paid when a real MLRS case page loads, expected case details are visible, and the unpaid maintenance-fee warning is absent.
+Paid is reserved for an approved maintenance-fee **receipt** evidence code (`PAYMENT_RECORDED`). No Aura field has been verified with a positive live payment value, so production currently does not emit Paid from the case record. A loaded case page without the unpaid banner is **not** Paid. A future `Next_Payment_Due_Date__c` is **not** Paid. Generic fields such as `Date_Paid__c` are diagnostic only.
 
 ### "What does unknown mean?"
 

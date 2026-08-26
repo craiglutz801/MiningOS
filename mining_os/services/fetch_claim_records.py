@@ -724,8 +724,7 @@ def fetch_claim_records_for_area(
         if claims:
             from mining_os.services.mlrs_payment_truth import rollup_payment_status
 
-            statuses = [(c.get("payment_status") or "unknown").lower() for c in claims if isinstance(c, dict)]
-            derived_status = rollup_payment_status(statuses)
+            derived_status = rollup_payment_status(claims)
 
             blm_prod_types = sorted({
                 (c.get("BLM_PROD") or "").strip()
