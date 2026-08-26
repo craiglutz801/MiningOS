@@ -94,7 +94,9 @@ export function ClaimRecordsMlrsPanel({
                 const rowCls =
                   payInfo.status === "unpaid"
                     ? "border-t border-blue-200 bg-blue-50"
-                    : "border-t border-slate-100";
+                    : payInfo.status === "past_due"
+                      ? "border-t border-orange-100 bg-orange-50/60"
+                      : "border-t border-slate-100";
                 return (
                   <tr key={`mlrs-${sn}-${i}`} className={rowCls}>
                     <td className="px-3 py-1.5 text-slate-800">{nm}</td>

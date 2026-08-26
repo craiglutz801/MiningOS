@@ -40,6 +40,9 @@ type BatchResultsRow = {
   fetchPaid?: number;
   fetchUnpaid?: number;
   fetchUnknown?: number;
+  fetchCurrent?: number;
+  fetchPastDue?: number;
+  fetchRollup?: string;
   fetchPaymentCheckedAt?: string | null;
   fetchError?: string | null;
   lrOk?: boolean;
@@ -59,6 +62,9 @@ function mergeBatchRow(
     prev.fetchPaid = r.paid_count;
     prev.fetchUnpaid = r.unpaid_count;
     prev.fetchUnknown = r.unknown_count;
+    prev.fetchCurrent = r.current_count;
+    prev.fetchPastDue = r.past_due_count;
+    prev.fetchRollup = r.payment_rollup;
     prev.fetchPaymentCheckedAt = r.payment_checked_at ?? null;
     prev.fetchError = r.error ?? null;
   } else {
@@ -3585,7 +3591,9 @@ export function Areas() {
                                 // with a blue background so they pop in the table.
                                 const rowCls = payInfo.status === "unpaid"
                                   ? "border-t border-blue-200 bg-blue-50"
-                                  : "border-t border-slate-100";
+                                  : payInfo.status === "past_due"
+                                    ? "border-t border-orange-100 bg-orange-50/40"
+                                    : "border-t border-slate-100";
                                 return (
                                   <tr key={`mlrs-${sn}-${i}`} className={rowCls}>
                                     <td className="px-3 py-1.5 text-slate-800">{nm}</td>
@@ -3692,7 +3700,9 @@ export function Areas() {
                                 const payInfo = getClaimPaymentText(c);
                                 const rowCls = payInfo.status === "unpaid"
                                   ? "border-t border-blue-200 bg-blue-50"
-                                  : "border-t border-slate-100";
+                                  : payInfo.status === "past_due"
+                                    ? "border-t border-orange-100 bg-orange-50/40"
+                                    : "border-t border-slate-100";
                                 return (
                                   <tr key={`lr-${sn}-${i}`} className={rowCls}>
                                     <td className="px-3 py-1.5 text-slate-800">{nm}</td>
@@ -4515,7 +4525,7 @@ export function Areas() {
                               ? "No claims"
                               : r.fetchPaid == null && r.fetchUnpaid == null && r.fetchUnknown == null
                                 ? "—"
-                                : `Paid ${r.fetchPaid ?? 0} · Unpaid ${r.fetchUnpaid ?? 0} · Unknown ${r.fetchUnknown ?? 0}`}
+                                : `${r.fetchRollup ? r.fetchRollup.replace("_", " ") + " · " : ""}Paid ${r.fetchPaid ?? 0} · Unpaid ${r.fetchUnpaid ?? 0} · Current ${r.fetchCurrent ?? 0} · Past due ${r.fetchPastDue ?? 0} · Unknown ${r.fetchUnknown ?? 0}`}
                           </td>
                           <td className="py-1.5 px-2 text-xs text-slate-600 whitespace-nowrap">
                             {r.fetchPaymentCheckedAt

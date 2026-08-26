@@ -20,10 +20,13 @@ def _as_dict(val: Any) -> dict[str, Any] | None:
     return None
 
 
+from mining_os.services.mlrs_payment_truth import rollup_payment_status
+
+
 def rollup_from_claims(claims: list[Any]) -> tuple[int, int, int, int, str]:
     """Return (mlrs_total, unpaid_count, paid_count, unknown_count, rollup_status)."""
     unpaid = paid = unknown = 0
-    statuses: set[str] = set()
+    statuses: list[str] = []
     total = 0
     for c in claims:
         if not isinstance(c, dict):
@@ -33,21 +36,14 @@ def rollup_from_claims(claims: list[Any]) -> tuple[int, int, int, int, str]:
         if not isinstance(st, str):
             st = str(st or "unknown")
         st = st.strip().lower() or "unknown"
-        statuses.add(st)
+        statuses.append(st)
         if st == "unpaid":
             unpaid += 1
         elif st == "paid":
             paid += 1
         else:
             unknown += 1
-    if "unpaid" in statuses:
-        rollup = "unpaid"
-    elif statuses and statuses <= {"paid"}:
-        rollup = "paid"
-    elif statuses:
-        rollup = "mixed" if "paid" in statuses else "unknown"
-    else:
-        rollup = "unknown"
+    rollup = rollup_payment_status(statuses) if statuses else "unknown"
     return total, unpaid, paid, unknown, rollup
 
 

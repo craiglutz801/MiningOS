@@ -367,7 +367,7 @@ class TestPlssMissing:
 
 
 class TestDerivedAreaStatus:
-    def test_mixed_paid_and_unknown_rolls_up_to_paid(self, monkeypatch):
+    def test_mixed_paid_and_unknown_rolls_up_to_partial(self, monkeypatch):
         monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
 
         captured: dict[str, str | None] = {"status": None}
@@ -418,7 +418,7 @@ class TestDerivedAreaStatus:
         )
 
         assert result["ok"] is True
-        assert captured["status"] == "paid"
+        assert captured["status"] == "partial"
 
     def test_any_unpaid_rolls_up_to_unpaid(self, monkeypatch):
         monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
@@ -530,8 +530,8 @@ class TestZeroClaimsAndPaymentTruth:
                 claim["payment_check_source"] = "mlrs_case_aura"
                 claim["payment_source_url"] = claim.get("case_page")
                 claim["payment_checked_at"] = "2026-08-26T12:00:00Z"
-                claim["payment_evidence_text"] = "Next_Payment_Due_Date__c=2024-09-03"
-                claim["payment_evidence_code"] = "NEXT_PAYMENT_DUE_OVERDUE"
+                claim["payment_evidence_text"] = "BLM nonpayment warning on case page"
+                claim["payment_evidence_code"] = "NONPAYMENT_WARNING"
             return claims
 
         monkeypatch.setattr(
@@ -570,6 +570,6 @@ class TestZeroClaimsAndPaymentTruth:
         assert claim["payment_status"] == "unpaid"
         assert claim["payment_source_url"]
         assert claim["payment_checked_at"] == "2026-08-26T12:00:00Z"
-        assert claim["payment_evidence_code"] == "NEXT_PAYMENT_DUE_OVERDUE"
+        assert claim["payment_evidence_code"] == "NONPAYMENT_WARNING"
         assert result["unpaid_count"] == 1
         assert result["paid_count"] == 0

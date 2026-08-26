@@ -685,6 +685,10 @@ def fetch_claim_records_for_area(
             "paid_count": payment["paid_count"],
             "unpaid_count": payment["unpaid_count"],
             "unknown_count": payment["unknown_count"],
+            "current_count": payment["current_count"],
+            "past_due_count": payment["past_due_count"],
+            "closed_count": payment["closed_count"],
+            "payment_rollup": payment["rollup"],
             "payment_checked_at": payment["payment_checked_at"],
         }
         if fatal_env_error and not claims:
@@ -718,13 +722,10 @@ def fetch_claim_records_for_area(
         )
 
         if claims:
-            statuses = {(c.get("payment_status") or "unknown").lower() for c in claims}
-            if "unpaid" in statuses:
-                derived_status = "unpaid"
-            elif "paid" in statuses:
-                derived_status = "paid"
-            else:
-                derived_status = "unknown"
+            from mining_os.services.mlrs_payment_truth import rollup_payment_status
+
+            statuses = [(c.get("payment_status") or "unknown").lower() for c in claims if isinstance(c, dict)]
+            derived_status = rollup_payment_status(statuses)
 
             blm_prod_types = sorted({
                 (c.get("BLM_PROD") or "").strip()
@@ -745,6 +746,10 @@ def fetch_claim_records_for_area(
             "paid_count": payload["paid_count"],
             "unpaid_count": payload["unpaid_count"],
             "unknown_count": payload["unknown_count"],
+            "current_count": payload.get("current_count"),
+            "past_due_count": payload.get("past_due_count"),
+            "closed_count": payload.get("closed_count"),
+            "payment_rollup": payload.get("payment_rollup"),
             "payment_checked_at": payload["payment_checked_at"],
         }
     except subprocess.TimeoutExpired:

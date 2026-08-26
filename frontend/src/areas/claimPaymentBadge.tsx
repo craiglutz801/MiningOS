@@ -1,7 +1,20 @@
 /**
- * Visual badge for a BLM mining claim's maintenance-fee payment status.
+ * Visual badge for a BLM mining claim's maintenance-fee / due-date status.
  * Used by both the MLRS Scrape and LR2000 claim records tables on the Targets page.
+ *
+ * Paid / Unpaid are only shown when the backend had explicit payment or
+ * nonpayment evidence. Due-date-only states are Current / Due today / Past due.
  */
+
+export type ClaimPaymentStatus =
+  | "paid"
+  | "unpaid"
+  | "current"
+  | "due_today"
+  | "past_due"
+  | "closed"
+  | "partial"
+  | "unknown";
 
 type ClaimPaymentBadgeProps = {
   status: unknown;
@@ -9,7 +22,7 @@ type ClaimPaymentBadgeProps = {
 };
 
 export function getClaimPaymentText(c: Record<string, unknown>): {
-  status: "paid" | "unpaid" | "unknown";
+  status: ClaimPaymentStatus;
   message: string | null;
   evidenceText: string | null;
   evidenceCode: string | null;
@@ -17,10 +30,19 @@ export function getClaimPaymentText(c: Record<string, unknown>): {
   checkedAt: string | null;
 } {
   const raw = (c.payment_status ?? "").toString().trim().toLowerCase();
-  let status: "paid" | "unpaid" | "unknown";
-  if (raw === "paid") status = "paid";
-  else if (raw === "unpaid") status = "unpaid";
-  else status = "unknown";
+  const allowed: ClaimPaymentStatus[] = [
+    "paid",
+    "unpaid",
+    "current",
+    "due_today",
+    "past_due",
+    "closed",
+    "partial",
+    "unknown",
+  ];
+  const status: ClaimPaymentStatus = allowed.includes(raw as ClaimPaymentStatus)
+    ? (raw as ClaimPaymentStatus)
+    : "unknown";
 
   const messageRaw = c.payment_message;
   const message =
@@ -52,30 +74,28 @@ export function formatPaymentCheckedAt(checkedAt: string | null): string | null 
   return dt.toLocaleString();
 }
 
+const BADGE_STYLES: Record<ClaimPaymentStatus, { label: string; cls: string }> = {
+  paid: { label: "Paid", cls: "bg-emerald-100 text-emerald-800 border border-emerald-200" },
+  unpaid: { label: "Unpaid", cls: "bg-red-100 text-red-800 border border-red-200" },
+  current: { label: "Current", cls: "bg-sky-100 text-sky-800 border border-sky-200" },
+  due_today: { label: "Due today", cls: "bg-amber-100 text-amber-900 border border-amber-200" },
+  past_due: { label: "Past due", cls: "bg-orange-100 text-orange-900 border border-orange-200" },
+  closed: { label: "Closed", cls: "bg-slate-200 text-slate-700 border border-slate-300" },
+  partial: { label: "Partial", cls: "bg-violet-100 text-violet-800 border border-violet-200" },
+  unknown: { label: "Unknown", cls: "bg-slate-100 text-slate-700 border border-slate-200" },
+};
+
 export function ClaimPaymentBadge({ status, message }: ClaimPaymentBadgeProps) {
-  const value = (status ?? "").toString().trim().toLowerCase();
-
-  let label: string;
-  let cls: string;
-  if (value === "paid") {
-    label = "Paid";
-    cls = "bg-emerald-100 text-emerald-800 border border-emerald-200";
-  } else if (value === "unpaid") {
-    label = "Unpaid";
-    cls = "bg-red-100 text-red-800 border border-red-200";
-  } else {
-    label = "Unknown";
-    cls = "bg-slate-100 text-slate-700 border border-slate-200";
-  }
-
-  const tip = typeof message === "string" && message.trim() ? message.trim() : label;
+  const value = (status ?? "").toString().trim().toLowerCase() as ClaimPaymentStatus;
+  const style = BADGE_STYLES[value] ?? BADGE_STYLES.unknown;
+  const tip = typeof message === "string" && message.trim() ? message.trim() : style.label;
 
   return (
     <span
       title={tip}
-      className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${cls}`}
+      className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${style.cls}`}
     >
-      {label}
+      {style.label}
     </span>
   );
 }

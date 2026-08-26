@@ -35,6 +35,10 @@ export interface BatchAreaActionRow {
   paid_count?: number;
   unpaid_count?: number;
   unknown_count?: number;
+  current_count?: number;
+  past_due_count?: number;
+  closed_count?: number;
+  payment_rollup?: string;
   payment_checked_at?: string | null;
 }
 

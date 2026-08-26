@@ -43,7 +43,20 @@ from urllib.parse import urljoin
 
 import requests
 
-from mining_os.services.mlrs_payment_truth import MlrsAuraClient, payment_from_mlrs_aura
+from mining_os.services.mlrs_payment_truth import (
+    EVIDENCE_INVALID_URL,
+    EVIDENCE_REDIRECT,
+    MlrsAuraClient,
+    UnsafeMlrsUrlError,
+    cache_crosses_due_boundary,
+    is_approved_mlrs_url,
+    payment_from_mlrs_aura,
+    request_approved_ras_url,
+    request_approved_url,
+    unknown_timeout_payload,
+    validate_mlrs_case_url,
+    validate_ras_report_url,
+)
 
 log = logging.getLogger("mining_os.mlrs_case_payment")
 
@@ -162,8 +175,13 @@ def _cache_key_variants(claim: dict[str, Any]) -> list[str]:
     return keys
 
 
+_RESOLVED_STATUSES = frozenset(
+    {"paid", "unpaid", "current", "due_today", "past_due", "closed"}
+)
+
+
 def _payment_status_resolved(claim: dict[str, Any]) -> bool:
-    return (claim.get("payment_status") or "").strip().lower() in {"paid", "unpaid"}
+    return (claim.get("payment_status") or "").strip().lower() in _RESOLVED_STATUSES
 
 
 def _payment_cache_payload(claim: dict[str, Any]) -> dict[str, Any] | None:
@@ -177,6 +195,11 @@ def _payment_cache_payload(claim: dict[str, Any]) -> dict[str, Any] | None:
         "payment_source_url": claim.get("payment_source_url"),
         "payment_evidence_text": claim.get("payment_evidence_text"),
         "payment_evidence_code": claim.get("payment_evidence_code"),
+        "payment_due_date": claim.get("payment_due_date"),
+        "payment_due_indicator": claim.get("payment_due_indicator"),
+        "payment_case_status": claim.get("payment_case_status"),
+        "payment_observed_on": claim.get("payment_observed_on"),
+        "payment_source_health": claim.get("payment_source_health"),
     }
 
 
@@ -209,7 +232,7 @@ def _apply_payment_cache(claim: dict[str, Any]) -> bool:
             if not record:
                 continue
             age = now - float(record.get("cached_at_epoch") or 0)
-            if age > ttl:
+            if age > ttl or cache_crosses_due_boundary(record):
                 stale_keys.append(key)
                 continue
             hit = record
@@ -268,10 +291,17 @@ def _merge_payment_fields(dst: dict[str, Any], src: dict[str, Any]) -> None:
         "payment_source_url",
         "payment_evidence_text",
         "payment_evidence_code",
+        "payment_due_date",
+        "payment_due_indicator",
+        "payment_case_status",
+        "payment_observed_on",
+        "payment_source_health",
+        "payment_record_serial",
+        "payment_waiver",
     ):
         if key in src and src[key] is not None:
             dst[key] = src[key]
-    if (src.get("payment_status") or "").strip().lower() in {"paid", "unpaid"} and not src.get("payment_check_error"):
+    if (src.get("payment_status") or "").strip().lower() in _RESOLVED_STATUSES and not src.get("payment_check_error"):
         dst.pop("payment_check_error", None)
 
 _BROWSER_HEADERS = {
@@ -305,10 +335,21 @@ def _should_try_headless() -> bool:
 
 
 def _payment_from_http(case_url: str, timeout: float | None = None) -> dict[str, Any]:
+    parsed = validate_mlrs_case_url(case_url)
+    if not parsed.get("ok"):
+        return {
+            "payment_status": "unknown",
+            "payment_message": None,
+            "payment_check_source": "mlrs_case_http",
+            "payment_evidence_code": EVIDENCE_INVALID_URL,
+            "payment_check_error": parsed.get("error") or "invalid MLRS case URL",
+        }
     if timeout is None:
         timeout = _resolve_http_timeout()
     try:
-        r = requests.get(case_url, timeout=timeout, headers=_BROWSER_HEADERS)
+        session = requests.Session()
+        session.headers.update(_BROWSER_HEADERS)
+        r = request_approved_url(session, parsed["url"], timeout=timeout, headers=_BROWSER_HEADERS)
         r.raise_for_status()
         body = (r.text or "").lower()
         if _UNPAID_LOWER in body:
@@ -316,7 +357,17 @@ def _payment_from_http(case_url: str, timeout: float | None = None) -> dict[str,
                 "payment_status": "unpaid",
                 "payment_message": _STANDARD_MESSAGE,
                 "payment_check_source": "mlrs_case_http",
+                "payment_evidence_code": "NONPAYMENT_WARNING",
+                "payment_evidence_text": "Public MLRS case page contains the BLM maintenance-fee nonpayment warning.",
             }
+    except UnsafeMlrsUrlError as e:
+        return {
+            "payment_status": "unknown",
+            "payment_message": None,
+            "payment_check_source": "mlrs_case_http",
+            "payment_evidence_code": EVIDENCE_REDIRECT,
+            "payment_check_error": str(e),
+        }
     except Exception as e:
         log.debug("mlrs case http fetch failed %s: %s", case_url, e)
         return {"payment_status": "unknown", "payment_message": None, "payment_check_error": str(e)}
@@ -403,8 +454,12 @@ def _payment_from_ras_http(
 
     try:
         for url in candidates:
+            parsed = validate_ras_report_url(url)
+            if not parsed.get("ok"):
+                log.debug("ras url rejected %s: %s", url, parsed.get("error"))
+                continue
             try:
-                r = session.get(url, timeout=timeout, allow_redirects=True)
+                r = request_approved_ras_url(session, parsed["url"], timeout=timeout, headers=_BROWSER_HEADERS)
                 r.raise_for_status()
                 html = r.text or ""
                 if scan_chunk(html):
@@ -412,18 +467,26 @@ def _payment_from_ras_http(
                         "payment_status": "unpaid",
                         "payment_message": _STANDARD_MESSAGE,
                         "payment_check_source": "ras_http",
+                        "payment_evidence_code": "NONPAYMENT_WARNING",
                     }
                 base = r.url
                 for src in _extract_iframe_srcs(html):
                     inner = urljoin(base, src)
+                    inner_ok = validate_ras_report_url(inner)
+                    if not inner_ok.get("ok"):
+                        log.debug("ras iframe url rejected %s: %s", inner, inner_ok.get("error"))
+                        continue
                     try:
-                        r2 = session.get(inner, timeout=timeout, allow_redirects=True)
+                        r2 = request_approved_ras_url(
+                            session, inner_ok["url"], timeout=timeout, headers=_BROWSER_HEADERS
+                        )
                         r2.raise_for_status()
                         if scan_chunk(r2.text or ""):
                             return {
                                 "payment_status": "unpaid",
                                 "payment_message": _STANDARD_MESSAGE,
                                 "payment_check_source": "ras_http_iframe",
+                                "payment_evidence_code": "NONPAYMENT_WARNING",
                             }
                     except Exception as e:
                         log.debug("ras iframe fetch failed %s: %s", inner, e)
@@ -485,11 +548,29 @@ def _evaluate_playwright_case_page(page: Any, case_url: str, timeout_ms: int | N
     """
     if timeout_ms is None:
         timeout_ms = _resolve_playwright_max_ms()
+    parsed = validate_mlrs_case_url(case_url)
+    if not parsed.get("ok"):
+        return {
+            "payment_status": "unknown",
+            "payment_message": None,
+            "payment_check_error": parsed.get("error") or "invalid MLRS case URL",
+            "payment_check_source": "mlrs_case_playwright",
+            "payment_evidence_code": EVIDENCE_INVALID_URL,
+        }
     nav_cap = min(60_000, max(15_000, timeout_ms))
     try:
         page.set_default_navigation_timeout(nav_cap)
         page.set_default_timeout(nav_cap)
-        page.goto(case_url, wait_until="domcontentloaded", timeout=nav_cap)
+        page.goto(parsed["url"], wait_until="domcontentloaded", timeout=nav_cap)
+        final_url = getattr(page, "url", None) or parsed["url"]
+        if not is_approved_mlrs_url(final_url):
+            return {
+                "payment_status": "unknown",
+                "payment_message": None,
+                "payment_check_error": f"Playwright redirected off mlrs.blm.gov: {final_url}",
+                "payment_check_source": "mlrs_case_playwright",
+                "payment_evidence_code": EVIDENCE_REDIRECT,
+            }
     except Exception as e:
         log.warning("mlrs playwright goto failed %s: %s", case_url, e)
         return {
@@ -512,6 +593,8 @@ def _evaluate_playwright_case_page(page: Any, case_url: str, timeout_ms: int | N
                     "payment_status": "unpaid",
                     "payment_message": _STANDARD_MESSAGE,
                     "payment_check_source": "mlrs_case_playwright",
+                    "payment_evidence_code": "NONPAYMENT_WARNING",
+                    "payment_evidence_text": "MLRS case page contains the BLM maintenance-fee nonpayment warning.",
                 }
             # Try Playwright text locator (handles shadow-ish timing better than raw string sometimes).
             try:
@@ -522,17 +605,28 @@ def _evaluate_playwright_case_page(page: Any, case_url: str, timeout_ms: int | N
                     "payment_status": "unpaid",
                     "payment_message": _STANDARD_MESSAGE,
                     "payment_check_source": "mlrs_case_playwright",
+                    "payment_evidence_code": "NONPAYMENT_WARNING",
+                    "payment_evidence_text": "MLRS case page contains the BLM maintenance-fee nonpayment warning.",
                 }
             except Exception:
                 pass
 
             elapsed = (timeout_ms / 1000.0) - max(0.0, deadline - time.monotonic())
             if elapsed >= 5.0 and _body_looks_like_loaded_case(last_combined):
-                log.info("mlrs payment: paid (playwright details loaded, no overdue banner) %s", case_url[:80])
+                log.info(
+                    "mlrs payment: playwright loaded case without nonpayment warning; "
+                    "absence of banner is not a payment receipt %s",
+                    case_url[:80],
+                )
                 return {
-                    "payment_status": "paid",
+                    "payment_status": "unknown",
                     "payment_message": None,
                     "payment_check_source": "mlrs_case_playwright",
+                    "payment_evidence_text": (
+                        "MLRS case page loaded without the BLM nonpayment warning. "
+                        "That is not proof a maintenance fee was paid."
+                    ),
+                    "payment_evidence_code": "PAGE_LOADED_NO_WARNING",
                 }
         except Exception as e:
             log.debug("mlrs playwright poll tick: %s", e)
@@ -557,11 +651,16 @@ def _evaluate_playwright_case_page(page: Any, case_url: str, timeout_ms: int | N
             "payment_check_source": "mlrs_case_playwright",
         }
 
-    log.info("mlrs payment: paid (no overdue banner after wait) %s", case_url[:80])
+    log.info("mlrs payment: no overdue banner after wait (not treated as paid) %s", case_url[:80])
     return {
-        "payment_status": "paid",
+        "payment_status": "unknown",
         "payment_message": None,
         "payment_check_source": "mlrs_case_playwright",
+        "payment_evidence_text": (
+            "MLRS case page loaded without the BLM nonpayment warning. "
+            "That is not proof a maintenance fee was paid."
+        ),
+        "payment_evidence_code": "PAGE_LOADED_NO_WARNING",
     }
 
 
@@ -684,9 +783,27 @@ def _payment_from_selenium_driver(driver: Any, case_url: str, timeout: int | Non
     """
     if timeout is None:
         timeout = _resolve_selenium_timeout()
+    parsed = validate_mlrs_case_url(case_url)
+    if not parsed.get("ok"):
+        return {
+            "payment_status": "unknown",
+            "payment_message": None,
+            "payment_check_error": parsed.get("error") or "invalid MLRS case URL",
+            "payment_check_source": "mlrs_case_selenium",
+            "payment_evidence_code": EVIDENCE_INVALID_URL,
+        }
     try:
         driver.set_page_load_timeout(timeout)
-        driver.get(case_url)
+        driver.get(parsed["url"])
+        current = getattr(driver, "current_url", None) or parsed["url"]
+        if not is_approved_mlrs_url(current):
+            return {
+                "payment_status": "unknown",
+                "payment_message": None,
+                "payment_check_error": f"Selenium redirected off mlrs.blm.gov: {current}",
+                "payment_check_source": "mlrs_case_selenium",
+                "payment_evidence_code": EVIDENCE_REDIRECT,
+            }
         # Initial settle, then poll until case fields appear or time runs out.
         time.sleep(min(3.0, max(1.5, timeout / 6.0)))
         deadline = time.monotonic() + min(float(timeout), 20.0)
@@ -701,9 +818,14 @@ def _payment_from_selenium_driver(driver: Any, case_url: str, timeout: int | Non
                 }
             if _body_looks_like_loaded_case(page_text):
                 return {
-                    "payment_status": "paid",
+                    "payment_status": "unknown",
                     "payment_message": None,
                     "payment_check_source": "mlrs_case_selenium",
+                    "payment_evidence_text": (
+                        "MLRS case page loaded without the BLM nonpayment warning. "
+                        "That is not proof a maintenance fee was paid."
+                    ),
+                    "payment_evidence_code": "PAGE_LOADED_NO_WARNING",
                 }
             time.sleep(0.75)
 
@@ -716,9 +838,14 @@ def _payment_from_selenium_driver(driver: Any, case_url: str, timeout: int | Non
             }
         if _body_looks_like_loaded_case(page_text):
             return {
-                "payment_status": "paid",
+                "payment_status": "unknown",
                 "payment_message": None,
                 "payment_check_source": "mlrs_case_selenium",
+                "payment_evidence_text": (
+                    "MLRS case page loaded without the BLM nonpayment warning. "
+                    "That is not proof a maintenance fee was paid."
+                ),
+                "payment_evidence_code": "PAGE_LOADED_NO_WARNING",
             }
         return {
             "payment_status": "unknown",
@@ -766,11 +893,26 @@ def _close_selenium_batch(st: dict[str, Any]) -> None:
     st.clear()
 
 
+def _mark_claims_timeout_unknown(claims: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Leave resolved rows in place; remaining rows become explicit Unknown."""
+    out: list[dict[str, Any]] = []
+    for claim in claims:
+        if not isinstance(claim, dict):
+            out.append(claim)
+            continue
+        row = dict(claim)
+        if not _payment_status_resolved(row):
+            _merge_payment_fields(row, unknown_timeout_payload(row.get("case_page")))
+        out.append(row)
+    return out
+
+
 def _claim_needs_payment_enrichment(claim: dict[str, Any]) -> bool:
     url = claim.get("case_page")
-    if not url or not isinstance(url, str) or not url.strip().startswith("http"):
+    parsed = validate_mlrs_case_url(url if isinstance(url, str) else None)
+    if not parsed.get("ok"):
         return False
-    return (claim.get("payment_status") or "unknown").strip().lower() not in {"paid", "unpaid"}
+    return (claim.get("payment_status") or "unknown").strip().lower() not in _RESOLVED_STATUSES
 
 
 def enrich_claims_from_mlrs_case_pages(
@@ -797,6 +939,23 @@ def enrich_claims_from_mlrs_case_pages(
             continue
         if _apply_payment_cache(claim):
             cache_hits += 1
+        url = claim.get("case_page")
+        parsed = validate_mlrs_case_url(url if isinstance(url, str) else None)
+        if not parsed.get("ok"):
+            if isinstance(url, str) and url.strip() and not _payment_status_resolved(claim):
+                _merge_payment_fields(
+                    claim,
+                    {
+                        "payment_status": "unknown",
+                        "payment_message": None,
+                        "payment_check_source": "mlrs_case_aura",
+                        "payment_source_url": url.strip(),
+                        "payment_evidence_code": EVIDENCE_INVALID_URL,
+                        "payment_evidence_text": parsed.get("error") or "invalid MLRS case URL",
+                        "payment_check_error": parsed.get("error"),
+                    },
+                )
+            continue
         if _claim_needs_payment_enrichment(claim):
             candidates.append((idx, claim))
 
@@ -1000,7 +1159,7 @@ def _run_enrich_subprocess_chunk(
         proc.wait(timeout=_resolve_enrich_subprocess_timeout_sec())
     except subprocess.TimeoutExpired:
         log.warning(
-            "mlrs enrich subprocess exceeded %ss cap; killing (leaving payment_status as-is)",
+            "mlrs enrich subprocess exceeded %ss cap; killing and marking remaining claims unknown",
             _resolve_enrich_subprocess_timeout_sec(),
         )
         try:
@@ -1011,7 +1170,7 @@ def _run_enrich_subprocess_chunk(
         t_out.join(timeout=2)
         t_err.join(timeout=2)
         # Do NOT fall back to in-process Selenium — that doubles the hang.
-        return claims
+        return _mark_claims_timeout_unknown(claims)
 
     t_out.join(timeout=5)
     t_err.join(timeout=5)
@@ -1099,7 +1258,16 @@ def _enrich_claims_subprocess(claims: list[dict[str, Any]], progress_cb=None) ->
             for pos, claim in chunk_rows:
                 results[pos] = claim
 
-    return [claim if claim is not None else claims[idx] for idx, claim in enumerate(results)]
+    out: list[dict[str, Any]] = []
+    for idx, claim in enumerate(results):
+        if claim is not None:
+            out.append(claim)
+        else:
+            row = dict(claims[idx]) if isinstance(claims[idx], dict) else {"payment_status": "unknown"}
+            if isinstance(row, dict) and not _payment_status_resolved(row):
+                _merge_payment_fields(row, unknown_timeout_payload(row.get("case_page")))
+            out.append(row)
+    return out
 
 
 def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> list[dict[str, Any]]:
@@ -1177,6 +1345,7 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
 
     total = len(claims)
     done = 0
+    deadline = time.monotonic() + _resolve_enrich_subprocess_timeout_sec()
 
     def _progress(message: str | None = None) -> None:
         payload = {
@@ -1204,19 +1373,54 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
                 continue
 
             prev = (c.get("payment_status") or "unknown").strip().lower()
-            if prev in ("paid", "unpaid"):
+            if prev in _RESOLVED_STATUSES:
                 _mark_payment_checked(c)
                 _remember_payment_cache(c)
                 done += 1
                 _progress()
                 continue
 
+            parsed_url = validate_mlrs_case_url(url.strip())
+            if not parsed_url.get("ok"):
+                _merge_payment_fields(
+                    c,
+                    {
+                        "payment_status": "unknown",
+                        "payment_message": None,
+                        "payment_check_source": "mlrs_case_aura",
+                        "payment_source_url": url.strip(),
+                        "payment_evidence_code": EVIDENCE_INVALID_URL,
+                        "payment_evidence_text": parsed_url.get("error") or "invalid MLRS case URL",
+                        "payment_check_error": parsed_url.get("error"),
+                    },
+                )
+                _mark_payment_checked(c)
+                done += 1
+                _progress()
+                continue
+
+            remaining = deadline - time.monotonic()
+            if remaining <= 1.5:
+                _merge_payment_fields(c, unknown_timeout_payload(url.strip()))
+                done += 1
+                # Mark every remaining unresolved row, then stop.
+                for later in claims[i + 1 :]:
+                    if isinstance(later, dict) and not _payment_status_resolved(later):
+                        _merge_payment_fields(later, unknown_timeout_payload(later.get("case_page")))
+                _progress()
+                break
+
             if aura_client is None:
                 aura_client = MlrsAuraClient()
-            aura_info = payment_from_mlrs_aura(url.strip(), client=aura_client)
+            aura_info = payment_from_mlrs_aura(
+                url.strip(),
+                client=aura_client,
+                expected_serial=str(c.get("serial_number") or "") or None,
+            )
             _merge_payment_fields(c, aura_info)
 
-            if (c.get("payment_status") or "unknown").strip().lower() in ("paid", "unpaid"):
+            aura_status = (c.get("payment_status") or "unknown").strip().lower()
+            if aura_status in {"paid", "unpaid", "closed"}:
                 log.debug(
                     "mlrs payment: %s via aura %s",
                     c.get("payment_status"),
@@ -1322,6 +1526,11 @@ def check_payment_for_url(case_url: str) -> dict[str, Any]:
         "payment_checked_at": row.get("payment_checked_at"),
         "payment_evidence_text": row.get("payment_evidence_text"),
         "payment_evidence_code": row.get("payment_evidence_code"),
+        "payment_due_date": row.get("payment_due_date"),
+        "payment_due_indicator": row.get("payment_due_indicator"),
+        "payment_case_status": row.get("payment_case_status"),
+        "payment_source_health": row.get("payment_source_health"),
+        "payment_record_serial": row.get("payment_record_serial"),
     }
 
 

@@ -78,6 +78,10 @@ def batch_fetch_claim_records(
             "paid_count": payment["paid_count"],
             "unpaid_count": payment["unpaid_count"],
             "unknown_count": payment["unknown_count"],
+            "current_count": payment["current_count"],
+            "past_due_count": payment["past_due_count"],
+            "closed_count": payment["closed_count"],
+            "payment_rollup": payment["rollup"],
             "payment_checked_at": payment["payment_checked_at"],
         })
 
