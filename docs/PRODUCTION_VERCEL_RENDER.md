@@ -254,7 +254,7 @@ This installs Python deps and runs `python -m playwright install chromium`.
 1. Render **build** completed `python -m playwright install chromium` without error.
 2. `MINING_OS_MLRS_PAYMENT_HEADLESS=1` set on the web service.
 3. `GET /api/diag/environment` shows Playwright installed and headless willing to run.
-4. `GET /api/diag/check-payment?case_url=...` returns `payment_status` **`unpaid`** for a case you know is overdue (or `paid` for a clean case).
+4. `GET /api/diag/check-payment?case_url=...` (or `python scripts/smoke_mlrs_payment_truth.py <url>`) returns explicit evidence. Due-today is **not** unpaid. A future due date is **current**, not paid, unless a payment-receipt field is present. Closed cases are **closed**.
 5. Run **Fetch Claim Records** on a small target first to validate end-to-end latency.
 
 ---

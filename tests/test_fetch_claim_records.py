@@ -367,7 +367,7 @@ class TestPlssMissing:
 
 
 class TestDerivedAreaStatus:
-    def test_mixed_paid_and_unknown_rolls_up_to_paid(self, monkeypatch):
+    def test_mixed_paid_and_unknown_rolls_up_to_partial(self, monkeypatch):
         monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
 
         captured: dict[str, str | None] = {"status": None}
@@ -394,7 +394,7 @@ class TestDerivedAreaStatus:
             lambda **kwargs: (
                 True,
                 [
-                    {"claim_name": "PAID CLAIM", "serial_number": "A1", "payment_status": "paid"},
+                    {"claim_name": "PAID CLAIM", "serial_number": "A1", "payment_status": "paid", "payment_evidence_code": "PAYMENT_RECORDED"},
                     {"claim_name": "UNKNOWN CLAIM", "serial_number": "A2", "payment_status": "unknown"},
                 ],
             ),
@@ -418,7 +418,7 @@ class TestDerivedAreaStatus:
         )
 
         assert result["ok"] is True
-        assert captured["status"] == "paid"
+        assert captured["status"] == "partial"
 
     def test_any_unpaid_rolls_up_to_unpaid(self, monkeypatch):
         monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
@@ -447,8 +447,8 @@ class TestDerivedAreaStatus:
             lambda **kwargs: (
                 True,
                 [
-                    {"claim_name": "UNPAID CLAIM", "serial_number": "B1", "payment_status": "unpaid"},
-                    {"claim_name": "PAID CLAIM", "serial_number": "B2", "payment_status": "paid"},
+                    {"claim_name": "UNPAID CLAIM", "serial_number": "B1", "payment_status": "unpaid", "payment_evidence_code": "NONPAYMENT_WARNING"},
+                    {"claim_name": "PAID CLAIM", "serial_number": "B2", "payment_status": "paid", "payment_evidence_code": "PAYMENT_RECORDED"},
                     {"claim_name": "UNKNOWN CLAIM", "serial_number": "B3", "payment_status": "unknown"},
                 ],
             ),
@@ -473,3 +473,169 @@ class TestDerivedAreaStatus:
 
         assert result["ok"] is True
         assert captured["status"] == "unpaid"
+
+
+    def test_legacy_paid_without_evidence_rolls_up_unknown(self, monkeypatch):
+        monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
+        captured: dict[str, str | None] = {"status": None}
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.merge_area_characteristics",
+            lambda area_id, updates, **kwargs: True,
+        )
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.update_area_state_meridian",
+            lambda area_id, state, meridian, **kwargs: True,
+        )
+
+        def fake_update_area_status(area_id, status, **kwargs):
+            captured["status"] = status
+            return True
+
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.update_area_status",
+            fake_update_area_status,
+        )
+        monkeypatch.setattr(
+            "mining_os.services.blm_plss.query_claims_by_plss_with_status",
+            lambda **kwargs: (
+                True,
+                [
+                    {
+                        "claim_name": "LEGACY PAID",
+                        "serial_number": "C1",
+                        "payment_status": "paid",
+                        "payment_evidence_code": "NEXT_PAYMENT_DUE_CURRENT",
+                    },
+                    {
+                        "claim_name": "LEGACY UNPAID",
+                        "serial_number": "C2",
+                        "payment_status": "unpaid",
+                        "payment_evidence_code": "NEXT_PAYMENT_DUE_OVERDUE",
+                    },
+                ],
+            ),
+        )
+        monkeypatch.setattr(
+            "mining_os.services.mlrs_case_payment.enrich_claims_from_mlrs_case_pages",
+            lambda claims, progress_cb=None: claims,
+        )
+
+        result = fcr.fetch_claim_records_for_area(
+            area_id=503,
+            area_name="Legacy snapshot target",
+            location_plss=None,
+            state_abbr="UT",
+            meridian="26",
+            township="12S",
+            range_val="12W",
+            section="35",
+            latitude=None,
+            longitude=None,
+        )
+
+        assert result["ok"] is True
+        assert captured["status"] == "unknown"
+        assert result["paid_count"] == 0
+        assert result["unpaid_count"] == 0
+        assert result["unknown_count"] == 2
+        assert result["payment_rollup"] == "unknown"
+
+
+class TestZeroClaimsAndPaymentTruth:
+    def test_successful_zero_claims_is_ok_not_error(self, monkeypatch, patched_persist):
+        monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
+        enrich_calls: list[list] = []
+
+        def fake_enrich(claims, progress_cb=None):
+            enrich_calls.append(list(claims))
+            return claims
+
+        monkeypatch.setattr(
+            "mining_os.services.blm_plss.query_claims_by_plss_with_status",
+            lambda **kw: (True, []),
+        )
+        monkeypatch.setattr(
+            "mining_os.services.blm_plss.query_claims_by_coords",
+            lambda *a, **kw: [],
+        )
+        monkeypatch.setattr(
+            "mining_os.services.mlrs_case_payment.enrich_claims_from_mlrs_case_pages",
+            fake_enrich,
+        )
+
+        result = fcr.fetch_claim_records_for_area(
+            area_id=9,
+            area_name="Empty PLSS",
+            location_plss=None,
+            state_abbr="UT",
+            meridian="26",
+            township="12S",
+            range_val="14E",
+            section="23",
+            latitude=None,
+            longitude=None,
+        )
+
+        assert result["ok"] is True
+        assert result["claims"] == []
+        assert not result.get("error")
+        assert result["paid_count"] == 0
+        assert result["unpaid_count"] == 0
+        assert result["unknown_count"] == 0
+        assert enrich_calls == []
+
+    def test_persists_aura_payment_evidence(self, monkeypatch, patched_persist):
+        monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
+
+        def fake_enrich(claims, progress_cb=None):
+            for claim in claims:
+                claim["payment_status"] = "unpaid"
+                claim["payment_message"] = (
+                    "Maintenance fee payment was not received and may result in the closing of the claim."
+                )
+                claim["payment_check_source"] = "mlrs_case_aura"
+                claim["payment_source_url"] = claim.get("case_page")
+                claim["payment_checked_at"] = "2026-08-26T12:00:00Z"
+                claim["payment_evidence_text"] = "BLM nonpayment warning on case page"
+                claim["payment_evidence_code"] = "NONPAYMENT_WARNING"
+            return claims
+
+        monkeypatch.setattr(
+            "mining_os.services.blm_plss.query_claims_by_plss_with_status",
+            lambda **kw: (
+                True,
+                [
+                    {
+                        "claim_name": "PEBBLE # 5",
+                        "serial_number": "UT101527746",
+                        "case_page": "https://mlrs.blm.gov/s/blm-case/a02t000000593dSAAQ/UT101527746",
+                    }
+                ],
+            ),
+        )
+        monkeypatch.setattr(
+            "mining_os.services.mlrs_case_payment.enrich_claims_from_mlrs_case_pages",
+            fake_enrich,
+        )
+
+        result = fcr.fetch_claim_records_for_area(
+            area_id=10,
+            area_name="Evidence target",
+            location_plss=None,
+            state_abbr="UT",
+            meridian="26",
+            township="12S",
+            range_val="14E",
+            section="23",
+            latitude=None,
+            longitude=None,
+        )
+
+        assert result["ok"] is True
+        claim = result["claims"][0]
+        assert claim["payment_status"] == "unpaid"
+        assert claim["payment_source_url"]
+        assert claim["payment_checked_at"] == "2026-08-26T12:00:00Z"
+        assert claim["payment_evidence_code"] == "NONPAYMENT_WARNING"
+        assert result["unpaid_count"] == 1
+        assert result["paid_count"] == 0

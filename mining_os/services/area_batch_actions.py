@@ -66,12 +66,23 @@ def batch_fetch_claim_records(
             results.append({"id": aid, "name": name, "ok": False, "error": str(e), "claims_count": 0})
             continue
         claims = out.get("claims") or []
+        from mining_os.services.mlrs_payment_truth import summarize_claim_payments
+
+        payment = summarize_claim_payments(claims if isinstance(claims, list) else [])
         results.append({
             "id": aid,
             "name": name,
             "ok": bool(out.get("ok")),
             "error": out.get("error"),
             "claims_count": len(claims) if isinstance(claims, list) else 0,
+            "paid_count": payment["paid_count"],
+            "unpaid_count": payment["unpaid_count"],
+            "unknown_count": payment["unknown_count"],
+            "current_count": payment["current_count"],
+            "past_due_count": payment["past_due_count"],
+            "closed_count": payment["closed_count"],
+            "payment_rollup": payment["rollup"],
+            "payment_checked_at": payment["payment_checked_at"],
         })
 
     succeeded = sum(1 for r in results if r.get("ok"))

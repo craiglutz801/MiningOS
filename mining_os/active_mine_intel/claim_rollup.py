@@ -20,35 +20,22 @@ def _as_dict(val: Any) -> dict[str, Any] | None:
     return None
 
 
+from mining_os.services.mlrs_payment_truth import summarize_claim_payments
+
+
 def rollup_from_claims(claims: list[Any]) -> tuple[int, int, int, int, str]:
-    """Return (mlrs_total, unpaid_count, paid_count, unknown_count, rollup_status)."""
-    unpaid = paid = unknown = 0
-    statuses: set[str] = set()
-    total = 0
-    for c in claims:
-        if not isinstance(c, dict):
-            continue
-        total += 1
-        st = (c.get("payment_status") or "unknown")
-        if not isinstance(st, str):
-            st = str(st or "unknown")
-        st = st.strip().lower() or "unknown"
-        statuses.add(st)
-        if st == "unpaid":
-            unpaid += 1
-        elif st == "paid":
-            paid += 1
-        else:
-            unknown += 1
-    if "unpaid" in statuses:
-        rollup = "unpaid"
-    elif statuses and statuses <= {"paid"}:
-        rollup = "paid"
-    elif statuses:
-        rollup = "mixed" if "paid" in statuses else "unknown"
-    else:
-        rollup = "unknown"
-    return total, unpaid, paid, unknown, rollup
+    """Return (mlrs_total, unpaid_count, paid_count, unknown_count, rollup_status).
+
+    Paid/Unpaid counts require an approved evidence code. Legacy status strings
+    without evidence are counted as unknown.
+    """
+    rows = [c for c in claims if isinstance(c, dict)]
+    summary = summarize_claim_payments(rows)
+    total = len(rows)
+    paid = summary["paid_count"]
+    unpaid = summary["unpaid_count"]
+    unknown = total - paid - unpaid
+    return total, unpaid, paid, unknown, summary["rollup"]
 
 
 def rollup_from_characteristics(chars: Any) -> tuple[int, int, int, int, str] | None:
