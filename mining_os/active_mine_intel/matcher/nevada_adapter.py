@@ -327,8 +327,16 @@ def load_state_mines(
     status.resolved_url = "; ".join(payload.get("selected_urls", []))
     status.cache_used = info["cache_used"]
     status.cache_age_hours = info["cache_age_hours"]
+    if info.get("stale"):
+        status.status = "stale"
+        status.outcome = "stale"
+        status.usable_for_assertions = False
+        status.failure_class = "stale"
+        status.message = "Nevada production cache exceeded freshness TTL"
+    layers = payload.get("layers", [])
+    raw_feature_count = sum(len(layer.get("collection", {}).get("features", [])) for layer in layers)
     frames = []
-    for layer in payload.get("layers", []):
+    for layer in layers:
         features = layer.get("collection", {}).get("features", [])
         if not features:
             continue
@@ -337,10 +345,18 @@ def load_state_mines(
         if normalized is not None and not normalized.empty:
             frames.append(normalized)
     if not frames:
+        if raw_feature_count == 0:
+            status.status = "empty"
+            status.outcome = "empty"
+            status.usable_for_assertions = True
+            status.record_count = 0
+            status.message = "Valid zero-result response"
+            return gpd.GeoDataFrame(geometry=[], crs="EPSG:4326"), status
         raise SourceUnavailableError("Nevada production layers contained no usable features")
     out = merge_production_layers(frames, cfg)
     status.record_count = len(out)
-    status.status = "degraded" if info.get("stale") else (
-        "cached" if info["cache_used"] else "success"
-    )
+    if status.status != "stale":
+        status.status = "cached" if info["cache_used"] else "success"
+        status.outcome = "ok"
+        status.usable_for_assertions = True
     return out, status

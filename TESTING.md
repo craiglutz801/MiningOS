@@ -100,7 +100,9 @@ tests/
 ├── test_blm_plss.py                  # PLSS string parsing
 ├── test_fetch_claim_records.py       # ★ no-BLM-agent fallback (prod fix)
 ├── test_mlrs_geographic_index.py     # ★ LR2000 always-structured-JSON (prod fix)
-└── test_plss_ai_lookup.py            # AI PLSS preview/apply flow
+├── test_plss_ai_lookup.py            # AI PLSS preview/apply flow
+├── test_active_mine_intel.py         # Active Mine Search matcher / PLSS / flags
+└── test_active_mine_evidence.py      # T-041 taxonomy, provenance, BMRR, staging isolation
 ```
 
 ---

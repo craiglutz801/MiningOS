@@ -139,6 +139,15 @@ def _dataframe_to_site_dicts(site_summary: Any, state_abbr: str) -> list[dict[st
                     "range": _safe_str(d.get("range") or d.get("plss_range")),
                     "section": _safe_str(d.get("section") or d.get("plss_section")),
                     "plss_source": _safe_str(d.get("plss_source")),
+                    "operational_status": _safe_str(d.get("operational_status")) or "Unknown",
+                    "regulatory_status": _safe_str(d.get("regulatory_status")) or "Unknown",
+                    "facility_type": _safe_str(d.get("facility_type")) or "Unknown",
+                    "tenure_class": _safe_str(d.get("tenure_class")) or "Unknown",
+                    "verification_state": _safe_str(d.get("verification_state")) or "Candidate",
+                    "fail_closed": bool(d.get("fail_closed")),
+                    "tenure_json": d.get("tenure_json") or {},
+                    "contradictions_json": d.get("contradictions_json") or [],
+                    "assertions_json": d.get("assertions_json") or [],
                 }
             )
         return [r for r in rows if r["mine_site_id"]]

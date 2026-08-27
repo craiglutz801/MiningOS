@@ -54,3 +54,21 @@ def disabled_payload() -> dict:
         "enabled": False,
         "error": "Active Mine Search is disabled. Set ENABLE_ACTIVE_MINES_API=true.",
     }
+
+
+def environment_name() -> str:
+    from mining_os.active_mine_intel.staging import mining_os_environment
+
+    return mining_os_environment()
+
+
+def staging_meta() -> dict:
+    from mining_os.active_mine_intel.staging import staging_isolation_report
+
+    report = staging_isolation_report()
+    return {
+        "environment": report["environment"],
+        "staging": report["staging"],
+        "isolated": report["ok"] if report["staging"] else True,
+        "violations": report["violations"],
+    }

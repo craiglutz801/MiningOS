@@ -2359,8 +2359,10 @@ def api_active_mines_meta() -> Dict[str, Any]:
         active_mines_admin_enabled,
         active_mines_enabled,
         active_mines_jobs_enabled,
+        staging_meta,
     )
 
+    meta = staging_meta()
     return {
         "ok": True,
         "error": None,
@@ -2370,6 +2372,19 @@ def api_active_mines_meta() -> Dict[str, Any]:
         "supported_states": list(SUPPORTED_STATES),
         "label": "Active Mine Search",
         "subtitle": "Active mines on unpatented claims (NV / UT)",
+        "environment": meta["environment"],
+        "staging": meta["staging"],
+        "staging_isolated": meta["isolated"],
+        "operational_statuses": [
+            "Producing",
+            "Permitted",
+            "Exploration",
+            "Mill/processor",
+            "Care-and-maintenance",
+            "Reclamation",
+            "Unknown",
+        ],
+        "verification_states": ["Candidate", "Cross-source confirmed", "Human Verified"],
     }
 
 
@@ -2378,6 +2393,15 @@ def api_active_mines_pull(body: Dict[str, Any] = Body(default_factory=dict)) -> 
     blocked = _active_mines_guard()
     if blocked:
         return blocked
+    from mining_os.active_mine_intel.staging import is_staging, staging_isolation_report
+
+    if is_staging():
+        report = staging_isolation_report()
+        if not report["ok"]:
+            return {
+                "ok": False,
+                "error": "Staging isolation failed: " + "; ".join(report["violations"]),
+            }
     from mining_os.active_mine_intel.jobs import start_pull_async
 
     state = str((body or {}).get("state") or "").upper().strip()
@@ -2489,6 +2513,15 @@ def api_active_mines_fetch_unpaid(body: Dict[str, Any] = Body(default_factory=di
     blocked = _active_mines_guard()
     if blocked:
         return blocked
+    from mining_os.active_mine_intel.staging import is_staging, staging_isolation_report
+
+    if is_staging():
+        report = staging_isolation_report()
+        if not report["ok"]:
+            return {
+                "ok": False,
+                "error": "Staging isolation failed: " + "; ".join(report["violations"]),
+            }
     from mining_os.active_mine_intel.jobs import start_fetch_unpaid_async
 
     payload = body or {}
@@ -2506,6 +2539,47 @@ def api_active_mines_fetch_unpaid(body: Dict[str, Any] = Body(default_factory=di
         )
     except Exception as e:
         log.exception("active-mines fetch-unpaid failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.post("/active-mines/sites/{site_id}/verify")
+def api_active_mines_verify(site_id: str, body: Dict[str, Any] = Body(default_factory=dict)) -> Dict[str, Any]:
+    """Record dated checklist evidence and set Human Verified. Never auto-promotes."""
+    blocked = _active_mines_guard()
+    if blocked:
+        return blocked
+    from mining_os.active_mine_intel import store
+    from mining_os.active_mine_intel.evidence.verification import transition_verification
+
+    payload = body or {}
+    try:
+        site = store.get_site(current_account_id(), site_id)
+        if not site:
+            return {"ok": False, "error": "Site not found."}
+        ok, new_state, error, normalized = transition_verification(
+            site.get("verification_state"),
+            proposed=str(payload.get("verification_state") or "Human Verified"),
+            checklist=payload,
+            independent_source_count=len(site.get("independent_sources") or []),
+            blocking_contradictions=bool(site.get("contradictions_json")),
+            identity_confirmed=True,
+            tenure_known=bool(site.get("tenure_class") and site.get("tenure_class") != "Unknown"),
+            sources_usable=not bool(site.get("fail_closed")),
+        )
+        if not ok:
+            return {"ok": False, "error": error, "verification_state": site.get("verification_state")}
+        updated = store.save_verification(
+            current_account_id(),
+            site_id,
+            to_state=new_state,
+            checklist=normalized or payload,
+            reviewer_name=(normalized or {}).get("reviewer_name"),
+            reviewed_at=(normalized or {}).get("reviewed_at"),
+            notes=(normalized or {}).get("notes"),
+        )
+        return {"ok": True, "site": updated, "verification_state": new_state}
+    except Exception as e:
+        log.exception("active-mines verify failed")
         return {"ok": False, "error": str(e)}
 
 

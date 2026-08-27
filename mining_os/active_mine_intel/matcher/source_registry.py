@@ -186,6 +186,43 @@ SOURCES: dict[str, SourceDefinition] = {
         fatality="state_primary_nonfatal",
         notes="Mineral permits and mine records. An active permit is not proof of production.",
     ),
+    "ndep_bmrr_regulation": SourceDefinition(
+        source_id="ndep_bmrr_regulation",
+        display_name="Nevada NDEP BMRR Regulation Sites (Active Mine)",
+        authority="Nevada Division of Environmental Protection — Bureau of Mining Regulation and Reclamation",
+        landing_page="https://ndep.nv.gov/land/mining",
+        service_url=(
+            "https://ndep-emap.ndep.nv.gov/arcgis/rest/services/"
+            "eMap_Services/eMap_BMRR/FeatureServer/1"
+        ),
+        required=False,
+        state_scope="NV",
+        geometry_type="point",
+        cache_ttl_hours=24,
+        env_override="NDEP_BMRR_REGULATION_FEATURE_URL",
+        fatality="supporting_nonfatal",
+        notes=(
+            "NDEP eMap BMRR Regulation Sites: active regulation sites, updated nightly. "
+            "Permit/physical status is regulatory evidence only — never production proof."
+        ),
+    ),
+    "ndep_bmrr_reclamation": SourceDefinition(
+        source_id="ndep_bmrr_reclamation",
+        display_name="Nevada NDEP BMRR Reclamation Sites",
+        authority="Nevada Division of Environmental Protection — Bureau of Mining Regulation and Reclamation",
+        landing_page="https://ndep.nv.gov/land/mining",
+        service_url=(
+            "https://ndep-emap.ndep.nv.gov/arcgis/rest/services/"
+            "eMap_Services/eMap_BMRR/FeatureServer/0"
+        ),
+        required=False,
+        state_scope="NV",
+        geometry_type="point",
+        cache_ttl_hours=24,
+        env_override="NDEP_BMRR_RECLAMATION_FEATURE_URL",
+        fatality="supporting_nonfatal",
+        notes="BMRR reclamation sites. Closure/reclamation is not production evidence.",
+    ),
 }
 
 # Recognized BLM claim-type product codes.
@@ -261,6 +298,12 @@ LAYER_PROFILES: dict[str, dict] = {
         "field_keywords": ["permit", "operator", "status", "mine", "commodity", "activity"],
         "preferred_geometry": ["esriGeometryPoint", "esriGeometryPolygon"],
         "penalty_keywords": ["oil", "gas", "coal", "abandoned", "education"],
+    },
+    "ndep_bmrr_regulation": {
+        "title_keywords": ["regulation", "active", "mine", "bmrr"],
+        "field_keywords": ["permit", "project", "status", "physical"],
+        "preferred_geometry": ["esriGeometryPoint"],
+        "penalty_keywords": ["oil", "gas", "air quality"],
     },
 }
 

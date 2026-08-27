@@ -41,6 +41,7 @@ Items are checked off when completed, with the completion date noted.
 - [x] **SITLA Intelligence foundation** — Additive `sitla_intel` schema, feature-flagged `/api/sitla/*`, lazy SITLA tab (summary, filters, detail, review, sources), scoring `sitla-v1.0`, Utah Trust Lands demo fixtures, promote-to-Target, jobs hook. Production flags default off. See `docs/sitla/OVERVIEW.md`. *(Completed 2026-07-19)*
 - [x] **SITLA — Trust Lands discovery pipeline** — Multi-source ingest (hub / past auctions / public notices / offerings), fixture adapters + opt-in `HtmlHubAdapter`, MLRS/geometry enrichment, historical offering matches, watchlist alerts, jobs refresh. Live HTML remains opt-in per source until each hub is validated. *(Completed 2026-07-19)*
 - [x] **Active Mine Search (NV/UT)** — Live matcher methodology ported into Mining OS; regenerable Pull; PLSS section Target linking; batch Fetch unpaid claims. See `docs/active_mines/OVERVIEW.md`. *(Completed 2026-08-14)*
+- [x] **Active Mine Search — evidence model, reconciliation, staging gate (T-041)** — Operational/regulatory/facility/tenure/verification dimensions; per-assertion provenance; NDEP BMRR adapter; Utah DOGM coverage diagnostics (uranium/full-minerals gaps); fail-closed stale/contradictory sources; mixed-tenure flags; Human Verified dated checklist; production-isolated staging checklist. Matcher scoring and payment-status rollup unchanged. *(Completed 2026-08-27)*
 
 ---
 
@@ -56,7 +57,7 @@ Items are checked off when completed, with the completion date noted.
 - [ ] **Fetch Claim Records: payment status enrichment on production (no Selenium)** — Localhost surfaces "Maintenance fee payment was not received and may result in the closing of the claim" via `BLM_ClaimAgent` + Selenium scraping `mlrs.blm.gov/s/blm-case`. Render has neither, so the built-in ArcGIS fallback returns claim metadata only and `payment_status` defaults to `unknown`. Need a Render-safe enrichment: probe Salesforce Aura RPC at `/s/sfsites/aura` for the public case record, or parse the RAS Serial Register Page once we have a stable URL/template. Until then, payment status is only authoritative when the localhost Fetch Claim Records run is propagated to prod (UI now displays `payment_status`/`payment_message` whenever present, including the "(unpaid)" banner with the maintenance-fee text).
 - [ ] **Idaho MRDS → targets (production)** — Run `python -m target_pipeline.mines_to_targets --states ID` against the production `DATABASE_URL` with the same flags Nevada used (`--workers 24 --pause 0 --fast-blm --fast-timeout 5`). After the first run writes `target_pipeline/data/mines_to_targets/raw/mrds_ID.json`, future re-runs can add `--use-cached-mrds`. Tee to `logs/id_import.log`.
 - [ ] **Active Mine Search — Idaho** — Add ID adapters once matcher/spec covers Idaho (v1 is NV/UT only).
-- [ ] **Active Mine Search — cache TTL / degraded-mode hardening** — Document and tune BLM/MSHA download TTL; clearer UI when state sources fail.
+- [ ] **Active Mine Search — cache TTL / degraded-mode hardening** — Document and tune BLM/MSHA download TTL; clearer UI when state sources fail. T-041 added fail-closed assertion handling and source `failed` vs `empty` distinction; remaining work is TTL tuning for live downloads.
 ---
 
 ## Ideas / Someday

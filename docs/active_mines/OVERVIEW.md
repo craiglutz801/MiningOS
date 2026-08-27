@@ -48,7 +48,34 @@ PLSS bridge (`plss_bridge.py`): CadNSDI reverse geocode (Mining OS path) → mat
 
 ### Payment status
 
-Payment enrichment is **not** part of list construction. Use **Fetch unpaid claims** (existing MLRS / ArcGIS Fetch Claim Records path). Production payment banners still depend on the separate ROADMAP item for Render-safe enrichment.
+Payment enrichment is **not** part of list construction. Use **Fetch unpaid claims** (existing MLRS / ArcGIS Fetch Claim Records path). Production payment banners still depend on the separate ROADMAP item for Render-safe enrichment. Operational status never uses payment status.
+
+## Evidence model (T-041)
+
+Dimensions are stored separately and never collapsed into one label:
+
+| Field | Meaning |
+| ----- | ------- |
+| Operational status | Producing, Permitted, Exploration, Mill/processor, Care-and-maintenance, Reclamation, Unknown |
+| Regulatory status | Permit/case status from DOGM / NDEP BMRR / BLM operations |
+| Facility type | Mine, Mill/processor, Exploration, Waste/tailings, Unknown |
+| Tenure | Unpatented, Patented, Mixed, Unknown — from MLRS polygons |
+| Payment status | Unchanged Fetch Claim Records / claim_rollup contract |
+| Verification | Candidate, Cross-source confirmed, Human Verified |
+
+**Producing** requires recent structured state production (Nevada production years, or Utah’s explicit production-indicator field). A permit, claim, MSHA/BMRR status, inspection, or hours figure cannot set Producing.
+
+**BLM MLRS Not Closed** polygons are tenure evidence only (approximate PLSS geometry, not a surveyed boundary). Mixed patented + unpatented intersections are labeled Mixed.
+
+**NDEP BMRR** Regulation Sites (`eMap_BMRR` layer 1) and Reclamation Sites (layer 0) are Nevada regulatory/facility evidence only.
+
+**Utah DOGM coverage** diagnostics (including uranium / full-minerals gaps) are stored on the run QC object `utah_dogm_coverage`.
+
+**Fail closed:** stale, failed, or contradictory sources cannot support a positive operational assertion. Source `failed` is distinct from a valid `empty` zero-result.
+
+**Human Verified** requires the dated checklist in the mine detail panel (`docs/active_mines/CHECKLIST.md`). It is never auto-assigned.
+
+Staging isolation: `docs/active_mines/STAGING.md`.
 
 ## API
 

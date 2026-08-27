@@ -1,0 +1,5 @@
+state,layer_kind,project_id,permit_number,mine_name,physical_status,permit_status,site_type,closure,latitude,longitude
+NV,regulation,1001,NEV00999,Demo Copper Mine,Active,Active,Mine,,39.51,-116.12
+NV,regulation,1002,NEV01000,Idle Pit,Temporarily Inactive,Active,Mine,,39.52,-116.13
+NV,reclamation,2001,NEV02000,Old Heap,Reclamation,Closed,Mine,Closed,39.40,-116.50
+NV,regulation,1003,NEV01001,Demo Mill,Active,Active,Mill,,39.53,-116.14

@@ -47,6 +47,12 @@ type SiteRow = {
   claim_status_rollup?: string | null;
   claim_count?: number | null;
   claims_fetched_at?: string | null;
+  operational_status?: string | null;
+  regulatory_status?: string | null;
+  facility_type?: string | null;
+  tenure_class?: string | null;
+  verification_state?: string | null;
+  fail_closed?: boolean | null;
 };
 
 function claimRecordsFromSite(site: Record<string, unknown> | null | undefined): ClaimRecordsPayload | null {
@@ -271,6 +277,12 @@ export function ActiveMinesPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [claimsBySite, setClaimsBySite] = useState<Record<string, ClaimRecordsPayload | null>>({});
   const [claimsLoadingId, setClaimsLoadingId] = useState<string | null>(null);
+  const [stagingBanner, setStagingBanner] = useState<string | null>(null);
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [verifyName, setVerifyName] = useState("");
+  const [verifyDate, setVerifyDate] = useState("");
+  const [verifyNotes, setVerifyNotes] = useState("");
+  const [verifyChecks, setVerifyChecks] = useState<Record<string, boolean>>({});
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
   const expandedIdRef = useRef(expandedId);
@@ -334,6 +346,18 @@ export function ActiveMinesPage() {
   useEffect(() => {
     void loadSites();
   }, [loadSites]);
+
+  useEffect(() => {
+    void activeMines.meta().then((res) => {
+      if (res.staging) {
+        setStagingBanner(
+          res.staging_isolated
+            ? `Staging environment (${res.environment}) — isolated from production.`
+            : `Staging isolation warning: this environment may not be production-isolated.`
+        );
+      }
+    });
+  }, []);
 
   // Resume an in-flight pull when opening the page / changing state.
   useEffect(() => {
@@ -599,9 +623,18 @@ export function ActiveMinesPage() {
         <p className="text-sm text-slate-600 max-w-3xl">
           Research prioritization for active mines on unpatented claims (Nevada &amp; Utah).
           This is not a title opinion. Every pull regenerates the list from live BLM / MSHA /
-          state sources — it does not import a static CSV.
+          state sources — it does not import a static CSV. Operational status, tenure, payment
+          status, and verification stay separate. BLM Not Closed polygons are tenure evidence
+          only; MSHA hours/inspections corroborate but never prove production.
         </p>
       </header>
+
+      {stagingBanner && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-950">
+          {stagingBanner} Do not use production credentials. Hands-on checklist:{" "}
+          <code className="text-xs">docs/active_mines/CHECKLIST.md</code>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
         <label className="text-sm">
@@ -811,6 +844,9 @@ export function ActiveMinesPage() {
               <th className="px-3 py-2 font-medium">Score</th>
               <th className="px-3 py-2 font-medium">Conf.</th>
               <th className="px-3 py-2 font-medium">Mine</th>
+              <th className="px-3 py-2 font-medium">Op. status</th>
+              <th className="px-3 py-2 font-medium">Tenure</th>
+              <th className="px-3 py-2 font-medium">Verify</th>
               <th className="px-3 py-2 font-medium">County</th>
               <th className="px-3 py-2 font-medium">PLSS</th>
               <th className="px-3 py-2 font-medium">Best claim</th>
@@ -825,7 +861,7 @@ export function ActiveMinesPage() {
           <tbody>
             {sites.length === 0 && !loading ? (
               <tr>
-                <td colSpan={14} className="px-3 py-8 text-center text-slate-500">
+                <td colSpan={17} className="px-3 py-8 text-center text-slate-500">
                   No sites yet. Choose a state and pull active mines on unpatented claims.
                 </td>
               </tr>
@@ -864,6 +900,16 @@ export function ActiveMinesPage() {
                       <td className="px-3 py-2 font-medium text-slate-900">
                         {row.name || row.mine_site_id}
                       </td>
+                      <td className="px-3 py-2">
+                        <span className="text-xs">
+                          {row.operational_status || "—"}
+                          {row.fail_closed ? (
+                            <span className="ml-1 text-rose-700">fail-closed</span>
+                          ) : null}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-xs">{row.tenure_class || "—"}</td>
+                      <td className="px-3 py-2 text-xs">{row.verification_state || "Candidate"}</td>
                       <td className="px-3 py-2">{row.county || "—"}</td>
                       <td className="px-3 py-2">
                         {row.location_plss || (
@@ -899,7 +945,7 @@ export function ActiveMinesPage() {
                     </tr>
                     {isExpanded && (
                       <tr className="border-t border-emerald-100 bg-emerald-50/20">
-                        <td colSpan={14} className="px-3 py-3">
+                        <td colSpan={17} className="px-3 py-3">
                           {claimsLoading ? (
                             <div className="flex items-center gap-2 text-xs text-slate-500 py-2">
                               <Spinner /> Loading claim records…
@@ -973,6 +1019,29 @@ export function ActiveMinesPage() {
                 <dd>{String(selected.activity_label || "—")}</dd>
               </div>
               <div>
+                <dt className="text-slate-500">Operational status</dt>
+                <dd>
+                  {String(selected.operational_status || "Unknown")}
+                  {selected.fail_closed ? " (fail-closed)" : ""}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Regulatory status</dt>
+                <dd>{String(selected.regulatory_status || "—")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Facility type</dt>
+                <dd>{String(selected.facility_type || "—")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Tenure</dt>
+                <dd>{String(selected.tenure_class || "—")}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Verification</dt>
+                <dd>{String(selected.verification_state || "Candidate")}</dd>
+              </div>
+              <div>
                 <dt className="text-slate-500">PLSS</dt>
                 <dd>{String(selected.location_plss || selected.plss_status || "—")}</dd>
               </div>
@@ -985,6 +1054,131 @@ export function ActiveMinesPage() {
                 <dd>{String(selected.recommended_next_action || "—")}</dd>
               </div>
             </dl>
+
+            {Array.isArray(selected.contradictions_json) &&
+              (selected.contradictions_json as unknown[]).length > 0 && (
+                <div className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-900">
+                  <strong>Fail-closed contradictions</strong>
+                  <pre className="mt-1 overflow-auto max-h-32">
+                    {JSON.stringify(selected.contradictions_json, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+            {selected.tenure_json ? (
+              <div>
+                <h3 className="text-sm font-medium text-slate-700 mb-1">
+                  Tenure / geometry limitations
+                </h3>
+                <p className="text-xs text-slate-600">
+                  MLRS Not Closed polygons are tenure evidence only. Geometry is PLSS-derived
+                  and approximate — not a surveyed boundary.
+                </p>
+                <pre className="text-xs bg-slate-50 rounded p-2 overflow-auto max-h-32 mt-1">
+                  {JSON.stringify(selected.tenure_json, null, 2)}
+                </pre>
+              </div>
+            ) : null}
+
+            {Array.isArray(selected.assertions_json) &&
+              (selected.assertions_json as unknown[]).length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-slate-700 mb-1">
+                    Per-assertion provenance
+                  </h3>
+                  <pre className="text-xs bg-slate-50 rounded p-2 overflow-auto max-h-48">
+                    {JSON.stringify(selected.assertions_json, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+            <div className="rounded border border-slate-200 p-3 space-y-2">
+              <h3 className="text-sm font-medium text-slate-700">
+                Human verification checklist
+              </h3>
+              <p className="text-xs text-slate-500">
+                Human Verified is never automatic. All items, a reviewer name, and a date are
+                required. Payment status is not changed here.
+              </p>
+              {(
+                [
+                  ["identity", "Mine identity confirmed (name, operator, coordinates)"],
+                  [
+                    "operational_status",
+                    "Operational status reviewed; Producing was not inferred from permit/claim/MSHA/BMRR/hours alone",
+                  ],
+                  ["tenure", "Tenure reviewed, including mixed-tenure and PLSS geometry limits"],
+                  ["contradictions", "Contradictions resolved or documented"],
+                  ["sources_reviewed", "Source URLs, retrieved dates, and freshness reviewed"],
+                ] as const
+              ).map(([id, label]) => (
+                <label key={id} className="flex items-start gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(verifyChecks[id])}
+                    onChange={(e) =>
+                      setVerifyChecks((prev) => ({ ...prev, [id]: e.target.checked }))
+                    }
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+              <div className="flex flex-wrap gap-2">
+                <input
+                  className="border border-slate-300 rounded px-2 py-1 text-xs"
+                  placeholder="Reviewer name"
+                  value={verifyName}
+                  onChange={(e) => setVerifyName(e.target.value)}
+                />
+                <input
+                  type="date"
+                  className="border border-slate-300 rounded px-2 py-1 text-xs"
+                  value={verifyDate}
+                  onChange={(e) => setVerifyDate(e.target.value)}
+                />
+              </div>
+              <textarea
+                className="w-full border border-slate-300 rounded px-2 py-1 text-xs"
+                rows={2}
+                placeholder="Notes"
+                value={verifyNotes}
+                onChange={(e) => setVerifyNotes(e.target.value)}
+              />
+              <button
+                type="button"
+                disabled={verifyBusy}
+                className="rounded bg-slate-900 text-white text-xs px-3 py-1.5 disabled:opacity-50"
+                onClick={async () => {
+                  if (!selected?.id) return;
+                  setVerifyBusy(true);
+                  setError(null);
+                  try {
+                    const res = await activeMines.verify(String(selected.id), {
+                      verification_state: "Human Verified",
+                      reviewer_name: verifyName,
+                      reviewed_at: verifyDate,
+                      notes: verifyNotes,
+                      items: Object.entries(verifyChecks).map(([id, checked]) => ({
+                        id,
+                        checked,
+                      })),
+                    });
+                    if (!res.ok) {
+                      setError(String(res.error || "Verification failed"));
+                    } else if (res.site) {
+                      setSelected(res.site);
+                      await loadSites({ quiet: true });
+                    }
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : String(e));
+                  } finally {
+                    setVerifyBusy(false);
+                  }
+                }}
+              >
+                {verifyBusy ? "Saving…" : "Save Human Verified"}
+              </button>
+            </div>
 
             {selected.area_of_focus_id ? (
               <div className="flex flex-wrap items-center gap-3 text-sm">

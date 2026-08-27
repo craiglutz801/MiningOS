@@ -87,6 +87,9 @@ class Settings(BaseSettings):
     ENABLE_ACTIVE_MINES_ADMIN: bool = False
     ENABLE_ACTIVE_MINES_JOBS: bool = False
 
+    # deployment environment: development | staging | production
+    MINING_OS_ENVIRONMENT: str = "development"
+
     # ---- parsed lists (use these in code) ------------------------------------
 
     @property
