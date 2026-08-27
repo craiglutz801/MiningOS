@@ -40,20 +40,7 @@ class TestBatchFetchClaimRecords:
 
         def fake_run(aid, account_id=None, progress_cb=None):
             calls.append(aid)
-            return {
-                "ok": True,
-                "claims": [
-                    {
-                        "serial_number": "A1",
-                        "payment_status": "paid",
-                        "payment_evidence_code": "PAYMENT_RECORDED",
-                        "payment_checked_at": "2026-08-26T12:00:00Z",
-                    }
-                ],
-                "log": "ok",
-                "error": None,
-                "fetched_at": "t",
-            }
+            return {"ok": True, "claims": [{"x": 1}], "log": "ok", "error": None, "fetched_at": "t"}
 
         monkeypatch.setattr("mining_os.services.areas_of_focus.get_area", fake_get_area)
         monkeypatch.setattr(
@@ -71,10 +58,6 @@ class TestBatchFetchClaimRecords:
         by_id = {r["id"]: r for r in out["results"]}
         assert by_id[1]["ok"] is True
         assert by_id[1]["claims_count"] == 1
-        assert by_id[1]["paid_count"] == 1
-        assert by_id[1]["unpaid_count"] == 0
-        assert by_id[1]["unknown_count"] == 0
-        assert by_id[1]["payment_checked_at"] == "2026-08-26T12:00:00Z"
         assert by_id[99]["ok"] is False
         assert "not found" in (by_id[99].get("error") or "").lower()
 

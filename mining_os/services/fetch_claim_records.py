@@ -672,9 +672,6 @@ def fetch_claim_records_for_area(
 
         # ── Save results ──
         fetched_at = datetime.now(timezone.utc).isoformat()
-        from mining_os.services.mlrs_payment_truth import summarize_claim_payments
-
-        payment = summarize_claim_payments(claims)
         payload: dict[str, Any] = {
             "fetched_at": fetched_at,
             "log": log_text.strip(),
@@ -682,14 +679,6 @@ def fetch_claim_records_for_area(
             "plss": location_plss,
             "query_method": query_method,
             "ok": True,
-            "paid_count": payment["paid_count"],
-            "unpaid_count": payment["unpaid_count"],
-            "unknown_count": payment["unknown_count"],
-            "current_count": payment["current_count"],
-            "past_due_count": payment["past_due_count"],
-            "closed_count": payment["closed_count"],
-            "payment_rollup": payment["rollup"],
-            "payment_checked_at": payment["payment_checked_at"],
         }
         if fatal_env_error and not claims:
             payload["error"] = fatal_env_error
@@ -722,9 +711,13 @@ def fetch_claim_records_for_area(
         )
 
         if claims:
-            from mining_os.services.mlrs_payment_truth import rollup_payment_status
-
-            derived_status = rollup_payment_status(claims)
+            statuses = {(c.get("payment_status") or "unknown").lower() for c in claims}
+            if "unpaid" in statuses:
+                derived_status = "unpaid"
+            elif "paid" in statuses:
+                derived_status = "paid"
+            else:
+                derived_status = "unknown"
 
             blm_prod_types = sorted({
                 (c.get("BLM_PROD") or "").strip()
@@ -742,14 +735,6 @@ def fetch_claim_records_for_area(
             "claims": payload["claims"],
             "error": payload.get("error"),
             "fetched_at": payload["fetched_at"],
-            "paid_count": payload["paid_count"],
-            "unpaid_count": payload["unpaid_count"],
-            "unknown_count": payload["unknown_count"],
-            "current_count": payload.get("current_count"),
-            "past_due_count": payload.get("past_due_count"),
-            "closed_count": payload.get("closed_count"),
-            "payment_rollup": payload.get("payment_rollup"),
-            "payment_checked_at": payload["payment_checked_at"],
         }
     except subprocess.TimeoutExpired:
         return {"ok": False, "log": "", "claims": [], "error": "Script timed out (10 minutes).", "fetched_at": None}

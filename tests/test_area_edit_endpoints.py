@@ -14,33 +14,12 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
-from mining_os.services.auth import AuthContext
 
 
-@pytest.fixture
-def client(monkeypatch):
+@pytest.fixture(scope="module")
+def client():
     from mining_os.api.main import app
-
-    fake_ctx = AuthContext(
-        user_id=1,
-        email="craig@example.com",
-        username="craig",
-        display_name="Craig",
-        is_system_admin=True,
-        active_account_id=1,
-        active_account_name="Craig",
-        session_id=1,
-    )
-    monkeypatch.setattr("mining_os.api.main.resolve_session", lambda token: fake_ctx)
     return TestClient(app)
-
-
-@pytest.fixture(autouse=True)
-def _stub_current_account(monkeypatch):
-    monkeypatch.setattr(
-        "mining_os.services.areas_of_focus.current_account_id",
-        lambda: 1,
-    )
 
 
 @pytest.fixture
@@ -86,13 +65,13 @@ class TestUpdateAreaName:
 class TestUpdateAreaPlss:
     def test_returns_not_found_when_area_missing(self, monkeypatch):
         from mining_os.services import areas_of_focus as svc
-        monkeypatch.setattr(svc, "get_area", lambda area_id, account_id=None: None)
+        monkeypatch.setattr(svc, "get_area", lambda area_id: None)
         result = svc.update_area_plss(999, "UT 13S 11W Sec 29")
         assert result == {"ok": False, "error": "not_found"}
 
     def test_unparseable_plss_returns_error(self, monkeypatch, fake_area):
         from mining_os.services import areas_of_focus as svc
-        monkeypatch.setattr(svc, "get_area", lambda area_id, account_id=None: fake_area)
+        monkeypatch.setattr(svc, "get_area", lambda area_id: fake_area)
         result = svc.update_area_plss(42, "not a real plss string at all")
         assert result["ok"] is False
         assert result["error"] == "unparseable_plss"
@@ -100,7 +79,7 @@ class TestUpdateAreaPlss:
     def test_empty_plss_clears_fields(self, monkeypatch, fake_area):
         """Submitting '' or None clears PLSS and all parsed components but keeps coords."""
         from mining_os.services import areas_of_focus as svc
-        monkeypatch.setattr(svc, "get_area", lambda area_id, account_id=None: fake_area)
+        monkeypatch.setattr(svc, "get_area", lambda area_id: fake_area)
 
         captured = {}
 
@@ -136,7 +115,7 @@ class TestUpdateAreaPlss:
     def test_happy_path_regeocodes(self, monkeypatch, fake_area):
         """Valid PLSS → components written AND lat/lon re-derived."""
         from mining_os.services import areas_of_focus as svc
-        monkeypatch.setattr(svc, "get_area", lambda area_id, account_id=None: fake_area)
+        monkeypatch.setattr(svc, "get_area", lambda area_id: fake_area)
 
         # Force geocoder to return a known lat/lon
         monkeypatch.setattr(
@@ -149,7 +128,7 @@ class TestUpdateAreaPlss:
         class FakeConn:
             def execute(self, stmt, params):
                 sql = str(stmt)
-                if "SELECT id, name FROM areas_of_focus" in sql and "plss_normalized" in sql:
+                if "SELECT id, name FROM areas_of_focus WHERE plss_normalized" in sql:
                     return SimpleNamespace(mappings=lambda: SimpleNamespace(first=lambda: None))
                 if "UPDATE" in sql:
                     captured["params"] = params
@@ -182,7 +161,7 @@ class TestUpdateAreaPlss:
 
     def test_no_regeocode_preserves_stored_coords(self, monkeypatch, fake_area):
         from mining_os.services import areas_of_focus as svc
-        monkeypatch.setattr(svc, "get_area", lambda area_id, account_id=None: fake_area)
+        monkeypatch.setattr(svc, "get_area", lambda area_id: fake_area)
 
         def boom(**kw):
             raise AssertionError("geocoder should not be called when regeocode=False")
@@ -192,7 +171,7 @@ class TestUpdateAreaPlss:
         class FakeConn:
             def execute(self, stmt, params):
                 sql = str(stmt)
-                if "SELECT id, name FROM areas_of_focus" in sql and "plss_normalized" in sql:
+                if "SELECT id, name FROM areas_of_focus WHERE plss_normalized" in sql:
                     return SimpleNamespace(mappings=lambda: SimpleNamespace(first=lambda: None))
                 return SimpleNamespace(rowcount=1)
 
@@ -218,7 +197,7 @@ class TestUpdateAreaPlss:
         """When the parsed PLSS collides with another target, we return a
         structured error including the conflicting target's id and name."""
         from mining_os.services import areas_of_focus as svc
-        monkeypatch.setattr(svc, "get_area", lambda area_id, account_id=None: fake_area)
+        monkeypatch.setattr(svc, "get_area", lambda area_id: fake_area)
         monkeypatch.setattr(
             "mining_os.services.plss_geocode.geocode_plss",
             lambda **kw: {"latitude": 39.70, "longitude": -113.24},
@@ -227,7 +206,7 @@ class TestUpdateAreaPlss:
         class FakeConn:
             def execute(self, stmt, params):
                 sql = str(stmt)
-                if "SELECT id, name FROM areas_of_focus" in sql and "plss_normalized" in sql:
+                if "SELECT id, name FROM areas_of_focus WHERE plss_normalized" in sql:
                     return SimpleNamespace(mappings=lambda: SimpleNamespace(
                         first=lambda: {"id": 99, "name": "Existing Target"}
                     ))
@@ -254,7 +233,7 @@ class TestUpdateAreaPlss:
     def test_geocoder_failure_does_not_block_update(self, monkeypatch, fake_area):
         """If BLM Cadastral is down, PLSS save still succeeds; coords preserved."""
         from mining_os.services import areas_of_focus as svc
-        monkeypatch.setattr(svc, "get_area", lambda area_id, account_id=None: fake_area)
+        monkeypatch.setattr(svc, "get_area", lambda area_id: fake_area)
 
         def kaboom(**kw):
             raise RuntimeError("BLM down")
@@ -263,7 +242,7 @@ class TestUpdateAreaPlss:
         class FakeConn:
             def execute(self, stmt, params):
                 sql = str(stmt)
-                if "SELECT id, name FROM areas_of_focus" in sql and "plss_normalized" in sql:
+                if "SELECT id, name FROM areas_of_focus WHERE plss_normalized" in sql:
                     return SimpleNamespace(mappings=lambda: SimpleNamespace(first=lambda: None))
                 return SimpleNamespace(rowcount=1)
 
@@ -293,7 +272,7 @@ class TestNameEndpoints:
     def test_rejects_empty(self, client, monkeypatch, fake_area):
         monkeypatch.setattr(
             "mining_os.services.areas_of_focus.get_area",
-            lambda area_id, account_id=None: fake_area,
+            lambda area_id: fake_area,
         )
         r = client.post("/api/areas-of-focus/42/name", json={"name": "   "})
         assert r.status_code == 400
@@ -301,7 +280,7 @@ class TestNameEndpoints:
     def test_404_when_area_missing(self, client, monkeypatch):
         monkeypatch.setattr(
             "mining_os.services.areas_of_focus.get_area",
-            lambda area_id, account_id=None: None,
+            lambda area_id: None,
         )
         r = client.post("/api/areas-of-focus/999/name", json={"name": "New Name"})
         assert r.status_code == 404
@@ -309,7 +288,7 @@ class TestNameEndpoints:
     def test_renames_successfully(self, client, monkeypatch, fake_area):
         monkeypatch.setattr(
             "mining_os.services.areas_of_focus.get_area",
-            lambda area_id, account_id=None: fake_area,
+            lambda area_id: fake_area,
         )
         monkeypatch.setattr(
             "mining_os.services.areas_of_focus.update_area_name",
@@ -325,7 +304,7 @@ class TestTagEndpoints:
     def test_sets_tag_successfully(self, client, monkeypatch, fake_area):
         monkeypatch.setattr(
             "mining_os.services.areas_of_focus.get_area",
-            lambda area_id, account_id=None: fake_area,
+            lambda area_id: fake_area,
         )
         monkeypatch.setattr(
             "mining_os.services.areas_of_focus.update_area_tag",
@@ -338,7 +317,7 @@ class TestTagEndpoints:
     def test_clears_tag_successfully(self, client, monkeypatch, fake_area):
         monkeypatch.setattr(
             "mining_os.services.areas_of_focus.get_area",
-            lambda area_id, account_id=None: fake_area,
+            lambda area_id: fake_area,
         )
         monkeypatch.setattr(
             "mining_os.services.areas_of_focus.update_area_tag",

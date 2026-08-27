@@ -17,9 +17,9 @@ from mining_os.active_mine_intel.plss_bridge import (
 def test_claim_rollup_counts_match_drilldown_statuses():
     total, unpaid, paid, unknown, rollup = rollup_from_claims(
         [
-            {"payment_status": "paid", "payment_evidence_code": "PAYMENT_RECORDED"},
-            {"payment_status": "Paid", "payment_evidence_code": "PAYMENT_RECORDED"},
-            {"payment_status": "unpaid", "payment_evidence_code": "NONPAYMENT_WARNING"},
+            {"payment_status": "paid"},
+            {"payment_status": "Paid"},
+            {"payment_status": "unpaid"},
             {"payment_status": "unknown"},
             {"payment_status": ""},
             {"serial": "x"},
@@ -32,26 +32,10 @@ def test_claim_rollup_counts_match_drilldown_statuses():
     assert rollup == "unpaid"
 
 
-def test_claim_rollup_legacy_paid_without_evidence_is_unknown():
-    total, unpaid, paid, unknown, rollup = rollup_from_claims(
-        [
-            {"payment_status": "paid"},
-            {"payment_status": "paid", "payment_evidence_code": "NEXT_PAYMENT_DUE_CURRENT"},
-            {"payment_status": "unpaid", "payment_evidence_code": "NEXT_PAYMENT_DUE_OVERDUE"},
-        ]
-    )
-    assert total == 3
-    assert paid == 0
-    assert unpaid == 0
-    assert unknown == 3
-    assert rollup == "unknown"
-
-
 def test_claim_rollup_from_characteristics_string_json():
     chars = (
         '{"claim_records":{"fetched_at":"2026-08-20T00:00:00Z","claims":['
-        '{"payment_status":"paid","payment_evidence_code":"PAYMENT_RECORDED"},'
-        '{"payment_status":"paid","payment_evidence_code":"PAYMENT_RECORDED"}]}}'
+        '{"payment_status":"paid"},{"payment_status":"paid"}]}}'
     )
     out = rollup_from_characteristics(chars)
     assert out == (2, 0, 2, 0, "paid")

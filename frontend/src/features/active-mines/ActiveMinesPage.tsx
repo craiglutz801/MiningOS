@@ -5,7 +5,6 @@ import {
   ClaimRecordsMlrsPanel,
   type ClaimRecordsPayload,
 } from "../../areas/ClaimRecordsMlrsPanel";
-import { getClaimPaymentText } from "../../areas/claimPaymentBadge";
 
 const STATE_STORAGE_KEY = "mining_os.active_mines.state";
 
@@ -79,7 +78,7 @@ function countsFromClaimRecords(cr: ClaimRecordsPayload | null | undefined): {
   let unknown = 0;
   for (const rawClaim of cr.claims) {
     const c = (rawClaim && typeof rawClaim === "object" ? rawClaim : {}) as Record<string, unknown>;
-    const st = getClaimPaymentText(c).status;
+    const st = (c.payment_status ?? "").toString().trim().toLowerCase();
     if (st === "paid") paid += 1;
     else if (st === "unpaid") unpaid += 1;
     else unknown += 1;
