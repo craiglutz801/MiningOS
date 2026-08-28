@@ -5,7 +5,7 @@ Use this on the **staging / preview URL only**. Do not run against production
 
 ## Before you start
 
-- [ ] Open the **complete staging URL** from the draft PR (Cloudflare tunnel serving SPA + isolated API). Prefer that over the Vercel preview if the preview login wall appears.
+- [ ] Open the **durable staging URL** from the draft PR (`https://mining-os-api-staging.onrender.com`). Do **not** use `miningos.onrender.com` or a `trycloudflare.com` tunnel.
 - [ ] If a previous visit showed `Failed to fetch dynamically imported module`, hard-refresh once (Ctrl+Shift+R / Cmd+Shift+R) so the browser drops the stale hashed chunk.
 - [ ] Log in with the **staging-only** account from the draft PR (never production credentials).
 - [ ] Confirm the amber **Staging environment** banner on Active Mine Search.

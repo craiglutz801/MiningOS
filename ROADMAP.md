@@ -43,6 +43,7 @@ Items are checked off when completed, with the completion date noted.
 - [x] **Active Mine Search (NV/UT)** — Live matcher methodology ported into Mining OS; regenerable Pull; PLSS section Target linking; batch Fetch unpaid claims. See `docs/active_mines/OVERVIEW.md`. *(Completed 2026-08-14)*
 - [x] **Active Mine Search — evidence model, reconciliation, staging gate (T-041)** — Operational/regulatory/facility/tenure/verification dimensions; per-assertion provenance; NDEP BMRR adapter; Utah DOGM coverage diagnostics (uranium/full-minerals gaps); fail-closed stale/contradictory sources; mixed-tenure flags; Human Verified dated checklist; production-isolated staging checklist. Matcher scoring and payment-status rollup unchanged. *(Completed 2026-08-27)*
 - [x] **Active Mine Search — bulk Fetch unpaid payment checkpoints** — Persist Paid/Unpaid during MLRS enrichment; scale per-Target timeout with claim count; on kill keep partial scrape instead of ArcGIS-only Unknown; UI shows scrape progress vs timeout. claim_rollup Paid/Unpaid/Unknown rules unchanged. *(Completed 2026-08-28)*
+- [x] **Active Mine Search — production/staging config isolation** — `frontend/vercel.json` no longer hard-codes trycloudflare; production default rewrite stays `miningos.onrender.com`; git previews rewrite to `mining-os-api-staging`; CI guards block production↔staging cross-wiring. Durable Render staging still needs a separate Blueprint apply (`render.staging.yaml`). *(Completed 2026-08-28)*
 
 ---
 

@@ -1,5 +1,16 @@
-# Isolated Render staging service. Do NOT apply this as a replacement for
-# render.yaml (production mining-os-api). Attach a staging Postgres URL only.
+# Isolated Render staging — apply as a SEPARATE Blueprint.
+# Do NOT replace production render.yaml / mining-os-api.
+# Do NOT attach the production DATABASE_URL.
+#
+# Dashboard: New Blueprint → this file → creates miningos-staging-db +
+# mining-os-api-staging only.
+
+databases:
+  - name: miningos-staging-db
+    databaseName: miningos_staging
+    user: miningos_staging
+    plan: basic-256mb
+    postgresMajorVersion: 16
 
 services:
   - type: web
@@ -24,7 +35,13 @@ services:
         value: "staging"
       - key: MINING_OS_MLRS_PAYMENT_HEADLESS
         value: "1"
+      - key: MINING_OS_MLRS_PARALLELISM
+        value: "1"
+      - key: API_ORIGIN
+        value: "https://mining-os-api-staging.onrender.com"
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: miningos-staging-db
+          property: connectionString
       - key: OPENAI_API_KEY
         sync: false

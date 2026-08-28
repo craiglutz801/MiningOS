@@ -384,6 +384,56 @@ def test_staging_isolation_blocks_production_host(monkeypatch):
     assert looks_like_production_url("https://mining-os-api-staging.onrender.com") is False
 
 
+def test_production_rejects_trycloudflare_origin(monkeypatch):
+    from mining_os.active_mine_intel.staging import production_wiring_report
+
+    monkeypatch.setenv("MINING_OS_ENVIRONMENT", "production")
+    monkeypatch.setenv("API_ORIGIN", "https://changed-questionnaire-wav-shaw.trycloudflare.com")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    report = production_wiring_report()
+    assert report["ok"] is False
+    assert any("tunnel" in v for v in report["violations"])
+
+
+def test_production_rejects_staging_api_origin(monkeypatch):
+    from mining_os.active_mine_intel.staging import production_wiring_report
+
+    monkeypatch.setenv("MINING_OS_ENVIRONMENT", "production")
+    monkeypatch.setenv("API_ORIGIN", "https://mining-os-api-staging.onrender.com")
+    report = production_wiring_report()
+    assert report["ok"] is False
+    assert any("staging" in v.lower() for v in report["violations"])
+
+
+def test_production_config_cannot_reference_trycloudflare():
+    from mining_os.active_mine_intel.staging import scan_production_config_files
+
+    report = scan_production_config_files()
+    assert report["ok"] is True, report["violations"]
+
+
+def test_staging_config_cannot_reference_production_api():
+    from mining_os.active_mine_intel.staging import scan_staging_config_files
+
+    report = scan_staging_config_files()
+    assert report["ok"] is True, report["violations"]
+
+
+def test_vercel_json_keeps_production_api_and_preview_staging():
+    import json
+
+    data = json.loads((Path(__file__).resolve().parents[1] / "frontend" / "vercel.json").read_text())
+    rewrites = data["rewrites"]
+    dests = [r["destination"] for r in rewrites]
+    joined = json.dumps(data)
+    assert "trycloudflare.com" not in joined
+    assert "https://miningos.onrender.com/api/:path*" in dests
+    preview = next(r for r in rewrites if r.get("has"))
+    assert "miningos.onrender.com" not in preview["destination"]
+    assert "mining-os-api-staging.onrender.com" in preview["destination"]
+    assert "mining-os-git-" in preview["has"][0]["value"]
+
+
 def test_missing_vite_chunk_is_not_spa_html():
     """A missing hashed JS file must 404, not return index.html as a module."""
     from fastapi.testclient import TestClient
@@ -399,16 +449,6 @@ def test_missing_vite_chunk_is_not_spa_html():
     assert "html" not in ctype
     assert "<!DOCTYPE" not in res.text
     assert "<html" not in res.text.lower()
-
-
-def test_vercel_preview_rewrite_is_not_production():
-    import json
-
-    data = json.loads((Path(__file__).resolve().parents[1] / "frontend" / "vercel.json").read_text())
-    dest = data["rewrites"][0]["destination"]
-    assert "miningos.onrender.com" not in dest
-    assert "${API_ORIGIN}" not in dest  # preview must pin an isolated staging origin
-    assert "trycloudflare.com" in dest or "staging" in dest.lower()
 
 
 def test_source_status_to_dict_distinguishes_empty():

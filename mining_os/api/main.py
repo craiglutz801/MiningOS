@@ -3325,6 +3325,18 @@ app.mount("/api", api_app)
 # ---- Start automation scheduler on uvicorn boot ---
 @app.on_event("startup")
 def _start_automation_scheduler() -> None:
+    try:
+        from mining_os.active_mine_intel.staging import assert_environment_wiring
+
+        wiring = assert_environment_wiring()
+        log.info(
+            "environment wiring ok env=%s violations=%s",
+            wiring.get("environment"),
+            wiring.get("violations"),
+        )
+    except Exception as e:
+        log.error("Environment wiring check failed: %s", e)
+        raise
     # Reconcile orphaned runs BEFORE the scheduler can launch new ones. Automation
     # runs live on in-memory daemon threads that cannot survive a process restart,
     # so any run still marked "running" at boot was stranded by the previous

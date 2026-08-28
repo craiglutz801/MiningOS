@@ -38,4 +38,5 @@ jobs:
         env:
           PYTHONUNBUFFERED: "1"
         run: |
+          python scripts/assert_env_wiring.py
           pytest -v --tb=short

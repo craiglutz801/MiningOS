@@ -79,6 +79,7 @@ def _cookie_header(set_cookie: str | None) -> str | None:
 def main() -> int:
     os.environ.setdefault("MINING_OS_ENVIRONMENT", "staging")
     from mining_os.active_mine_intel.staging import (
+        looks_like_ephemeral_tunnel,
         looks_like_production_url,
         staging_isolation_report,
     )
@@ -89,6 +90,11 @@ def main() -> int:
     base = (os.getenv("STAGING_BASE_URL") or origin or "http://127.0.0.1:8010").rstrip("/")
     if looks_like_production_url(db) or looks_like_production_url(origin) or looks_like_production_url(base):
         return _fail("process is wired to a production host")
+    if looks_like_ephemeral_tunnel(base) and os.getenv("STAGING_ALLOW_TUNNEL", "").strip() != "1":
+        return _fail(
+            "STAGING_BASE_URL is an ephemeral tunnel. Use https://mining-os-api-staging.onrender.com "
+            "(or set STAGING_ALLOW_TUNNEL=1 only for local agent debugging)."
+        )
     for marker in PRODUCTION_MARKERS:
         if marker in db.lower() or marker in origin.lower() or marker in base.lower():
             return _fail(f"production marker present: {marker}")
