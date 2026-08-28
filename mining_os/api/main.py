@@ -3353,14 +3353,51 @@ def _start_automation_scheduler() -> None:
 
 _frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 _index_html = _frontend_dist / "index.html"
+_ASSET_SUFFIXES = (".js", ".mjs", ".css", ".map", ".svg", ".woff", ".woff2", ".png", ".ico", ".webp")
+
+
+def _spa_index_response() -> FileResponse:
+    # index.html must not be cached: a stale HTML file points at old hashed chunks
+    # and Chromium then throws "Failed to fetch dynamically imported module".
+    return FileResponse(
+        _index_html,
+        headers={"Cache-Control": "no-store, max-age=0, must-revalidate"},
+    )
+
+
+def _static_asset_response(asset: Path) -> FileResponse:
+    media = None
+    suffix = asset.suffix.lower()
+    if suffix in {".js", ".mjs"}:
+        media = "application/javascript"
+    elif suffix == ".css":
+        media = "text/css"
+    headers = {
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cross-Origin-Resource-Policy": "cross-origin",
+        "X-Content-Type-Options": "nosniff",
+    }
+    return FileResponse(asset, media_type=media, headers=headers)
+
 
 if _index_html.exists():
-    # Serve static assets (JS, CSS, etc.)
-    app.mount("/assets", StaticFiles(directory=str(_frontend_dist / "assets")), name="assets")
-    # SPA fallback: serve index.html for root and all SPA paths (not /api)
+    @app.get("/assets/{asset_path:path}")
+    def frontend_assets(asset_path: str):
+        # Hashed Vite chunks. Never fall through to index.html — that is the
+        # dynamic-import crash (HTML served as a JS module).
+        assets_root = (_frontend_dist / "assets").resolve()
+        asset = (assets_root / asset_path).resolve()
+        try:
+            asset.relative_to(assets_root)
+        except ValueError:
+            raise HTTPException(status_code=404, detail="Not Found")
+        if not asset.is_file():
+            raise HTTPException(status_code=404, detail="Asset not found")
+        return _static_asset_response(asset)
+
     @app.get("/")
     def root():
-        return FileResponse(_index_html)
+        return _spa_index_response()
 
     @app.get("/{full_path:path}")
     def spa_catchall(full_path: str):
@@ -3369,5 +3406,9 @@ if _index_html.exists():
             raise HTTPException(status_code=404, detail="Not Found")
         asset = _frontend_dist / full_path
         if asset.is_file():
-            return FileResponse(asset)
-        return FileResponse(_index_html)
+            return _static_asset_response(asset)
+        # A missing *.js / *.css is a real 404, not the SPA shell.
+        lowered = full_path.lower()
+        if lowered.startswith("assets/") or lowered.endswith(_ASSET_SUFFIXES):
+            raise HTTPException(status_code=404, detail="Asset not found")
+        return _spa_index_response()

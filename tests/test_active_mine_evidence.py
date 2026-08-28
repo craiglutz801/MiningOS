@@ -369,9 +369,25 @@ def test_staging_isolation_blocks_production_host(monkeypatch):
     assert looks_like_production_url("https://mining-os-api-staging.onrender.com") is False
 
 
+def test_missing_vite_chunk_is_not_spa_html():
+    """A missing hashed JS file must 404, not return index.html as a module."""
+    from fastapi.testclient import TestClient
+
+    if not (Path(__file__).resolve().parents[1] / "frontend" / "dist" / "index.html").exists():
+        pytest.skip("frontend dist not built")
+    from mining_os.api.main import app
+
+    client = TestClient(app)
+    res = client.get("/assets/ActiveMines-does-not-exist.js")
+    assert res.status_code == 404
+    ctype = (res.headers.get("content-type") or "").lower()
+    assert "html" not in ctype
+    assert "<!DOCTYPE" not in res.text
+    assert "<html" not in res.text.lower()
+
+
 def test_vercel_preview_rewrite_is_not_production():
     import json
-    from pathlib import Path
 
     data = json.loads((Path(__file__).resolve().parents[1] / "frontend" / "vercel.json").read_text())
     dest = data["rewrites"][0]["destination"]

@@ -13,15 +13,13 @@ import { Login } from "./pages/Login";
 import { BootstrapAdmin } from "./pages/BootstrapAdmin";
 import { AdminAccounts } from "./pages/AdminAccounts";
 import { SharePage } from "./pages/SharePage";
+import { ActiveMines } from "./pages/ActiveMines";
 
 const TaxSales = lazy(() =>
   import("./pages/TaxSales").then((m) => ({ default: m.TaxSales }))
 );
 const Sitla = lazy(() =>
   import("./pages/Sitla").then((m) => ({ default: m.Sitla }))
-);
-const ActiveMines = lazy(() =>
-  import("./pages/ActiveMines").then((m) => ({ default: m.ActiveMines }))
 );
 
 const taxSalesUiEnabled = import.meta.env.VITE_ENABLE_TAX_SALES === "true";
@@ -79,20 +77,7 @@ export default function App() {
                 />
               )}
               {activeMinesUiEnabled && (
-                <Route
-                  path="active-mines"
-                  element={
-                    <Suspense
-                      fallback={
-                        <div className="p-6 text-sm text-slate-500">
-                          Loading Active Mine Search…
-                        </div>
-                      }
-                    >
-                      <ActiveMines />
-                    </Suspense>
-                  }
-                />
+                <Route path="active-mines" element={<ActiveMines />} />
               )}
               <Route path="admin/accounts" element={<AdminAccounts />} />
             </Route>
