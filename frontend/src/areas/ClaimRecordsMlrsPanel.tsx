@@ -100,7 +100,11 @@ export function ClaimRecordsMlrsPanel({
                     <td className="px-3 py-1.5 text-slate-800">{nm}</td>
                     <td className="px-3 py-1.5 font-mono text-slate-700">{sn}</td>
                     <td className="px-3 py-1.5 whitespace-nowrap">
-                      <ClaimPaymentBadge status={payInfo.status} message={payInfo.message} />
+                      <ClaimPaymentBadge
+                        status={payInfo.status}
+                        message={payInfo.message}
+                        unknownKind={payInfo.unknownKind}
+                      />
                     </td>
                     <td
                       className="px-3 py-1.5 text-slate-600 min-w-[16rem] whitespace-normal break-words"

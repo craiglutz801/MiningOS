@@ -216,7 +216,10 @@ function unknownBadge(row: SiteRow) {
   const n = row.unknown_claim_count ?? 0;
   if (n > 0) {
     return (
-      <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-slate-200 text-slate-700 tabular-nums">
+      <span
+        title="Unknown includes not-yet-scraped, timed-out, and scraped-unknown claims. Expand the row to see which."
+        className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-slate-200 text-slate-700 tabular-nums"
+      >
         {n}
       </span>
     );
@@ -267,6 +270,12 @@ export function ActiveMinesPage() {
       current_index?: number;
       total?: number;
       phase?: string;
+      elapsed_sec?: number | null;
+      timeout_sec?: number | null;
+      payment_current?: number | null;
+      payment_total?: number | null;
+      payment_enrichment?: string | null;
+      timed_out?: boolean;
     } | null;
     error_message?: string | null;
   } | null>(null);
@@ -410,6 +419,7 @@ export function ActiveMinesPage() {
     }
     let lastProcessed = -1;
     let lastMessage = "";
+    let lastPayCur = -1;
     const t = window.setInterval(async () => {
       try {
         const res = await activeMines.getFetchJob(fetchJobId);
@@ -418,10 +428,13 @@ export function ActiveMinesPage() {
         setFetchJob(next);
         const processed = Number(next.processed ?? 0);
         const msg = String(next.progress_json?.progress_message || "");
-        const progressed = processed !== lastProcessed || msg !== lastMessage;
+        const payCur = Number(next.progress_json?.payment_current ?? -1);
+        const progressed =
+          processed !== lastProcessed || msg !== lastMessage || payCur !== lastPayCur;
         if (progressed) {
           lastProcessed = processed;
           lastMessage = msg;
+          lastPayCur = payCur;
           void loadSites({ quiet: true });
           const cur = selectedRef.current;
           const siteId = String(cur?.id || cur?.mine_site_id || "");
@@ -776,13 +789,15 @@ export function ActiveMinesPage() {
           </div>
           {fetchBusy && (
             <p className="text-xs text-slate-500">
-              Claims / Unpaid update after each Target. Shared PLSS Targets are scraped once.
+              Paid / Unpaid / Unknown refresh as each mine's payment scrape checkpoints.
+              Progress shows "Checking payment N/M" versus the per-mine timeout.
             </p>
           )}
           {!fetchBusy && ["success", "partial"].includes(fetchJob.status) && (
             <p className="text-xs text-slate-500">
               Claims / Unpaid columns refresh from the MLRS scrape. Expand a mine row (▸) or open
-              detail for the full Claim Records table (same as Targets).
+              detail for the full Claim Records table (same as Targets). Not scraped and timed-out
+              claims stay Unknown in the count; the table labels them separately.
             </p>
           )}
           {!fetchBusy && fetchJob.status === "failed" && fetchJob.error_message && (

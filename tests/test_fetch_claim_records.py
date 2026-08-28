@@ -22,7 +22,7 @@ def _disable_mlrs_case_page_network(monkeypatch):
     """Fetch tests stub ArcGIS only; do not HTTP/Selenium real mlrs.blm.gov pages."""
     monkeypatch.setattr(
         "mining_os.services.mlrs_case_payment.enrich_claims_from_mlrs_case_pages",
-        lambda claims: claims,
+        lambda claims, **kwargs: claims,
     )
 
 
@@ -401,7 +401,7 @@ class TestDerivedAreaStatus:
         )
         monkeypatch.setattr(
             "mining_os.services.mlrs_case_payment.enrich_claims_from_mlrs_case_pages",
-            lambda claims, progress_cb=None: claims,
+            lambda claims, progress_cb=None, checkpoint_cb=None: claims,
         )
 
         result = fcr.fetch_claim_records_for_area(
@@ -455,7 +455,7 @@ class TestDerivedAreaStatus:
         )
         monkeypatch.setattr(
             "mining_os.services.mlrs_case_payment.enrich_claims_from_mlrs_case_pages",
-            lambda claims, progress_cb=None: claims,
+            lambda claims, progress_cb=None, checkpoint_cb=None: claims,
         )
 
         result = fcr.fetch_claim_records_for_area(
@@ -473,3 +473,99 @@ class TestDerivedAreaStatus:
 
         assert result["ok"] is True
         assert captured["status"] == "unpaid"
+
+
+class TestPaymentCheckpointDuringEnrich:
+    def test_partial_paid_is_persisted_before_enrich_returns(self, monkeypatch, patched_persist):
+        monkeypatch.setattr(fcr, "_blm_agent_path", lambda: None)
+        snapshots: list[dict] = []
+
+        def fake_merge(area_id, updates, **kwargs):
+            cr = (updates or {}).get("claim_records") or {}
+            snapshots.append(
+                {
+                    "enrichment": cr.get("payment_enrichment"),
+                    "statuses": [
+                        (
+                            c.get("serial_number"),
+                            c.get("payment_status"),
+                            c.get("payment_check_error"),
+                        )
+                        for c in (cr.get("claims") or [])
+                        if isinstance(c, dict)
+                    ],
+                }
+            )
+            return True
+
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.merge_area_characteristics",
+            fake_merge,
+        )
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.update_area_state_meridian",
+            lambda area_id, state, meridian, **kwargs: True,
+        )
+        monkeypatch.setattr(
+            "mining_os.services.areas_of_focus.update_area_status",
+            lambda area_id, status, **kwargs: True,
+        )
+        monkeypatch.setattr(
+            "mining_os.services.blm_plss.query_claims_by_plss_with_status",
+            lambda **kwargs: (
+                True,
+                [
+                    {
+                        "claim_name": "ONE",
+                        "serial_number": "A1",
+                        "payment_status": "unknown",
+                        "case_page": "https://mlrs.blm.gov/s/blm-case/a/a",
+                    },
+                    {
+                        "claim_name": "TWO",
+                        "serial_number": "A2",
+                        "payment_status": "unknown",
+                        "case_page": "https://mlrs.blm.gov/s/blm-case/a/b",
+                    },
+                ],
+            ),
+        )
+
+        def fake_enrich(claims, progress_cb=None, checkpoint_cb=None):
+            claims[0]["payment_status"] = "paid"
+            claims[0]["payment_checked_at"] = "2026-08-28T00:00:00Z"
+            if checkpoint_cb:
+                checkpoint_cb(
+                    claims,
+                    {"current": 1, "total": 2, "paid": 1, "unpaid": 0, "unknown": 1},
+                )
+            # Caller is killed before claim 2 is scraped — leave it unknown.
+            return claims
+
+        monkeypatch.setattr(
+            "mining_os.services.mlrs_case_payment.enrich_claims_from_mlrs_case_pages",
+            fake_enrich,
+        )
+
+        result = fcr.fetch_claim_records_for_area(
+            area_id=601,
+            area_name="Partial enrich target",
+            location_plss=None,
+            state_abbr="UT",
+            meridian="26",
+            township="12S",
+            range_val="12W",
+            section="35",
+            latitude=None,
+            longitude=None,
+        )
+
+        assert result["ok"] is True
+        enrichments = [s["enrichment"] for s in snapshots]
+        assert "pending" in enrichments
+        assert "partial" in enrichments
+        partial = next(s for s in snapshots if s["enrichment"] == "partial")
+        assert ("A1", "paid", None) in [
+            (a, b, c if c else None) for a, b, c in partial["statuses"]
+        ]
+        assert any(row[0] == "A2" and row[1] == "unknown" for row in partial["statuses"])

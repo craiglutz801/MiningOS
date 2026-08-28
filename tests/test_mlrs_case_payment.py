@@ -241,7 +241,7 @@ def test_enrich_processes_large_batches_in_sequential_chunks(monkeypatch):
 
     seen_batches: list[list[str]] = []
 
-    def fake_chunk(batch, chunk_id=0, progress_cb=None):
+    def fake_chunk(batch, chunk_id=0, progress_cb=None, live_update_cb=None):
         seen_batches.append([str(c.get("serial_number")) for c in batch])
         enriched = []
         for i, claim in enumerate(batch, start=1):
@@ -266,7 +266,7 @@ def test_enrich_processes_large_batches_in_sequential_chunks(monkeypatch):
 
 
 def test_check_payment_for_url_uses_enriched_row(monkeypatch):
-    def fake_enrich(rows, progress_cb=None):
+    def fake_enrich(rows, progress_cb=None, checkpoint_cb=None):
         return [
             {
                 **rows[0],
@@ -287,3 +287,74 @@ def test_merge_payment_fields_clears_stale_error_on_paid():
     mcp._merge_payment_fields(dst, src)
     assert dst["payment_status"] == "paid"
     assert "payment_check_error" not in dst
+
+
+def test_enrich_checkpoint_cb_after_each_claim(monkeypatch):
+    monkeypatch.setenv("MINING_OS_MLRS_PAYMENT_SELENIUM", "0")
+    monkeypatch.setenv("MINING_OS_MLRS_ENRICH_INPROC", "1")
+    monkeypatch.setenv("MINING_OS_MLRS_CHECKPOINT_CHUNK_SIZE", "10")
+    with mcp._PAYMENT_CACHE_LOCK:
+        mcp._PAYMENT_CACHE.clear()
+
+    def fake_http(url: str, timeout: float = 28.0):
+        serial = "A" if url.endswith("/a") else "B"
+        return {
+            "payment_status": "paid" if serial == "A" else "unpaid",
+            "payment_message": None,
+            "payment_check_source": "mlrs_case_http",
+        }
+
+    monkeypatch.setattr(mcp, "_payment_from_http", fake_http)
+
+    snapshots: list[list[str]] = []
+
+    def checkpoint_cb(claims, progress):
+        snapshots.append([str(c.get("payment_status")) for c in claims])
+
+    claims = [
+        {"serial_number": "A", "payment_status": "unknown", "case_page": "https://mlrs.blm.gov/s/blm-case/a/a"},
+        {"serial_number": "B", "payment_status": "unknown", "case_page": "https://mlrs.blm.gov/s/blm-case/a/b"},
+    ]
+    out = mcp.enrich_claims_from_mlrs_case_pages(claims, checkpoint_cb=checkpoint_cb)
+
+    assert [c["payment_status"] for c in out] == ["paid", "unpaid"]
+    assert snapshots, "checkpoint_cb should run during enrichment"
+    # At least one snapshot after the first claim is paid and before both are done,
+    # or a snapshot where paid appears while the second is still unknown.
+    assert any(s[0] == "paid" for s in snapshots)
+    assert any("unpaid" in s for s in snapshots)
+
+
+def test_checkpoint_file_roundtrip(tmp_path, monkeypatch):
+    path = tmp_path / "ckpt.json"
+    monkeypatch.setenv("MINING_OS_MLRS_CHECKPOINT_FILE", str(path))
+    claims = [
+        {"serial_number": "A", "payment_status": "paid"},
+        {"serial_number": "B", "payment_status": "unknown"},
+    ]
+    mcp.write_live_checkpoint_file(claims)
+    live = mcp.read_live_checkpoint_claims(str(path))
+    assert live is not None
+    assert live[0]["payment_status"] == "paid"
+    merged = mcp._merge_checkpoint_over(
+        [{"payment_status": "unknown"}, {"payment_status": "unknown"}],
+        live,
+    )
+    assert merged[0]["payment_status"] == "paid"
+    assert merged[1]["payment_status"] == "unknown"
+
+
+def test_payment_progress_payload_counts_checked():
+    payload = mcp.payment_progress_payload(
+        [
+            {"payment_status": "paid"},
+            {"payment_status": "unpaid"},
+            {"payment_status": "unknown"},
+            {"payment_status": "unknown", "payment_check_error": "timed_out"},
+        ]
+    )
+    assert payload["paid"] == 1
+    assert payload["unpaid"] == 1
+    assert payload["unknown"] == 2
+    assert payload["total"] == 4
+    assert payload["current"] == 3

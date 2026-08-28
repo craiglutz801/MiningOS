@@ -359,6 +359,21 @@ def test_claim_rollup_unchanged_paid_unpaid_rules():
     assert (total, unpaid, paid, unknown, rollup) == (3, 1, 1, 1, "unpaid")
 
 
+def test_claim_rollup_timed_out_still_unknown():
+    from mining_os.active_mine_intel.claim_rollup import rollup_from_claims
+
+    total, unpaid, paid, unknown, rollup = rollup_from_claims(
+        [
+            {"payment_status": "paid"},
+            {"payment_status": "unknown", "payment_check_error": "timed_out"},
+        ]
+    )
+    assert unknown == 1
+    assert paid == 1
+    assert unpaid == 0
+    assert rollup == "mixed"
+
+
 def test_staging_isolation_blocks_production_host(monkeypatch):
     monkeypatch.setenv("MINING_OS_ENVIRONMENT", "staging")
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@miningos.onrender.com/miningos")
