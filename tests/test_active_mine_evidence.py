@@ -369,6 +369,17 @@ def test_staging_isolation_blocks_production_host(monkeypatch):
     assert looks_like_production_url("https://mining-os-api-staging.onrender.com") is False
 
 
+def test_vercel_preview_rewrite_is_not_production():
+    import json
+    from pathlib import Path
+
+    data = json.loads((Path(__file__).resolve().parents[1] / "frontend" / "vercel.json").read_text())
+    dest = data["rewrites"][0]["destination"]
+    assert "miningos.onrender.com" not in dest
+    assert "${API_ORIGIN}" not in dest  # preview must pin an isolated staging origin
+    assert "trycloudflare.com" in dest or "staging" in dest.lower()
+
+
 def test_source_status_to_dict_distinguishes_empty():
     empty = SourceStatus(source_id="x", status="empty", record_count=0, outcome="empty")
     failed = SourceStatus(source_id="x", status="failed", record_count=0, outcome="failed")

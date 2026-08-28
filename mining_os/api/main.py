@@ -2610,6 +2610,22 @@ from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402
 
 app.add_middleware(GZipMiddleware, minimum_size=2048)
 
+try:
+    from mining_os.active_mine_intel.staging import is_staging as _cors_is_staging
+
+    if _cors_is_staging():
+        from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origin_regex=r"https://([a-z0-9-]+\.)*(vercel\.app|trycloudflare\.com)",
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+except Exception:
+    pass
+
 
 def _request_log_path() -> Path:
     return Path(__file__).resolve().parents[2] / "logs" / "api_requests.log"

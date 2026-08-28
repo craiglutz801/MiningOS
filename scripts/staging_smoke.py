@@ -35,6 +35,14 @@ def main() -> int:
         print("FAIL: staging isolation violations", report["violations"], file=sys.stderr)
         return 2
 
+    # Unit tests assert feature-flag defaults. Do not leak a live staging process env.
+    for key in (
+        "ENABLE_ACTIVE_MINES_API",
+        "ENABLE_ACTIVE_MINES_JOBS",
+        "ENABLE_ACTIVE_MINES_ADMIN",
+    ):
+        os.environ.pop(key, None)
+
     cmd = [
         sys.executable,
         "-m",
@@ -42,6 +50,8 @@ def main() -> int:
         "-q",
         "tests/test_active_mine_evidence.py",
         "tests/test_active_mine_intel.py",
+        "tests/test_fetch_claim_records.py",
+        "tests/test_mlrs_case_payment.py",
         "--tb=short",
     ]
     print("running", " ".join(cmd))

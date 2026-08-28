@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "${API_ORIGIN}/api/:path*"
+      "destination": "https://changed-questionnaire-wav-shaw.trycloudflare.com/api/:path*"
     },
     {
       "source": "/(.*)",
