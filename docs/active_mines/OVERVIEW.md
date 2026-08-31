@@ -21,7 +21,7 @@ Nav: **Active Mine Search** → `/active-mines`.
 
 1. Choose **NV** or **UT**.
 2. **Pull active mines on unpatented claims** — starts an async job that runs the matcher pipeline, persists `candidate_sites`, bridges PLSS, and links each mine to a section **Target**.
-3. **Fetch unpaid claims (each linked mine)** — walks linked mines in list order and runs the same Fetch Claim Records path as Target drilldown on each unique `area_of_focus_id`. Progress advances **after each Target** (not in chunks of 25). Shared PLSS Targets are scraped **once**; `update_site_claim_rollup` updates all mines on that Target. The UI reloads Claims / Unpaid as each step finishes. Each Target has a hard timeout (default **6 minutes**, env `MINING_OS_FETCH_UNPAID_TARGET_TIMEOUT_SEC`); on timeout the job **moves on** and still keeps any ArcGIS claims already checkpointed before payment enrichment.
+3. **Fetch unpaid claims (each linked mine)** — walks linked mines in list order and runs the same Fetch Claim Records path as Target drilldown on each unique `area_of_focus_id`. Progress advances **after each Target** (not in chunks of 25), and Paid/Unpaid are **checkpointed during** the MLRS scrape so a later kill keeps results already found. Shared PLSS Targets are scraped **once**; `update_site_claim_rollup` updates all mines on that Target. The UI reloads Claims / Paid / Unpaid / Unknown as checkpoints land, and shows `Checking payment N/M` versus the per-mine cap. Each Target has a floor timeout (default **6 minutes**, env `MINING_OS_FETCH_UNPAID_TARGET_TIMEOUT_SEC`) that **scales with claim count** (~20s × N, max 45 minutes). On timeout the job **moves on**, keeps partial Paid/Unpaid, and marks remaining claims Unknown with `payment_check_error=timed_out` (it does not reset to the ArcGIS-only snapshot).
 
 ## Architecture
 
@@ -48,7 +48,34 @@ PLSS bridge (`plss_bridge.py`): CadNSDI reverse geocode (Mining OS path) → mat
 
 ### Payment status
 
-Payment enrichment is **not** part of list construction. Use **Fetch unpaid claims** (existing MLRS / ArcGIS Fetch Claim Records path). Production payment banners still depend on the separate ROADMAP item for Render-safe enrichment.
+Payment enrichment is **not** part of list construction. Use **Fetch unpaid claims** (existing MLRS / ArcGIS Fetch Claim Records path). Production payment banners still depend on the separate ROADMAP item for Render-safe enrichment. Operational status never uses payment status.
+
+## Evidence model (T-041)
+
+Dimensions are stored separately and never collapsed into one label:
+
+| Field | Meaning |
+| ----- | ------- |
+| Operational status | Producing, Permitted, Exploration, Mill/processor, Care-and-maintenance, Reclamation, Unknown |
+| Regulatory status | Permit/case status from DOGM / NDEP BMRR / BLM operations |
+| Facility type | Mine, Mill/processor, Exploration, Waste/tailings, Unknown |
+| Tenure | Unpatented, Patented, Mixed, Unknown — from MLRS polygons |
+| Payment status | Unchanged Fetch Claim Records / claim_rollup contract |
+| Verification | Candidate, Cross-source confirmed, Human Verified |
+
+**Producing** requires recent structured state production (Nevada production years, or Utah’s explicit production-indicator field). A permit, claim, MSHA/BMRR status, inspection, or hours figure cannot set Producing.
+
+**BLM MLRS Not Closed** polygons are tenure evidence only (approximate PLSS geometry, not a surveyed boundary). Mixed patented + unpatented intersections are labeled Mixed.
+
+**NDEP BMRR** Regulation Sites (`eMap_BMRR` layer 1) and Reclamation Sites (layer 0) are Nevada regulatory/facility evidence only.
+
+**Utah DOGM coverage** diagnostics (including uranium / full-minerals gaps) are stored on the run QC object `utah_dogm_coverage`.
+
+**Fail closed:** stale, failed, or contradictory sources cannot support a positive operational assertion. Source `failed` is distinct from a valid `empty` zero-result.
+
+**Human Verified** requires the dated checklist in the mine detail panel (`docs/active_mines/CHECKLIST.md`). It is never auto-assigned.
+
+Staging isolation: `docs/active_mines/STAGING.md`.
 
 ## API
 

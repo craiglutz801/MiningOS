@@ -38,6 +38,7 @@ import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
@@ -97,6 +98,18 @@ def _resolve_large_batch_chunk_size() -> int:
     except ValueError:
         size = int(default_size)
     return max(1, min(size, 100))
+
+
+def _resolve_checkpoint_chunk_size() -> int:
+    """How many claims to scrape before a parent-level Paid/Unpaid persist (default 10)."""
+    raw = (os.getenv("MINING_OS_MLRS_CHECKPOINT_CHUNK_SIZE") or "10").strip()
+    try:
+        size = int(raw)
+    except ValueError:
+        size = 10
+    return max(1, min(size, 100))
+
+
 def _resolve_enrich_subprocess_timeout_sec() -> int:
     """Hard cap for one payment-enrich subprocess (default 8 minutes)."""
     raw = (os.getenv("MINING_OS_MLRS_ENRICH_SUBPROCESS_TIMEOUT_SEC") or "480").strip()
@@ -250,6 +263,84 @@ def _emit_progress(payload: dict[str, Any]) -> None:
 
     sys.stderr.write(f"{_PROGRESS_PREFIX}{json.dumps(payload, separators=(',', ':'))}\n")
     sys.stderr.flush()
+
+
+def payment_progress_payload(
+    claims: list[Any],
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Counts for UI / checkpoints: current checked vs total, plus Paid/Unpaid/Unknown."""
+    paid = unpaid = unknown = checked = 0
+    total = 0
+    for c in claims:
+        if not isinstance(c, dict):
+            continue
+        total += 1
+        st = c.get("payment_status") or "unknown"
+        if not isinstance(st, str):
+            st = str(st or "unknown")
+        st = st.strip().lower() or "unknown"
+        if st == "paid":
+            paid += 1
+        elif st == "unpaid":
+            unpaid += 1
+        else:
+            unknown += 1
+        if st in {"paid", "unpaid"} or c.get("payment_checked_at") or c.get("payment_check_error"):
+            checked += 1
+    out: dict[str, Any] = {
+        "current": checked,
+        "total": total,
+        "paid": paid,
+        "unpaid": unpaid,
+        "unknown": unknown,
+    }
+    if extra:
+        out.update(extra)
+    return out
+
+
+def _checkpoint_file_path() -> str:
+    return (os.getenv("MINING_OS_MLRS_CHECKPOINT_FILE") or "").strip()
+
+
+def write_live_checkpoint_file(
+    claims: list[Any],
+    extra: dict[str, Any] | None = None,
+) -> None:
+    """Atomic JSON snapshot so a killed parent can keep partial Paid/Unpaid."""
+    path = _checkpoint_file_path()
+    if not path:
+        return
+    payload = {"claims": claims, **payment_progress_payload(claims, extra)}
+    tmp = f"{path}.tmp"
+    try:
+        Path(tmp).write_text(json.dumps(payload), encoding="utf-8")
+        os.replace(tmp, path)
+    except Exception:
+        log.debug("mlrs checkpoint file write failed", exc_info=True)
+
+
+def read_live_checkpoint_claims(path: str | None) -> list[Any] | None:
+    if not path:
+        return None
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict) and isinstance(data.get("claims"), list):
+        return data["claims"]
+    return None
+
+
+def _merge_checkpoint_over(original: list[Any], live: list[Any]) -> list[Any]:
+    out = list(original)
+    for i, row in enumerate(live):
+        if i < len(out) and isinstance(row, dict):
+            out[i] = row
+    return out
 
 
 def _merge_payment_fields(dst: dict[str, Any], src: dict[str, Any]) -> None:
@@ -768,6 +859,7 @@ def _claim_needs_payment_enrichment(claim: dict[str, Any]) -> bool:
 def enrich_claims_from_mlrs_case_pages(
     claims: list[dict[str, Any]],
     progress_cb=None,
+    checkpoint_cb=None,
 ) -> list[dict[str, Any]]:
     """Enrich claims with MLRS payment status.
 
@@ -779,9 +871,21 @@ def enrich_claims_from_mlrs_case_pages(
 
     The subprocess re-enters this module with ``MINING_OS_MLRS_ENRICH_INPROC=1``
     set, which short-circuits the wrapper and runs the in-process implementation.
+
+    ``checkpoint_cb(claims, progress)`` is invoked after cache hits and after each
+    enriched claim/chunk so a later kill still keeps Paid/Unpaid already found.
     """
     if not claims:
         return claims
+
+    def _fire_checkpoint(extra: dict[str, Any] | None = None) -> None:
+        if not checkpoint_cb:
+            return
+        try:
+            checkpoint_cb(claims, payment_progress_payload(claims, extra))
+        except Exception:
+            log.debug("mlrs payment checkpoint_cb failed", exc_info=True)
+
     candidates: list[tuple[int, dict[str, Any]]] = []
     cache_hits = 0
     for idx, claim in enumerate(claims):
@@ -812,26 +916,34 @@ def enrich_claims_from_mlrs_case_pages(
                     "message": f"Checking payment status for {total} claim page(s)…",
                 }
             )
+    if cache_hits:
+        _fire_checkpoint({"phase": "payment_cache"})
     if not candidates:
         return claims
 
     max_claims = _resolve_payment_max_claims()
-    if len(candidates) > max_claims:
-        chunk_size = _resolve_large_batch_chunk_size()
-        message = (
-            f"Large batch detected: {len(candidates)} claim(s) exceeds fast-path limit {max_claims}. "
-            f"Processing payment checks in sequential chunk(s) of {chunk_size} to keep the fetch reliable."
-        )
-        log.warning("mlrs payment enrich: %s", message)
-        if progress_cb:
-            progress_cb(
-                {
-                    "phase": "payment_enrich",
-                    "current": cache_hits,
-                    "total": total,
-                    "message": message,
-                }
+    sequential = checkpoint_cb is not None or len(candidates) > max_claims
+    if sequential:
+        if len(candidates) > max_claims:
+            chunk_size = _resolve_large_batch_chunk_size()
+            if checkpoint_cb is not None:
+                chunk_size = min(chunk_size, _resolve_checkpoint_chunk_size())
+            message = (
+                f"Large batch detected: {len(candidates)} claim(s) exceeds fast-path limit {max_claims}. "
+                f"Processing payment checks in sequential chunk(s) of {chunk_size} to keep the fetch reliable."
             )
+            log.warning("mlrs payment enrich: %s", message)
+            if progress_cb:
+                progress_cb(
+                    {
+                        "phase": "payment_enrich",
+                        "current": cache_hits,
+                        "total": total,
+                        "message": message,
+                    }
+                )
+        else:
+            chunk_size = _resolve_checkpoint_chunk_size()
         for offset in range(0, len(candidates), chunk_size):
             batch = candidates[offset : offset + chunk_size]
             subset = [claim for _, claim in batch]
@@ -849,13 +961,22 @@ def enrich_claims_from_mlrs_case_pages(
                     }
                 )
 
-            enriched_subset = _run_enrich_subprocess_chunk(
+            def _live_update(live_subset: list[Any], *, batch: list = batch) -> None:
+                n = min(len(live_subset), len(batch))
+                for i in range(n):
+                    if isinstance(live_subset[i], dict):
+                        claims[batch[i][0]] = live_subset[i]
+                _fire_checkpoint({"phase": "payment_enrich"})
+
+            enriched_subset = _dispatch_enrich_chunk(
                 subset,
                 chunk_id=offset // chunk_size,
                 progress_cb=_batch_progress,
+                live_update_cb=_live_update,
             )
             for (idx, _), enriched in zip(batch, enriched_subset):
                 claims[idx] = enriched
+            _fire_checkpoint({"phase": "payment_enrich"})
         return claims
 
     subset = [claim for _, claim in candidates]
@@ -883,11 +1004,34 @@ def enrich_claims_from_mlrs_case_pages(
     return claims
 
 
+def _dispatch_enrich_chunk(
+    claims: list[dict[str, Any]],
+    *,
+    chunk_id: int = 0,
+    progress_cb=None,
+    live_update_cb=None,
+) -> list[dict[str, Any]]:
+    """Run one payment chunk in-process (tests) or in an isolated Playwright child."""
+    if (os.getenv("MINING_OS_MLRS_ENRICH_INPROC") or "").strip() == "1":
+        def _on_row(_done: int, _total: int, live: list[dict[str, Any]]) -> None:
+            if live_update_cb:
+                live_update_cb(live)
+
+        return _enrich_claims_inproc(claims, progress_cb=progress_cb, on_row_cb=_on_row)
+    return _run_enrich_subprocess_chunk(
+        claims,
+        chunk_id=chunk_id,
+        progress_cb=progress_cb,
+        live_update_cb=live_update_cb,
+    )
+
+
 def _run_enrich_subprocess_chunk(
     claims: list[dict[str, Any]],
     *,
     chunk_id: int = 0,
     progress_cb=None,
+    live_update_cb=None,
 ) -> list[dict[str, Any]]:
     """Run :func:`_enrich_claims_inproc` in an isolated child Python process.
 
@@ -897,9 +1041,13 @@ def _run_enrich_subprocess_chunk(
     buffer (~64 KiB) filled with progress logs — the symptom was a job that
     appeared to hang forever even though the scrape worked fine when launched
     by hand.
+
+    The child writes a JSON checkpoint after each claim. On timeout we return
+    that partial list instead of the original Unknown-only snapshot.
     """
     import subprocess
     import sys
+    import tempfile
 
     log.info(
         "mlrs payment enrich: dispatching %d claim row(s) to subprocess (chunk=%d, Playwright isolation)",
@@ -911,16 +1059,46 @@ def _run_enrich_subprocess_chunk(
         payload = json.dumps(claims).encode("utf-8")
     except (TypeError, ValueError) as e:
         log.warning("mlrs enrich: claims not JSON-serialisable, falling back in-process: %s", e)
-        return _enrich_claims_inproc(claims)
+        return _enrich_claims_inproc(claims, progress_cb=progress_cb, on_row_cb=_live_row_cb(live_update_cb))
+
+    fd, ckpt_path = tempfile.mkstemp(prefix="mlrs-ckpt-", suffix=".json")
+    os.close(fd)
 
     env = {
         **os.environ,
         "MINING_OS_MLRS_ENRICH_INPROC": "1",
         "MINING_OS_MLRS_PROGRESS_STDERR": "1",
         "MINING_OS_MLRS_PROGRESS_CHUNK_ID": str(chunk_id),
+        "MINING_OS_MLRS_CHECKPOINT_FILE": ckpt_path,
         "PYTHONUNBUFFERED": "1",
     }
     cmd = [sys.executable, "-m", "mining_os.services.mlrs_case_payment"]
+
+    stop_poll = threading.Event()
+
+    def _poll_checkpoint() -> None:
+        last_sig = ""
+        while not stop_poll.wait(0.35):
+            try:
+                raw = Path(ckpt_path).read_text(encoding="utf-8")
+            except Exception:
+                continue
+            if not raw.strip() or raw == last_sig:
+                continue
+            last_sig = raw
+            try:
+                data = json.loads(raw)
+            except Exception:
+                continue
+            live = data.get("claims") if isinstance(data, dict) else None
+            if isinstance(live, list) and live_update_cb:
+                try:
+                    live_update_cb(live)
+                except Exception:
+                    log.debug("mlrs live_update_cb failed", exc_info=True)
+
+    poller = threading.Thread(target=_poll_checkpoint, name="mlrs-ckpt-poll", daemon=True)
+    poller.start()
 
     try:
         proc = subprocess.Popen(  # noqa: S603 - command list is fully controlled
@@ -932,7 +1110,12 @@ def _run_enrich_subprocess_chunk(
         )
     except Exception as e:  # pragma: no cover - process spawn errors
         log.warning("mlrs enrich subprocess could not start (%s); falling back in-process", e)
-        return _enrich_claims_inproc(claims)
+        stop_poll.set()
+        try:
+            Path(ckpt_path).unlink(missing_ok=True)
+        except Exception:
+            pass
+        return _enrich_claims_inproc(claims, progress_cb=progress_cb, on_row_cb=_live_row_cb(live_update_cb))
 
     # Manual stdio orchestration: ``communicate()`` would race with our stderr
     # drainer thread (both would try to read the stderr pipe). Instead we run
@@ -960,11 +1143,11 @@ def _run_enrich_subprocess_chunk(
                     continue
                 if line.startswith(_PROGRESS_PREFIX):
                     try:
-                        payload = json.loads(line[len(_PROGRESS_PREFIX):])
+                        payload_obj = json.loads(line[len(_PROGRESS_PREFIX):])
                     except Exception:
-                        payload = None
-                    if payload and progress_cb:
-                        progress_cb(payload)
+                        payload_obj = None
+                    if payload_obj and progress_cb:
+                        progress_cb(payload_obj)
                     continue
                 with err_lock:
                     log.info("mlrs[sub] %s", line)
@@ -988,11 +1171,13 @@ def _run_enrich_subprocess_chunk(
         except Exception:
             pass
 
+    timed_out = False
     try:
         proc.wait(timeout=_resolve_enrich_subprocess_timeout_sec())
     except subprocess.TimeoutExpired:
+        timed_out = True
         log.warning(
-            "mlrs enrich subprocess exceeded %ss cap; killing (leaving payment_status as-is)",
+            "mlrs enrich subprocess exceeded %ss cap; killing (keeping checkpointed payment results)",
             _resolve_enrich_subprocess_timeout_sec(),
         )
         try:
@@ -1000,20 +1185,42 @@ def _run_enrich_subprocess_chunk(
             proc.wait(timeout=10)
         except Exception:
             pass
-        t_out.join(timeout=2)
-        t_err.join(timeout=2)
-        # Do NOT fall back to in-process Selenium — that doubles the hang.
-        return claims
 
-    t_out.join(timeout=5)
-    t_err.join(timeout=5)
+    stop_poll.set()
+    poller.join(timeout=1)
+    t_out.join(timeout=5 if not timed_out else 2)
+    t_err.join(timeout=5 if not timed_out else 2)
+
+    recovered = read_live_checkpoint_claims(ckpt_path)
+    try:
+        Path(ckpt_path).unlink(missing_ok=True)
+        Path(ckpt_path + ".tmp").unlink(missing_ok=True)
+    except Exception:
+        pass
+
+    if timed_out:
+        # Do NOT fall back to in-process Selenium — that doubles the hang.
+        if recovered:
+            return _merge_checkpoint_over(claims, recovered)
+        return claims
 
     if proc.returncode != 0:
         log.warning(
             "mlrs enrich subprocess exit code %s; falling back to in-process enrichment",
             proc.returncode,
         )
-        return _enrich_claims_inproc(claims, progress_cb=progress_cb)
+        if recovered:
+            seeded = _merge_checkpoint_over(claims, recovered)
+            return _enrich_claims_inproc(
+                seeded,
+                progress_cb=progress_cb,
+                on_row_cb=_live_row_cb(live_update_cb),
+            )
+        return _enrich_claims_inproc(
+            claims,
+            progress_cb=progress_cb,
+            on_row_cb=_live_row_cb(live_update_cb),
+        )
 
     out = b"".join(stdout_chunks)
     try:
@@ -1023,18 +1230,40 @@ def _run_enrich_subprocess_chunk(
             "mlrs enrich subprocess produced invalid JSON (%s); falling back to in-process enrichment",
             e,
         )
-        return _enrich_claims_inproc(claims, progress_cb=progress_cb)
+        if recovered:
+            return _merge_checkpoint_over(claims, recovered)
+        return _enrich_claims_inproc(
+            claims,
+            progress_cb=progress_cb,
+            on_row_cb=_live_row_cb(live_update_cb),
+        )
 
     if not isinstance(enriched, list) or len(enriched) != len(claims):
         log.warning(
             "mlrs enrich subprocess returned unexpected shape (got %s rows, expected %d); "
-            "falling back to in-process enrichment",
+            "falling back to checkpoint or in-process enrichment",
             type(enriched).__name__ if not isinstance(enriched, list) else len(enriched),
             len(claims),
         )
-        return _enrich_claims_inproc(claims, progress_cb=progress_cb)
+        if recovered:
+            return _merge_checkpoint_over(claims, recovered)
+        return _enrich_claims_inproc(
+            claims,
+            progress_cb=progress_cb,
+            on_row_cb=_live_row_cb(live_update_cb),
+        )
 
     return enriched
+
+
+def _live_row_cb(live_update_cb):
+    if not live_update_cb:
+        return None
+
+    def _on_row(_done: int, _total: int, live: list[dict[str, Any]]) -> None:
+        live_update_cb(live)
+
+    return _on_row
 
 
 def _enrich_claims_subprocess(claims: list[dict[str, Any]], progress_cb=None) -> list[dict[str, Any]]:
@@ -1094,7 +1323,7 @@ def _enrich_claims_subprocess(claims: list[dict[str, Any]], progress_cb=None) ->
     return [claim if claim is not None else claims[idx] for idx, claim in enumerate(results)]
 
 
-def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> list[dict[str, Any]]:
+def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None, on_row_cb=None) -> list[dict[str, Any]]:
     """In-process implementation (used directly inside the subprocess)."""
     if not claims:
         return claims
@@ -1178,26 +1407,34 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
             progress_cb(payload)
         _emit_progress(payload)
 
+    def _finish_row(message: str | None = None) -> None:
+        nonlocal done
+        done += 1
+        write_live_checkpoint_file(claims)
+        _progress(message)
+        if on_row_cb:
+            try:
+                on_row_cb(done, total, claims)
+            except Exception:
+                log.debug("mlrs on_row_cb failed", exc_info=True)
+
     try:
         for i, c in enumerate(claims):
             if i > 0:
                 time.sleep(0.12)
             if not isinstance(c, dict):
-                done += 1
-                _progress()
+                _finish_row()
                 continue
             url = c.get("case_page")
             if not url or not isinstance(url, str) or not url.strip().startswith("http"):
-                done += 1
-                _progress()
+                _finish_row()
                 continue
 
             prev = (c.get("payment_status") or "unknown").strip().lower()
             if prev in ("paid", "unpaid"):
                 _mark_payment_checked(c)
                 _remember_payment_cache(c)
-                done += 1
-                _progress()
+                _finish_row()
                 continue
 
             http_info = _payment_from_http(url.strip())
@@ -1207,8 +1444,7 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
                 log.debug("mlrs payment: unpaid via case HTTP %s", c.get("serial_number"))
                 _mark_payment_checked(c)
                 _remember_payment_cache(c)
-                done += 1
-                _progress()
+                _finish_row()
                 continue
 
             report_u = c.get("payment_report")
@@ -1229,8 +1465,7 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
                 log.debug("mlrs payment: unpaid via RAS %s", c.get("serial_number"))
                 _mark_payment_checked(c)
                 _remember_payment_cache(c)
-                done += 1
-                _progress()
+                _finish_row()
                 continue
 
             if try_headless and (c.get("payment_status") or "unknown").strip().lower() == "unknown":
@@ -1258,8 +1493,7 @@ def _enrich_claims_inproc(claims: list[dict[str, Any]], progress_cb=None) -> lis
 
             _mark_payment_checked(c)
             _remember_payment_cache(c)
-            done += 1
-            _progress()
+            _finish_row()
 
         return claims
     finally:

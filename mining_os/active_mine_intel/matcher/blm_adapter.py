@@ -240,14 +240,24 @@ def normalize_claims(
     # De-duplicate by object id and serial number.
     out = out.drop_duplicates(subset=["claim_serial_number"], keep="first")
 
+    in_state = (out["state"] == cfg.state_code) & out.geometry.notna()
+    patented_gdf = out.loc[in_state & out["patented_flag"]].copy()
+    conveyed_gdf = out.loc[in_state & out["conveyed_flag"] & ~out["patented_flag"]].copy()
+    stats["patented_claim_count"] = int(len(patented_gdf))
+    stats["conveyed_claim_count"] = int(len(conveyed_gdf))
+    # Retained for mixed-tenure overlay only — not used as operational evidence.
+    stats["_patented_claims"] = patented_gdf.reset_index(drop=True)
+    stats["_conveyed_claims"] = conveyed_gdf.reset_index(drop=True)
+
     # Filters: state, unpatented, not conveyed, not excluded, recognized type.
+    # Not Closed / active unpatented polygons remain the matcher claim set
+    # (tenure evidence for unpatented; never operational status).
     mask = (
-        (out["state"] == cfg.state_code)
+        in_state
         & ~out["patented_flag"]
         & ~out["conveyed_flag"]
         & ~out["excluded_flag"]
         & out["claim_type"].notna()
-        & out.geometry.notna()
     )
     out = out.loc[mask].copy()
     out, repaired = _repair_geometries(out)
@@ -363,10 +373,21 @@ def _fetch_layer_geojson(
     else:
         gdf = gpd.GeoDataFrame(geometry=[], crs="EPSG:4326")
     status.record_count = len(gdf)
-    status.status = "cached" if info["cache_used"] else "success"
     if info.get("stale"):
-        status.status = "degraded"
+        status.status = "stale"
+        status.outcome = "stale"
+        status.usable_for_assertions = False
+        status.failure_class = "stale"
         status.message = f"Using stale cache (age {info['cache_age_hours']} h) after failed refresh"
+    elif not features:
+        status.status = "empty"
+        status.outcome = "empty"
+        status.usable_for_assertions = True
+        status.message = "Valid zero-result response"
+    else:
+        status.status = "cached" if info["cache_used"] else "success"
+        status.outcome = "ok"
+        status.usable_for_assertions = True
     return gdf, status
 
 

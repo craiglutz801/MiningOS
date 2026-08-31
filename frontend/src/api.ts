@@ -1188,6 +1188,11 @@ export const activeMines = {
       supported_states?: string[];
       label?: string;
       subtitle?: string;
+      environment?: string;
+      staging?: boolean;
+      staging_isolated?: boolean;
+      operational_statuses?: string[];
+      verification_states?: string[];
       error?: string | null;
     }>("/active-mines/meta"),
   pull: (body: { state: string; refresh?: boolean }) =>
@@ -1248,4 +1253,20 @@ export const activeMines = {
     request<{ ok: boolean; job?: Record<string, unknown>; error?: string | null }>(
       `/active-mines/fetch-jobs/${id}`
     ),
+  verify: (
+    id: string,
+    body: {
+      verification_state?: string;
+      reviewer_name?: string;
+      reviewed_at?: string;
+      notes?: string;
+      items?: { id: string; checked: boolean; label?: string }[];
+    }
+  ) =>
+    request<{
+      ok: boolean;
+      site?: Record<string, unknown>;
+      verification_state?: string;
+      error?: string | null;
+    }>(`/active-mines/sites/${id}/verify`, { method: "POST", body: JSON.stringify(body) }),
 };

@@ -6,6 +6,7 @@ import logging
 import math
 import multiprocessing as mp
 import os
+import signal
 import threading
 import time
 from datetime import datetime, timezone
@@ -26,9 +27,12 @@ _active_pull: dict[str, Any] = {}  # run_id, account_id, state
 # Matcher stages (16) + persist/link stages (4)
 JOB_STAGE_TOTAL = 20
 
-# Per-Target hard cap for Fetch unpaid (ArcGIS + payment enrich). One stuck
-# Selenium scrape must not block the rest of the state.
+# Per-Target floor for Fetch unpaid (ArcGIS + payment enrich). One stuck
+# Chromium scrape must not block the rest of the state forever, but the cap
+# scales with claim count so Playwright can finish typical PLSS sections.
 _DEFAULT_PER_TARGET_TIMEOUT_SEC = 360  # 6 minutes
+_PER_CLAIM_BUDGET_SEC = 20
+_MAX_PER_TARGET_TIMEOUT_SEC = 45 * 60
 
 
 def _progress(run_id: str, stage: int, message: str, **detail: Any) -> None:
@@ -139,6 +143,15 @@ def _dataframe_to_site_dicts(site_summary: Any, state_abbr: str) -> list[dict[st
                     "range": _safe_str(d.get("range") or d.get("plss_range")),
                     "section": _safe_str(d.get("section") or d.get("plss_section")),
                     "plss_source": _safe_str(d.get("plss_source")),
+                    "operational_status": _safe_str(d.get("operational_status")) or "Unknown",
+                    "regulatory_status": _safe_str(d.get("regulatory_status")) or "Unknown",
+                    "facility_type": _safe_str(d.get("facility_type")) or "Unknown",
+                    "tenure_class": _safe_str(d.get("tenure_class")) or "Unknown",
+                    "verification_state": _safe_str(d.get("verification_state")) or "Candidate",
+                    "fail_closed": bool(d.get("fail_closed")),
+                    "tenure_json": d.get("tenure_json") or {},
+                    "contradictions_json": d.get("contradictions_json") or [],
+                    "assertions_json": d.get("assertions_json") or [],
                 }
             )
         return [r for r in rows if r["mine_site_id"]]
@@ -513,15 +526,116 @@ def _per_target_timeout_sec() -> int:
     if not raw:
         return _DEFAULT_PER_TARGET_TIMEOUT_SEC
     try:
-        return max(60, min(int(raw), 45 * 60))
+        return max(60, min(int(raw), _MAX_PER_TARGET_TIMEOUT_SEC))
     except ValueError:
         return _DEFAULT_PER_TARGET_TIMEOUT_SEC
+
+
+def timeout_for_claim_count(claim_count: int | None, *, base: int | None = None) -> int:
+    """Per-Target cap: at least ``base`` (default 6 min), ~20s per claim, max 45 min."""
+    floor = int(base) if base is not None else _per_target_timeout_sec()
+    floor = max(60, min(floor, _MAX_PER_TARGET_TIMEOUT_SEC))
+    n = int(claim_count or 0)
+    if n < 1:
+        return floor
+    return max(floor, min(_MAX_PER_TARGET_TIMEOUT_SEC, _PER_CLAIM_BUDGET_SEC * n))
+
+
+def peek_area_claim_progress(area_id: int, account_id: int) -> dict[str, Any]:
+    """Read the latest claim_records checkpoint (ArcGIS and/or partial payment)."""
+    from mining_os.services.areas_of_focus import get_area
+
+    area = get_area(int(area_id), account_id=account_id)
+    chars = (area or {}).get("characteristics") or {}
+    cr = chars.get("claim_records") if isinstance(chars, dict) else None
+    if not isinstance(cr, dict):
+        return {
+            "claims": [],
+            "claim_count": 0,
+            "payment_enrichment": None,
+            "payment_progress": {},
+        }
+    claims = cr.get("claims") if isinstance(cr.get("claims"), list) else []
+    progress = cr.get("payment_progress") if isinstance(cr.get("payment_progress"), dict) else {}
+    return {
+        "claims": claims,
+        "claim_count": len(claims),
+        "payment_enrichment": cr.get("payment_enrichment"),
+        "payment_progress": progress,
+    }
+
+
+def finalize_timed_out_area_fetch(area_id: int, account_id: int) -> dict[str, Any]:
+    """Keep partial Paid/Unpaid from the checkpoint; stamp remaining as timed_out."""
+    from mining_os.services.areas_of_focus import get_area, merge_area_characteristics
+    from mining_os.services.mlrs_case_payment import payment_progress_payload
+
+    area = get_area(int(area_id), account_id=account_id)
+    chars = (area or {}).get("characteristics") or {}
+    cr = chars.get("claim_records") if isinstance(chars, dict) else None
+    if not isinstance(cr, dict):
+        cr = {}
+    claims_in = cr.get("claims") if isinstance(cr.get("claims"), list) else []
+    claims: list[Any] = []
+    stamped = 0
+    for raw in claims_in:
+        if not isinstance(raw, dict):
+            claims.append(raw)
+            continue
+        c = dict(raw)
+        st = c.get("payment_status") or "unknown"
+        if not isinstance(st, str):
+            st = str(st or "unknown")
+        st = st.strip().lower() or "unknown"
+        already = st in {"paid", "unpaid"} or bool(c.get("payment_checked_at"))
+        if not already:
+            c["payment_status"] = "unknown"
+            c["payment_check_error"] = "timed_out"
+            stamped += 1
+        claims.append(c)
+    progress = payment_progress_payload(claims, {"timed_out": True, "stamped": stamped})
+    log_text = cr.get("log") if isinstance(cr.get("log"), str) else ""
+    note = (
+        "[timeout] Payment scrape timed out; kept partial Paid/Unpaid "
+        "and marked remaining unknown."
+    )
+    if "scrape timed out" not in (log_text or "").lower():
+        log_text = ((log_text or "").rstrip() + "\n" + note).strip()
+    payload = {
+        "fetched_at": cr.get("fetched_at") or datetime.now(timezone.utc).isoformat(),
+        "log": log_text,
+        "claims": claims,
+        "plss": cr.get("plss"),
+        "query_method": cr.get("query_method"),
+        "ok": bool(claims),
+        "payment_enrichment": "timed_out",
+        "payment_progress": progress,
+        "error": "Payment scrape timed out; partial enrichment kept.",
+    }
+    merge_area_characteristics(int(area_id), {"claim_records": payload}, account_id=account_id)
+    try:
+        apply_claim_rollup_for_area(
+            account_id, int(area_id), claims_count_hint=len(claims) or None
+        )
+    except Exception:
+        log.debug("rollup after timeout failed", exc_info=True)
+    return {
+        "claims": claims,
+        "stamped": stamped,
+        "claim_count": len(claims),
+        "payment_progress": progress,
+    }
 
 
 def _fetch_area_process_main(area_id: int, account_id: int, result_path: str) -> None:
     """Child process entry: run Fetch Claim Records and write JSON result."""
     import json
     from pathlib import Path as _Path
+
+    try:
+        os.setpgrp()
+    except Exception:
+        pass
 
     from mining_os.services.fetch_claim_records import run_fetch_claim_records_for_area_id
 
@@ -535,6 +649,39 @@ def _fetch_area_process_main(area_id: int, account_id: int, result_path: str) ->
         pass
 
 
+def _terminate_fetch_process(proc: Any) -> None:
+    pid = getattr(proc, "pid", None)
+    if pid:
+        try:
+            os.killpg(int(pid), signal.SIGTERM)
+        except Exception:
+            try:
+                proc.terminate()
+            except Exception:
+                pass
+    else:
+        try:
+            proc.terminate()
+        except Exception:
+            pass
+    proc.join(timeout=8)
+    if proc.is_alive():
+        if pid:
+            try:
+                os.killpg(int(pid), signal.SIGKILL)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+        else:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        proc.join(timeout=5)
+
+
 def _run_fetch_area_with_timeout(
     area_id: int,
     account_id: int,
@@ -542,7 +689,7 @@ def _run_fetch_area_with_timeout(
     timeout_sec: int,
     on_tick: Any | None = None,
 ) -> dict[str, Any]:
-    """Run one Target fetch in a child process; kill and return error on timeout."""
+    """Run one Target fetch in a child process; on timeout keep the latest payment checkpoint."""
     import json
     import tempfile
     from pathlib import Path as _Path
@@ -557,38 +704,59 @@ def _run_fetch_area_with_timeout(
         daemon=True,
     )
     started = time.monotonic()
+    effective_timeout = max(60, int(timeout_sec))
     proc.start()
     try:
         while proc.is_alive():
             elapsed = time.monotonic() - started
-            if elapsed >= timeout_sec:
-                break
+            peek: dict[str, Any] | None = None
+            try:
+                peek = peek_area_claim_progress(area_id, account_id)
+            except Exception:
+                peek = None
+            if peek and peek.get("claim_count"):
+                effective_timeout = timeout_for_claim_count(
+                    int(peek["claim_count"]),
+                    base=timeout_sec,
+                )
             if on_tick:
                 try:
-                    on_tick(elapsed)
+                    on_tick(elapsed, peek=peek, timeout_sec=effective_timeout)
+                except TypeError:
+                    try:
+                        on_tick(elapsed)
+                    except Exception:
+                        pass
                 except Exception:
                     pass
-            proc.join(timeout=min(5.0, max(0.5, timeout_sec - elapsed)))
+            if elapsed >= effective_timeout:
+                break
+            proc.join(timeout=min(5.0, max(0.5, effective_timeout - elapsed)))
 
         if proc.is_alive():
             log.warning(
                 "Fetch unpaid Target #%s exceeded %ss — terminating child process",
                 area_id,
-                timeout_sec,
+                effective_timeout,
             )
-            proc.terminate()
-            proc.join(timeout=8)
-            if proc.is_alive():
-                proc.kill()
-                proc.join(timeout=5)
+            _terminate_fetch_process(proc)
+            finalized = {"claims": [], "stamped": 0, "claim_count": 0, "payment_progress": {}}
+            try:
+                finalized = finalize_timed_out_area_fetch(area_id, account_id)
+            except Exception:
+                log.exception("timeout finalize failed area_id=%s", area_id)
+            claims = finalized.get("claims") or []
             return {
                 "ok": False,
                 "error": (
-                    f"Timed out after {timeout_sec}s (payment enrichment / scrape). "
-                    "Moved on to the next Target."
+                    f"Timed out after {int(effective_timeout)}s (payment enrichment / scrape). "
+                    "Kept partial Paid/Unpaid and moved on to the next Target."
                 ),
-                "claims": [],
+                "claims": claims if isinstance(claims, list) else [],
                 "timed_out": True,
+                "timeout_sec": int(effective_timeout),
+                "payment_enrichment": "timed_out",
+                "payment_progress": finalized.get("payment_progress") or {},
             }
 
         path = _Path(result_path)
@@ -620,22 +788,39 @@ def _progress_payload(
     phase: str,
     elapsed_sec: float | None = None,
     timeout_sec: int | None = None,
+    payment_current: int | None = None,
+    payment_total: int | None = None,
+    payment_enrichment: str | None = None,
+    timed_out: bool = False,
 ) -> dict[str, Any]:
-    if phase == "start" and elapsed_sec is not None:
-        verb = "Fetching"
-        elapsed_bit = f" · {int(elapsed_sec)}s elapsed"
-        if timeout_sec:
-            elapsed_bit += f" / {timeout_sec}s cap"
+    if phase == "timed_out":
+        msg = (
+            f'Saved ArcGIS claims, scrape timed out on "{mine_name}" '
+            f"({index}/{total}) · {succeeded} ok / {failed} failed · Target #{area_id}"
+        )
     elif phase == "start":
-        verb = "Fetching"
+        if payment_current is not None and payment_total:
+            verb = (
+                f'Checking payment {int(payment_current)}/{int(payment_total)} '
+                f'on "{mine_name}"'
+            )
+        else:
+            verb = f'Fetching mine "{mine_name}"'
         elapsed_bit = ""
+        if elapsed_sec is not None:
+            elapsed_bit = f" · {int(elapsed_sec)}s elapsed"
+            if timeout_sec:
+                elapsed_bit += f" / {int(timeout_sec)}s cap"
+        msg = (
+            f"{verb} ({index}/{total}) · {succeeded} ok / {failed} failed · "
+            f"Target #{area_id}{elapsed_bit}"
+        )
     else:
         verb = "Finished"
-        elapsed_bit = ""
-    msg = (
-        f'{verb} mine "{mine_name}" ({index}/{total}) · '
-        f"{succeeded} ok / {failed} failed · Target #{area_id}{elapsed_bit}"
-    )
+        msg = (
+            f'{verb} mine "{mine_name}" ({index}/{total}) · '
+            f"{succeeded} ok / {failed} failed · Target #{area_id}"
+        )
     return {
         "progress_message": msg,
         "current_area_id": area_id,
@@ -645,6 +830,10 @@ def _progress_payload(
         "phase": phase,
         "elapsed_sec": int(elapsed_sec) if elapsed_sec is not None else None,
         "timeout_sec": timeout_sec,
+        "payment_current": int(payment_current) if payment_current is not None else None,
+        "payment_total": int(payment_total) if payment_total is not None else None,
+        "payment_enrichment": payment_enrichment,
+        "timed_out": bool(timed_out),
     }
 
 
@@ -687,12 +876,13 @@ def _run_fetch_unpaid_worker(
     succeeded = failed = 0
     total = len(worklist)
     done_areas: set[int] = set()
-    timeout_sec = _per_target_timeout_sec()
+    timeout_sec_floor = _per_target_timeout_sec()
 
     try:
         for i, item in enumerate(worklist, start=1):
             area_id = int(item["area_of_focus_id"])
             mine_name = str(item.get("mine_name") or f"Target #{area_id}")
+            out: dict[str, Any] = {}
             store.update_fetch_job(
                 job_id,
                 processed=len(all_results),
@@ -708,7 +898,7 @@ def _run_fetch_unpaid_worker(
                     failed=failed,
                     phase="start",
                     elapsed_sec=0,
-                    timeout_sec=timeout_sec,
+                    timeout_sec=timeout_sec_floor,
                 ),
             )
 
@@ -727,7 +917,25 @@ def _run_fetch_unpaid_worker(
                 )
                 succeeded += 1
             else:
-                def _tick(elapsed: float, *, _i=i, _name=mine_name, _aid=area_id) -> None:
+                def _tick(
+                    elapsed: float,
+                    *,
+                    peek: dict[str, Any] | None = None,
+                    timeout_sec: int | None = None,
+                    _i=i,
+                    _name=mine_name,
+                    _aid=area_id,
+                ) -> None:
+                    pay = (peek or {}).get("payment_progress") or {}
+                    pcur = pay.get("current")
+                    ptot = pay.get("total") or (peek or {}).get("claim_count")
+                    enrichment = (peek or {}).get("payment_enrichment")
+                    if (
+                        pcur is None
+                        and ptot
+                        and enrichment in {"pending", "partial", "timed_out"}
+                    ):
+                        pcur = 0
                     store.update_fetch_job(
                         job_id,
                         processed=len(all_results),
@@ -743,7 +951,10 @@ def _run_fetch_unpaid_worker(
                             failed=failed,
                             phase="start",
                             elapsed_sec=elapsed,
-                            timeout_sec=timeout_sec,
+                            timeout_sec=timeout_sec if timeout_sec is not None else timeout_sec_floor,
+                            payment_current=pcur,
+                            payment_total=ptot,
+                            payment_enrichment=enrichment,
                         ),
                     )
 
@@ -751,7 +962,7 @@ def _run_fetch_unpaid_worker(
                     out = _run_fetch_area_with_timeout(
                         area_id,
                         account_id,
-                        timeout_sec=timeout_sec,
+                        timeout_sec=timeout_sec_floor,
                         on_tick=_tick,
                     )
                 except Exception as exc:
@@ -759,15 +970,14 @@ def _run_fetch_unpaid_worker(
                     out = {"ok": False, "error": str(exc), "claims": []}
                 claims = out.get("claims") or []
                 claims_count = len(claims) if isinstance(claims, list) else 0
+                timed_out = bool(out.get("timed_out"))
                 # Checkpoint may have saved claims even when the child timed out.
-                if claims_count == 0 and out.get("timed_out"):
+                if claims_count == 0 and timed_out:
                     try:
-                        from mining_os.services.areas_of_focus import get_area
-
-                        area = get_area(area_id, account_id=account_id)
-                        cr = ((area or {}).get("characteristics") or {}).get("claim_records") or {}
-                        prior = cr.get("claims") if isinstance(cr, dict) else None
+                        peek = peek_area_claim_progress(area_id, account_id)
+                        prior = peek.get("claims")
                         if isinstance(prior, list):
+                            claims = prior
                             claims_count = len(prior)
                     except Exception:
                         pass
@@ -778,7 +988,7 @@ def _run_fetch_unpaid_worker(
                     "ok": ok,
                     "error": out.get("error"),
                     "claims_count": claims_count,
-                    "timed_out": bool(out.get("timed_out")),
+                    "timed_out": timed_out,
                 }
                 all_results.append(row)
                 if ok:
@@ -793,6 +1003,7 @@ def _run_fetch_unpaid_worker(
                         pass
                 done_areas.add(area_id)
 
+            pay_out = out.get("payment_progress") if isinstance(out, dict) else None
             store.update_fetch_job(
                 job_id,
                 processed=len(all_results),
@@ -806,8 +1017,12 @@ def _run_fetch_unpaid_worker(
                     area_id=area_id,
                     succeeded=succeeded,
                     failed=failed,
-                    phase="done",
-                    timeout_sec=timeout_sec,
+                    phase="timed_out" if (isinstance(out, dict) and out.get("timed_out")) else "done",
+                    timeout_sec=timeout_sec_floor,
+                    payment_current=(pay_out or {}).get("current") if isinstance(pay_out, dict) else None,
+                    payment_total=(pay_out or {}).get("total") if isinstance(pay_out, dict) else None,
+                    payment_enrichment=(out.get("payment_enrichment") if isinstance(out, dict) else None),
+                    timed_out=bool(isinstance(out, dict) and out.get("timed_out")),
                 ),
             )
 

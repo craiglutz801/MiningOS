@@ -1,0 +1,47 @@
+# Isolated Render staging — apply as a SEPARATE Blueprint.
+# Do NOT replace production render.yaml / mining-os-api.
+# Do NOT attach the production DATABASE_URL.
+#
+# Dashboard: New Blueprint → this file → creates miningos-staging-db +
+# mining-os-api-staging only.
+
+databases:
+  - name: miningos-staging-db
+    databaseName: miningos_staging
+    user: miningos_staging
+    plan: basic-256mb
+    postgresMajorVersion: 16
+
+services:
+  - type: web
+    name: mining-os-api-staging
+    runtime: python
+    plan: starter
+    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt && python -m playwright install chromium && cd frontend && npm ci && npm run build"
+    startCommand: "python -m mining_os.pipelines.run_all --init-db && uvicorn mining_os.api.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: MINING_OS_ENVIRONMENT
+        value: "staging"
+      - key: ENABLE_ACTIVE_MINES_API
+        value: "true"
+      - key: ENABLE_ACTIVE_MINES_JOBS
+        value: "true"
+      - key: VITE_ENABLE_ACTIVE_MINES
+        value: "true"
+      - key: VITE_MINING_OS_ENV
+        value: "staging"
+      - key: MINING_OS_MLRS_PAYMENT_HEADLESS
+        value: "1"
+      - key: MINING_OS_MLRS_PARALLELISM
+        value: "1"
+      - key: API_ORIGIN
+        value: "https://mining-os-api-staging.onrender.com"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: miningos-staging-db
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false

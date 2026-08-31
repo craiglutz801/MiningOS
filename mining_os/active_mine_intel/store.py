@@ -284,6 +284,27 @@ def replace_candidates_for_state(
     eng = get_engine()
     state = state_abbr.upper()
     with eng.begin() as conn:
+        prior_human = conn.execute(
+            text(
+                """
+                SELECT name, county, latitude, longitude, verification_state,
+                       verification_checklist_json
+                FROM active_mine_intel.candidate_sites
+                WHERE account_id = :aid AND state_abbr = :st
+                  AND verification_state = 'Human Verified'
+                """
+            ),
+            {"aid": account_id, "st": state},
+        ).mappings().all()
+        prior_by_key = {}
+        for row in prior_human:
+            key = (
+                str(row.get("name") or "").strip().lower(),
+                str(row.get("county") or "").strip().lower(),
+                round(float(row["latitude"]), 4) if row.get("latitude") is not None else None,
+                round(float(row["longitude"]), 4) if row.get("longitude") is not None else None,
+            )
+            prior_by_key[key] = row
         # Drop prior matches for previous runs of this account+state
         conn.execute(
             text(
@@ -311,6 +332,22 @@ def replace_candidates_for_state(
             serials = site.get("claim_serials") or []
             if isinstance(serials, str):
                 serials = [s.strip() for s in serials.replace(";", ",").split(",") if s.strip()]
+            lat = site.get("latitude")
+            lon = site.get("longitude")
+            prior_key = (
+                str(site.get("name") or "").strip().lower(),
+                str(site.get("county") or "").strip().lower(),
+                round(float(lat), 4) if lat is not None else None,
+                round(float(lon), 4) if lon is not None else None,
+            )
+            prior = prior_by_key.get(prior_key)
+            vstate = site.get("verification_state") or "Candidate"
+            vjson = site.get("verification_checklist_json") or {}
+            if prior:
+                vstate = "Human Verified"
+                vjson = prior.get("verification_checklist_json") or vjson
+                site["verification_state"] = vstate
+                site["verification_checklist_json"] = vjson
             conn.execute(
                 text(
                     """
@@ -323,7 +360,10 @@ def replace_candidates_for_state(
                       claim_count, claim_serials, blm_plan_present, blm_notice_present, msha_status,
                       score_breakdown_json, evidence_summary_json, recommended_next_action,
                       location_plss, township, range, section, meridian, plss_normalized,
-                      plss_source, plss_status, area_of_focus_id
+                      plss_source, plss_status, area_of_focus_id,
+                      operational_status, regulatory_status, facility_type, tenure_class,
+                      verification_state, fail_closed, tenure_json, contradictions_json,
+                      assertions_json, verification_checklist_json
                     ) VALUES (
                       :aid, :rid, :msid, :st, :rank, :name, :op,
                       :commodity, :county, :lat, :lon,
@@ -332,7 +372,10 @@ def replace_candidates_for_state(
                       :cc, :serials, :plan, :notice, :msha,
                       CAST(:sb AS jsonb), CAST(:ev AS jsonb), :rna,
                       :lplss, :twp, :rng, :sec, :mer, :plssn,
-                      :psrc, :pstat, :aof
+                      :psrc, :pstat, :aof,
+                      :opstat, :regstat, :fac, :tenure,
+                      :vstate, :failc, CAST(:tjson AS jsonb), CAST(:cjson AS jsonb),
+                      CAST(:ajson AS jsonb), CAST(:vjson AS jsonb)
                     )
                     """
                 ),
@@ -376,6 +419,16 @@ def replace_candidates_for_state(
                     "psrc": site.get("plss_source"),
                     "pstat": site.get("plss_status") or "unresolved",
                     "aof": site.get("area_of_focus_id"),
+                    "opstat": site.get("operational_status") or "Unknown",
+                    "regstat": site.get("regulatory_status") or "Unknown",
+                    "fac": site.get("facility_type") or "Unknown",
+                    "tenure": site.get("tenure_class") or "Unknown",
+                    "vstate": site.get("verification_state") or "Candidate",
+                    "failc": bool(site.get("fail_closed")),
+                    "tjson": json.dumps(_jsonable(site.get("tenure_json") or {})),
+                    "cjson": json.dumps(_jsonable(site.get("contradictions_json") or [])),
+                    "ajson": json.dumps(_jsonable(site.get("assertions_json") or [])),
+                    "vjson": json.dumps(_jsonable(site.get("verification_checklist_json") or {})),
                 },
             )
         for m in matches or []:
@@ -467,7 +520,10 @@ def list_sites(
                        location_plss, township, range, section, meridian, plss_normalized,
                        plss_status, area_of_focus_id, unpaid_claim_count, paid_claim_count,
                        unknown_claim_count, mlrs_claim_count, claim_status_rollup,
-                       claims_fetched_at, recommended_next_action, run_id::text
+                       claims_fetched_at, recommended_next_action, run_id::text,
+                       operational_status, regulatory_status, facility_type, tenure_class,
+                       verification_state, fail_closed, tenure_json, contradictions_json,
+                       assertions_json, verification_checklist_json
                 FROM active_mine_intel.candidate_sites
                 WHERE {where}
                 ORDER BY COALESCE(total_score, 0) DESC, rank ASC NULLS LAST
@@ -502,7 +558,10 @@ def get_site(account_id: int, site_id: str) -> dict[str, Any] | None:
                        location_plss, township, range, section, meridian, plss_normalized,
                        plss_source, plss_status, area_of_focus_id, unpaid_claim_count,
                        paid_claim_count, unknown_claim_count, mlrs_claim_count,
-                       claim_status_rollup, claims_fetched_at, run_id::text
+                       claim_status_rollup, claims_fetched_at, run_id::text,
+                       operational_status, regulatory_status, facility_type, tenure_class,
+                       verification_state, fail_closed, tenure_json, contradictions_json,
+                       assertions_json, verification_checklist_json
                 FROM active_mine_intel.candidate_sites
                 WHERE account_id = :aid AND (id::text = :sid OR mine_site_id = :sid)
                 LIMIT 1
@@ -802,3 +861,73 @@ def get_fetch_job(job_id: str, account_id: int | None = None) -> dict[str, Any] 
             except (TypeError, ValueError, json.JSONDecodeError):
                 out[key] = {} if key == "progress_json" else []
     return out
+
+
+def save_verification(
+    account_id: int,
+    site_id: str,
+    *,
+    to_state: str,
+    checklist: dict[str, Any],
+    reviewer_name: str | None,
+    reviewed_at: str | None,
+    notes: str | None,
+) -> dict[str, Any] | None:
+    """Persist Human Verified checklist evidence. Returns the updated site or None."""
+    eng = get_engine()
+    with eng.begin() as conn:
+        row = conn.execute(
+            text(
+                """
+                SELECT id::text, verification_state
+                FROM active_mine_intel.candidate_sites
+                WHERE account_id = :aid AND (id::text = :sid OR mine_site_id = :sid)
+                LIMIT 1
+                """
+            ),
+            {"aid": account_id, "sid": site_id},
+        ).mappings().first()
+        if not row:
+            return None
+        from_state = row.get("verification_state") or "Candidate"
+        conn.execute(
+            text(
+                """
+                UPDATE active_mine_intel.candidate_sites
+                SET verification_state = :to_state,
+                    verification_checklist_json = CAST(:chk AS jsonb),
+                    updated_at = now()
+                WHERE id = CAST(:id AS uuid)
+                """
+            ),
+            {
+                "to_state": to_state,
+                "chk": json.dumps(checklist or {}),
+                "id": row["id"],
+            },
+        )
+        conn.execute(
+            text(
+                """
+                INSERT INTO active_mine_intel.verification_events (
+                  account_id, site_id, from_state, to_state, reviewer_name,
+                  reviewed_at, checklist_json, notes
+                ) VALUES (
+                  :aid, CAST(:sid AS uuid), :frm, :to_state, :reviewer,
+                  CAST(:reviewed AS date), CAST(:chk AS jsonb), :notes
+                )
+                """
+            ),
+            {
+                "aid": account_id,
+                "sid": row["id"],
+                "frm": from_state,
+                "to_state": to_state,
+                "reviewer": reviewer_name,
+                "reviewed": reviewed_at,
+                "chk": json.dumps(checklist or {}),
+                "notes": notes,
+            },
+        )
+    return get_site(account_id, row["id"])
+

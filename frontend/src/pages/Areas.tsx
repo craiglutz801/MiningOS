@@ -3583,7 +3583,11 @@ export function Areas() {
                                     <td className="px-3 py-1.5 text-slate-800">{nm}</td>
                                     <td className="px-3 py-1.5 font-mono text-slate-700">{sn}</td>
                                     <td className="px-3 py-1.5 whitespace-nowrap">
-                                      <ClaimPaymentBadge status={payInfo.status} message={payInfo.message} />
+                                      <ClaimPaymentBadge
+                                        status={payInfo.status}
+                                        message={payInfo.message}
+                                        unknownKind={payInfo.unknownKind}
+                                      />
                                     </td>
                                     <td className="px-3 py-1.5 text-slate-600 min-w-[16rem] whitespace-normal break-words" title={plss}>{plss}</td>
                                     <td className="px-3 py-1.5 space-x-2 whitespace-nowrap">
@@ -3689,7 +3693,11 @@ export function Areas() {
                                     <td className="px-3 py-1.5 text-slate-800">{nm}</td>
                                     <td className="px-3 py-1.5 font-mono text-slate-700">{sn}</td>
                                     <td className="px-3 py-1.5">
-                                      <ClaimPaymentBadge status={payInfo.status} message={payInfo.message} />
+                                      <ClaimPaymentBadge
+                                        status={payInfo.status}
+                                        message={payInfo.message}
+                                        unknownKind={payInfo.unknownKind}
+                                      />
                                       {payInfo.status === "unpaid" && payInfo.message && (
                                         <p className="mt-0.5 text-[10px] text-blue-900 leading-tight max-w-[18rem]">{payInfo.message}</p>
                                       )}

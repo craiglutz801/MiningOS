@@ -113,7 +113,11 @@ def run_pipeline(
                 fixture_path=_fixture(fixture_dir, "sample_claims.geojson"),
             )
             result.sources["blm_claims"] = status
+            patented_claims = claim_stats.pop("_patented_claims", None)
+            conveyed_claims = claim_stats.pop("_conveyed_claims", None)
             qc.update(claim_stats)
+            qc["_patented_claims"] = patented_claims
+            qc["_conveyed_claims"] = conveyed_claims
         except (SourceUnavailableError, DataValidationError) as exc:
             raise FatalPipelineError(
                 "BLM active mining claims could not be loaded (core source). "
@@ -260,6 +264,7 @@ def run_pipeline(
         state_adapter = nevada_adapter if cfg.state_code == "NV" else utah_adapter
         state_source_id = "nevada_production" if cfg.state_code == "NV" else "utah_dogm"
         state_mines = None
+        state_status = SourceStatus(source_id=state_source_id, status="pending")
         try:
             state_mines, state_status = state_adapter.load_state_mines(
                 cfg,
@@ -270,10 +275,21 @@ def run_pipeline(
                 fixture_path=_fixture(fixture_dir, "sample_mines.csv"),
             )
             result.sources[state_source_id] = state_status
+            if state_status.status in {"failed", "stale"}:
+                result.degraded_mode = True
+                result.add_warning(
+                    NEVADA_DEGRADED_WARNING if cfg.state_code == "NV" else UTAH_DEGRADED_WARNING
+                )
         except Exception as exc:  # noqa: BLE001 - state primary is nonfatal
-            result.sources[state_source_id] = SourceStatus(
-                source_id=state_source_id, status="failed", message=str(exc)
+            state_status = SourceStatus(
+                source_id=state_source_id,
+                status="failed",
+                outcome="failed",
+                usable_for_assertions=False,
+                failure_class="unavailable",
+                message=str(exc),
             )
+            result.sources[state_source_id] = state_status
             result.degraded_mode = True
             warning = (
                 NEVADA_DEGRADED_WARNING if cfg.state_code == "NV" else UTAH_DEGRADED_WARNING
@@ -282,10 +298,50 @@ def run_pipeline(
             qc["degraded_sources"].append(state_source_id)
             log.warning("State source failed; continuing in degraded mode: %s", exc)
         qc["state_mines_loaded"] = 0 if state_mines is None else len(state_mines)
+        coverage = (state_status.extra or {}).get("coverage") if state_status else None
+        if coverage:
+            qc["utah_dogm_coverage"] = coverage
+
+        bmrr_regulation = bmrr_reclamation = None
+        if cfg.state_code == "NV":
+            try:
+                from mining_os.active_mine_intel.matcher import ndep_bmrr_adapter
+
+                (
+                    bmrr_regulation,
+                    bmrr_reg_status,
+                    bmrr_reclamation,
+                    bmrr_rec_status,
+                ) = ndep_bmrr_adapter.load_bmrr_evidence(
+                    cfg,
+                    state_cache,
+                    client,
+                    use_cache_only=use_cache,
+                    refresh=refresh,
+                    fixture_path=_fixture(fixture_dir, "sample_bmrr.csv"),
+                )
+                result.sources["ndep_bmrr_regulation"] = bmrr_reg_status
+                result.sources["ndep_bmrr_reclamation"] = bmrr_rec_status
+                for st in (bmrr_reg_status, bmrr_rec_status):
+                    if st.status in ("failed", "stale"):
+                        result.add_warning(f"{st.source_id}: {st.message or st.status}")
+                        qc["degraded_sources"].append(st.source_id)
+            except Exception as exc:  # noqa: BLE001 — BMRR is supporting evidence
+                result.sources["ndep_bmrr_regulation"] = SourceStatus(
+                    source_id="ndep_bmrr_regulation",
+                    status="failed",
+                    outcome="failed",
+                    usable_for_assertions=False,
+                    failure_class="unavailable",
+                    message=str(exc),
+                )
+                result.add_warning(f"NDEP BMRR unavailable: {exc}")
+                qc["degraded_sources"].append("ndep_bmrr_regulation")
 
         # Stage 8: canonical mine sites.
         _emit(progress_cb, 8, "Build canonical mine sites")
         mine_sites = build_mine_sites(state_mines, msha_mines, cfg)
+        mine_sites = _attach_bmrr_evidence(mine_sites, bmrr_regulation, bmrr_reclamation)
         qc["canonical_mines"] = len(mine_sites)
 
         # Stage 9: attach BLM operation evidence.
@@ -372,11 +428,38 @@ def run_pipeline(
         qc["missing_operator_count"] = int(
             mine_sites["operator_name"].isna().sum()
         )
+        site_summary = _attach_evidence_model(
+            site_summary,
+            mine_sites,
+            matches,
+            claims,
+            qc,
+            result.sources,
+            cfg,
+        )
+        if not site_summary.empty and "operational_status" in site_summary.columns:
+            qc["operational_status_counts"] = {
+                str(k): int(v)
+                for k, v in site_summary["operational_status"].value_counts().to_dict().items()
+            }
+            qc["fail_closed_sites"] = (
+                int(site_summary["fail_closed"].fillna(False).sum())
+                if "fail_closed" in site_summary.columns
+                else 0
+            )
+            qc["mixed_tenure_sites"] = (
+                int((site_summary["tenure_class"] == "Mixed").sum())
+                if "tenure_class" in site_summary.columns
+                else 0
+            )
 
         # Stages 14-15: outputs, QC report, manifest.
         _emit(progress_cb, 15, "Write outputs and QC report")
         result.status = "partial" if (result.degraded_mode or result.warnings) else "success"
         result.completed_at = utc_now_iso()
+        # GeoDataFrames in qc are in-memory tenure overlays — never serialize them.
+        qc.pop("_patented_claims", None)
+        qc.pop("_conveyed_claims", None)
         result.counts = {
             k: v for k, v in qc.items() if isinstance(v, int)
         }
@@ -507,6 +590,189 @@ def _build_site_summary(
         geometry=[Point(xy) for xy in zip(summary["longitude"], summary["latitude"])],
         crs="EPSG:4326",
     )
+
+
+def _attach_bmrr_evidence(
+    mine_sites: gpd.GeoDataFrame,
+    regulation: gpd.GeoDataFrame | None,
+    reclamation: gpd.GeoDataFrame | None,
+) -> gpd.GeoDataFrame:
+    """Overlay NDEP BMRR records via deterministic reconciliation. Never sets Producing."""
+    from mining_os.active_mine_intel.evidence.reconciliation import best_match
+
+    if mine_sites.empty:
+        return mine_sites
+    out = mine_sites.copy()
+    for col in (
+        "bmrr_project_id",
+        "bmrr_permit_number",
+        "bmrr_physical_status",
+        "bmrr_permit_status",
+        "bmrr_site_type",
+        "bmrr_closure",
+        "bmrr_match_method",
+        "bmrr_reclamation",
+    ):
+        if col not in out.columns:
+            out[col] = None
+
+    def _rows(frame: gpd.GeoDataFrame | None) -> list[dict]:
+        if frame is None or getattr(frame, "empty", True):
+            return []
+        df = frame.drop(columns=["geometry"], errors="ignore")
+        return df.to_dict("records")
+
+    reg_rows = _rows(regulation)
+    rec_rows = _rows(reclamation)
+    rec_ids = {str(r.get("bmrr_project_id") or "") for r in rec_rows}
+
+    for idx, site in out.iterrows():
+        target = {
+            "mine_name": site.get("canonical_mine_name"),
+            "name": site.get("canonical_mine_name"),
+            "operator_name": site.get("operator_name"),
+            "latitude": site.get("latitude"),
+            "longitude": site.get("longitude"),
+            "msha_mine_id": site.get("msha_mine_id"),
+            "msha_number": site.get("msha_mine_id"),
+            "state_mine_id": site.get("state_source_id"),
+            "permit_number": site.get("state_permit_number"),
+        }
+        match, decision = best_match(target, reg_rows)
+        if match is None:
+            match, decision = best_match(target, rec_rows)
+        if match is None:
+            continue
+        out.at[idx, "bmrr_project_id"] = match.get("bmrr_project_id")
+        out.at[idx, "bmrr_permit_number"] = match.get("permit_number")
+        out.at[idx, "bmrr_physical_status"] = match.get("bmrr_physical_status")
+        out.at[idx, "bmrr_permit_status"] = match.get("bmrr_permit_status")
+        out.at[idx, "bmrr_site_type"] = match.get("bmrr_site_type")
+        out.at[idx, "bmrr_closure"] = match.get("bmrr_closure")
+        out.at[idx, "bmrr_match_method"] = decision.get("match_method")
+        pid = str(match.get("bmrr_project_id") or "")
+        out.at[idx, "bmrr_reclamation"] = bool(
+            match.get("bmrr_layer_kind") == "reclamation" or pid in rec_ids
+        )
+    return out
+
+
+def _tenure_overlay_for_site(
+    site: dict,
+    claims: gpd.GeoDataFrame,
+    patented: gpd.GeoDataFrame | None,
+    conveyed: gpd.GeoDataFrame | None,
+    match_rows: list[dict],
+    cfg: PipelineConfig,
+) -> dict:
+    from shapely.geometry import Point
+
+    from mining_os.active_mine_intel.matcher.spatial_matcher import to_projected
+
+    unpatented = bool(match_rows)
+    qualities = [str(r.get("geometry_quality_group") or "") for r in match_rows]
+    lat, lon = site.get("latitude"), site.get("longitude")
+    patented_hit = conveyed_hit = False
+    if lat is not None and lon is not None:
+        point = gpd.GeoDataFrame(
+            {"id": [0]}, geometry=[Point(float(lon), float(lat))], crs="EPSG:4326"
+        )
+        point_proj = to_projected(point, cfg.projected_crs)
+        for flag_name, frame in (("patented", patented), ("conveyed", conveyed)):
+            if frame is None or getattr(frame, "empty", True):
+                continue
+            try:
+                other = to_projected(frame, cfg.projected_crs)
+                hits = other.sindex.query(point_proj.geometry.iloc[0], predicate="intersects")
+            except Exception:  # noqa: BLE001
+                hits = []
+            if len(hits):
+                if flag_name == "patented":
+                    patented_hit = True
+                else:
+                    conveyed_hit = True
+    from mining_os.active_mine_intel.evidence.tenure import classify_tenure
+
+    return classify_tenure(
+        unpatented_intersects=unpatented,
+        patented_intersects=patented_hit,
+        conveyed_intersects=conveyed_hit,
+        claim_count=len(match_rows),
+        geometry_quality_groups=qualities,
+    )
+
+
+def _attach_evidence_model(
+    site_summary: gpd.GeoDataFrame,
+    mine_sites: gpd.GeoDataFrame,
+    matches: pd.DataFrame,
+    claims: gpd.GeoDataFrame,
+    qc: dict,
+    sources: dict,
+    cfg,
+) -> gpd.GeoDataFrame:
+    from mining_os.active_mine_intel.evidence.classify import classify_site_evidence
+    from mining_os.active_mine_intel.matcher.utilities import utc_now
+
+    if site_summary is None or site_summary.empty:
+        return site_summary
+    current_year = utc_now().year
+    sites_by_id = {row["mine_site_id"]: row for _, row in mine_sites.iterrows()}
+    matches_by_site: dict[str, list[dict]] = {}
+    if matches is not None and not matches.empty:
+        for _, row in matches.iterrows():
+            matches_by_site.setdefault(str(row["mine_site_id"]), []).append(row.to_dict())
+    patented = qc.get("_patented_claims")
+    conveyed = qc.get("_conveyed_claims")
+    out = site_summary.copy()
+    for col in (
+        "operational_status",
+        "regulatory_status",
+        "facility_type",
+        "tenure_class",
+        "verification_state",
+        "fail_closed",
+        "tenure_json",
+        "contradictions_json",
+        "assertions_json",
+    ):
+        if col not in out.columns:
+            out[col] = None
+    for idx, row in out.iterrows():
+        site_id = str(row.get("mine_site_id"))
+        site = sites_by_id.get(site_id)
+        site_dict = site.to_dict() if site is not None else {}
+        site_dict.setdefault("canonical_mine_name", row.get("mine_name"))
+        site_dict.setdefault("latest_state_production_year", row.get("latest_production_activity_year"))
+        site_dict.setdefault("msha_status", row.get("msha_status"))
+        site_dict.setdefault("blm_plan_present", row.get("blm_plan_present"))
+        site_dict.setdefault("blm_notice_present", row.get("blm_notice_present"))
+        claim_rows = matches_by_site.get(site_id) or []
+        tenure_overlay = _tenure_overlay_for_site(
+            {**site_dict, "latitude": row.get("latitude"), "longitude": row.get("longitude")},
+            claims,
+            patented,
+            conveyed,
+            claim_rows,
+            cfg,
+        )
+        evidence = classify_site_evidence(
+            site_dict,
+            current_year=current_year,
+            source_status=sources,
+            claim_rows=claim_rows,
+            tenure_overlay=tenure_overlay,
+        )
+        out.at[idx, "operational_status"] = evidence["operational_status"]
+        out.at[idx, "regulatory_status"] = evidence["regulatory_status"]
+        out.at[idx, "facility_type"] = evidence["facility_type"]
+        out.at[idx, "tenure_class"] = evidence["tenure_class"]
+        out.at[idx, "verification_state"] = evidence["verification_state"]
+        out.at[idx, "fail_closed"] = bool(evidence["fail_closed"])
+        out.at[idx, "tenure_json"] = evidence["tenure_json"]
+        out.at[idx, "contradictions_json"] = evidence["contradictions_json"]
+        out.at[idx, "assertions_json"] = evidence["assertions_json"]
+    return out
 
 
 # --------------------------------------------------------------------------

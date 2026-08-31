@@ -103,6 +103,7 @@ def init_db() -> None:
         "027_active_mine_mlrs_claim_count.sql",
         "028_active_mine_fetch_progress.sql",
         "029_active_mine_paid_unknown_counts.sql",
+        "030_active_mine_evidence.sql",
     ]
     auth_present = _auth_schema_present()
     base_schema_present = _base_app_schema_present()
@@ -144,6 +145,7 @@ def init_db() -> None:
             "027_active_mine_mlrs_claim_count.sql",
             "028_active_mine_fetch_progress.sql",
             "029_active_mine_paid_unknown_counts.sql",
+            "030_active_mine_evidence.sql",
         ]:
             sql_path = sql_dir / name
             if sql_path.exists():

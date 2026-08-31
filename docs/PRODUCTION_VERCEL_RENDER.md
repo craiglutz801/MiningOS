@@ -39,6 +39,16 @@ The frontend contains `frontend/vercel.json`:
   "rewrites": [
     {
       "source": "/api/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "mining-os-git-(?<slug>.+)\\.vercel\\.app"
+        }
+      ],
+      "destination": "https://mining-os-api-staging.onrender.com/api/:path*"
+    },
+    {
+      "source": "/api/:path*",
       "destination": "https://miningos.onrender.com/api/:path*"
     },
     {
@@ -51,8 +61,14 @@ The frontend contains `frontend/vercel.json`:
 
 **Meaning:**
 
-1. **`/api/:path*`** — Every API call from the browser goes to `https://<your-vercel-domain>/api/...`. Vercel **proxies** that to `https://miningos.onrender.com/api/...`. Update the destination hostname if your Render service URL changes.
-2. **`/(.*)` → `/index.html`** — Standard single-page application (SPA) fallback so client-side routes (React Router) work on refresh and deep links.
+1. **Git preview hosts** (`mining-os-git-*.vercel.app`) proxy `/api` to the
+   isolated staging Render service. They must never use a trycloudflare tunnel
+   and must never use production `miningos.onrender.com`.
+2. **Default / production** — `/api/:path*` goes to `https://miningos.onrender.com/api/:path*`.
+3. **`/(.*)` → `/index.html`** — SPA fallback for client-side routes.
+
+Do **not** put `trycloudflare.com` in this file. Ephemeral agent-host tunnels
+are not mergeable production configuration. See `docs/active_mines/STAGING.md`.
 
 ### 2.2 Build & project settings (checklist)
 

@@ -2359,8 +2359,10 @@ def api_active_mines_meta() -> Dict[str, Any]:
         active_mines_admin_enabled,
         active_mines_enabled,
         active_mines_jobs_enabled,
+        staging_meta,
     )
 
+    meta = staging_meta()
     return {
         "ok": True,
         "error": None,
@@ -2370,6 +2372,19 @@ def api_active_mines_meta() -> Dict[str, Any]:
         "supported_states": list(SUPPORTED_STATES),
         "label": "Active Mine Search",
         "subtitle": "Active mines on unpatented claims (NV / UT)",
+        "environment": meta["environment"],
+        "staging": meta["staging"],
+        "staging_isolated": meta["isolated"],
+        "operational_statuses": [
+            "Producing",
+            "Permitted",
+            "Exploration",
+            "Mill/processor",
+            "Care-and-maintenance",
+            "Reclamation",
+            "Unknown",
+        ],
+        "verification_states": ["Candidate", "Cross-source confirmed", "Human Verified"],
     }
 
 
@@ -2378,6 +2393,15 @@ def api_active_mines_pull(body: Dict[str, Any] = Body(default_factory=dict)) -> 
     blocked = _active_mines_guard()
     if blocked:
         return blocked
+    from mining_os.active_mine_intel.staging import is_staging, staging_isolation_report
+
+    if is_staging():
+        report = staging_isolation_report()
+        if not report["ok"]:
+            return {
+                "ok": False,
+                "error": "Staging isolation failed: " + "; ".join(report["violations"]),
+            }
     from mining_os.active_mine_intel.jobs import start_pull_async
 
     state = str((body or {}).get("state") or "").upper().strip()
@@ -2489,6 +2513,15 @@ def api_active_mines_fetch_unpaid(body: Dict[str, Any] = Body(default_factory=di
     blocked = _active_mines_guard()
     if blocked:
         return blocked
+    from mining_os.active_mine_intel.staging import is_staging, staging_isolation_report
+
+    if is_staging():
+        report = staging_isolation_report()
+        if not report["ok"]:
+            return {
+                "ok": False,
+                "error": "Staging isolation failed: " + "; ".join(report["violations"]),
+            }
     from mining_os.active_mine_intel.jobs import start_fetch_unpaid_async
 
     payload = body or {}
@@ -2506,6 +2539,47 @@ def api_active_mines_fetch_unpaid(body: Dict[str, Any] = Body(default_factory=di
         )
     except Exception as e:
         log.exception("active-mines fetch-unpaid failed")
+        return {"ok": False, "error": str(e)}
+
+
+@api_app.post("/active-mines/sites/{site_id}/verify")
+def api_active_mines_verify(site_id: str, body: Dict[str, Any] = Body(default_factory=dict)) -> Dict[str, Any]:
+    """Record dated checklist evidence and set Human Verified. Never auto-promotes."""
+    blocked = _active_mines_guard()
+    if blocked:
+        return blocked
+    from mining_os.active_mine_intel import store
+    from mining_os.active_mine_intel.evidence.verification import transition_verification
+
+    payload = body or {}
+    try:
+        site = store.get_site(current_account_id(), site_id)
+        if not site:
+            return {"ok": False, "error": "Site not found."}
+        ok, new_state, error, normalized = transition_verification(
+            site.get("verification_state"),
+            proposed=str(payload.get("verification_state") or "Human Verified"),
+            checklist=payload,
+            independent_source_count=len(site.get("independent_sources") or []),
+            blocking_contradictions=bool(site.get("contradictions_json")),
+            identity_confirmed=True,
+            tenure_known=bool(site.get("tenure_class") and site.get("tenure_class") != "Unknown"),
+            sources_usable=not bool(site.get("fail_closed")),
+        )
+        if not ok:
+            return {"ok": False, "error": error, "verification_state": site.get("verification_state")}
+        updated = store.save_verification(
+            current_account_id(),
+            site_id,
+            to_state=new_state,
+            checklist=normalized or payload,
+            reviewer_name=(normalized or {}).get("reviewer_name"),
+            reviewed_at=(normalized or {}).get("reviewed_at"),
+            notes=(normalized or {}).get("notes"),
+        )
+        return {"ok": True, "site": updated, "verification_state": new_state}
+    except Exception as e:
+        log.exception("active-mines verify failed")
         return {"ok": False, "error": str(e)}
 
 
@@ -2535,6 +2609,22 @@ app = FastAPI(title="Mining_OS")
 from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402
 
 app.add_middleware(GZipMiddleware, minimum_size=2048)
+
+try:
+    from mining_os.active_mine_intel.staging import is_staging as _cors_is_staging
+
+    if _cors_is_staging():
+        from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origin_regex=r"https://([a-z0-9-]+\.)*(vercel\.app|trycloudflare\.com)",
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+except Exception:
+    pass
 
 
 def _request_log_path() -> Path:
@@ -3235,6 +3325,18 @@ app.mount("/api", api_app)
 # ---- Start automation scheduler on uvicorn boot ---
 @app.on_event("startup")
 def _start_automation_scheduler() -> None:
+    try:
+        from mining_os.active_mine_intel.staging import assert_environment_wiring
+
+        wiring = assert_environment_wiring()
+        log.info(
+            "environment wiring ok env=%s violations=%s",
+            wiring.get("environment"),
+            wiring.get("violations"),
+        )
+    except Exception as e:
+        log.error("Environment wiring check failed: %s", e)
+        raise
     # Reconcile orphaned runs BEFORE the scheduler can launch new ones. Automation
     # runs live on in-memory daemon threads that cannot survive a process restart,
     # so any run still marked "running" at boot was stranded by the previous
@@ -3263,21 +3365,62 @@ def _start_automation_scheduler() -> None:
 
 _frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 _index_html = _frontend_dist / "index.html"
+_ASSET_SUFFIXES = (".js", ".mjs", ".css", ".map", ".svg", ".woff", ".woff2", ".png", ".ico", ".webp")
+
+
+def _spa_index_response() -> FileResponse:
+    # index.html must not be cached: a stale HTML file points at old hashed chunks
+    # and Chromium then throws "Failed to fetch dynamically imported module".
+    return FileResponse(
+        _index_html,
+        headers={"Cache-Control": "no-store, max-age=0, must-revalidate"},
+    )
+
+
+def _static_asset_response(asset: Path) -> FileResponse:
+    media = None
+    suffix = asset.suffix.lower()
+    if suffix in {".js", ".mjs"}:
+        media = "application/javascript"
+    elif suffix == ".css":
+        media = "text/css"
+    headers = {
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cross-Origin-Resource-Policy": "cross-origin",
+        "X-Content-Type-Options": "nosniff",
+    }
+    return FileResponse(asset, media_type=media, headers=headers)
+
 
 if _index_html.exists():
-    # Serve static assets (JS, CSS, etc.)
-    app.mount("/assets", StaticFiles(directory=str(_frontend_dist / "assets")), name="assets")
-    # SPA fallback: serve index.html for root and all SPA paths (not /api)
-    @app.get("/")
-    def root():
-        return FileResponse(_index_html)
+    @app.api_route("/assets/{asset_path:path}", methods=["GET", "HEAD"])
+    def frontend_assets(asset_path: str):
+        # Hashed Vite chunks. Never fall through to index.html — that is the
+        # dynamic-import crash (HTML served as a JS module).
+        assets_root = (_frontend_dist / "assets").resolve()
+        asset = (assets_root / asset_path).resolve()
+        try:
+            asset.relative_to(assets_root)
+        except ValueError:
+            raise HTTPException(status_code=404, detail="Not Found")
+        if not asset.is_file():
+            raise HTTPException(status_code=404, detail="Asset not found")
+        return _static_asset_response(asset)
 
-    @app.get("/{full_path:path}")
+    @app.api_route("/", methods=["GET", "HEAD"])
+    def root():
+        return _spa_index_response()
+
+    @app.api_route("/{full_path:path}", methods=["GET", "HEAD"])
     def spa_catchall(full_path: str):
         # Never serve SPA for API paths — let API routes handle them
         if full_path.startswith("api/"):
             raise HTTPException(status_code=404, detail="Not Found")
         asset = _frontend_dist / full_path
         if asset.is_file():
-            return FileResponse(asset)
-        return FileResponse(_index_html)
+            return _static_asset_response(asset)
+        # A missing *.js / *.css is a real 404, not the SPA shell.
+        lowered = full_path.lower()
+        if lowered.startswith("assets/") or lowered.endswith(_ASSET_SUFFIXES):
+            raise HTTPException(status_code=404, detail="Asset not found")
+        return _spa_index_response()

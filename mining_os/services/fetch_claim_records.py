@@ -54,6 +54,49 @@ def _sync_active_mine_claim_counts(
             account_id,
         )
 
+
+def _persist_claim_records_snapshot(
+    area_id: int,
+    account_id: int | None,
+    *,
+    claims: list[Any],
+    log_text: str,
+    location_plss: Any,
+    query_method: str | None,
+    payment_enrichment: str,
+    payment_progress: dict[str, Any] | None = None,
+    ok: bool = True,
+    error: str | None = None,
+    extra_log: str | None = None,
+) -> dict[str, Any]:
+    """Write claim_records + Active Mine Paid/Unpaid/Unknown rollup (crash-safe checkpoint)."""
+    from mining_os.services.areas_of_focus import merge_area_characteristics
+    from mining_os.services.mlrs_case_payment import payment_progress_payload
+
+    fetched_at = datetime.now(timezone.utc).isoformat()
+    log_out = (log_text or "").strip()
+    if extra_log:
+        log_out = (log_out + "\n" + extra_log).strip()
+    payload: dict[str, Any] = {
+        "fetched_at": fetched_at,
+        "log": log_out,
+        "claims": claims,
+        "plss": location_plss,
+        "query_method": query_method,
+        "ok": ok,
+        "payment_enrichment": payment_enrichment,
+        "payment_progress": payment_progress or payment_progress_payload(claims),
+    }
+    if error:
+        payload["error"] = error
+    merge_area_characteristics(area_id, {"claim_records": payload}, account_id=account_id)
+    _sync_active_mine_claim_counts(
+        area_id,
+        account_id,
+        claims_count_hint=len(claims) if claims else 0,
+    )
+    return payload
+
 # Primary BLM Principal Meridian number per state.
 # https://www.blm.gov/services/land-survey/principal-meridians
 STATE_MERIDIAN = {
@@ -581,28 +624,15 @@ def fetch_claim_records_for_area(
         # Payment enrichment (Selenium/Playwright) can hang for many minutes per
         # Target. Saving first means a timeout / kill still leaves Claims populated.
         if claims:
-            from mining_os.services.areas_of_focus import merge_area_characteristics
-
-            checkpoint_at = datetime.now(timezone.utc).isoformat()
-            merge_area_characteristics(
-                area_id,
-                {
-                    "claim_records": {
-                        "fetched_at": checkpoint_at,
-                        "log": (log_text.strip() + "\n[checkpoint] Saved ArcGIS claims before payment enrichment."),
-                        "claims": claims,
-                        "plss": location_plss,
-                        "query_method": query_method,
-                        "ok": True,
-                        "payment_enrichment": "pending",
-                    }
-                },
-                account_id=account_id,
-            )
-            _sync_active_mine_claim_counts(
+            _persist_claim_records_snapshot(
                 area_id,
                 account_id,
-                claims_count_hint=len(claims),
+                claims=claims,
+                log_text=log_text,
+                location_plss=location_plss,
+                query_method=query_method,
+                payment_enrichment="pending",
+                extra_log="[checkpoint] Saved ArcGIS claims before payment enrichment.",
             )
 
         # ── Step 3 (same as BLM_ClaimAgent get_mlrs_from_PLSS): MLRS case-page banner ──
@@ -638,10 +668,43 @@ def fetch_claim_records_for_area(
                 total=len(claims),
                 message=f"Checking payment status for {len(claims)} claim(s)…",
             )
-            if progress_cb:
-                claims = enrich_claims_from_mlrs_case_pages(claims, progress_cb=progress_cb)
-            else:
-                claims = enrich_claims_from_mlrs_case_pages(claims)
+
+            def _on_payment_checkpoint(live_claims: list, progress: dict) -> None:
+                _persist_claim_records_snapshot(
+                    area_id,
+                    account_id,
+                    claims=live_claims,
+                    log_text=log_text,
+                    location_plss=location_plss,
+                    query_method=query_method,
+                    payment_enrichment="partial",
+                    payment_progress=progress,
+                    extra_log=(
+                        f"[checkpoint] Payment {progress.get('current', 0)}/"
+                        f"{progress.get('total', len(live_claims))} "
+                        f"(paid={progress.get('paid', 0)} unpaid={progress.get('unpaid', 0)} "
+                        f"unknown={progress.get('unknown', 0)})."
+                    ),
+                )
+                _progress(
+                    progress_cb,
+                    phase="payment_enrich",
+                    current=progress.get("current"),
+                    total=progress.get("total") or len(live_claims),
+                    paid=progress.get("paid"),
+                    unpaid=progress.get("unpaid"),
+                    unknown=progress.get("unknown"),
+                    message=(
+                        f"Checking payment {progress.get('current', 0)}/"
+                        f"{progress.get('total') or len(live_claims)} claim(s)…"
+                    ),
+                )
+
+            claims = enrich_claims_from_mlrs_case_pages(
+                claims,
+                progress_cb=progress_cb,
+                checkpoint_cb=_on_payment_checkpoint,
+            )
             after_unpaid = sum(
                 1
                 for c in claims
@@ -679,7 +742,13 @@ def fetch_claim_records_for_area(
             "plss": location_plss,
             "query_method": query_method,
             "ok": True,
+            "payment_enrichment": "complete" if claims else "none",
+            "payment_progress": None,
         }
+        if claims:
+            from mining_os.services.mlrs_case_payment import payment_progress_payload as _ppp
+
+            payload["payment_progress"] = _ppp(claims, {"phase": "complete"})
         if fatal_env_error and not claims:
             payload["error"] = fatal_env_error
             payload["ok"] = False

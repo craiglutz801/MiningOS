@@ -53,6 +53,9 @@ def test_active_mines_meta_reports_disabled_by_default(monkeypatch):
     assert body["enabled"] is False
     assert "NV" in body.get("supported_states", [])
     assert "UT" in body.get("supported_states", [])
+    assert "Producing" in (body.get("operational_statuses") or [])
+    assert "Human Verified" in (body.get("verification_states") or [])
+    assert "environment" in body
 
 
 def test_active_mines_sites_disabled_payload(monkeypatch):

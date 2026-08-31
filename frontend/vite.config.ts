@@ -19,5 +19,10 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
+    // Avoid the modulepreload polyfill wrapping import() — that helper is a
+    // common "Failed to fetch dynamically imported module" source behind
+    // reverse proxies / Cloudflare tunnels when a hashed chunk 404s or is
+    // served as HTML by the SPA fallback.
+    modulePreload: false,
   },
 });

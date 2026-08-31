@@ -2,6 +2,16 @@
   "rewrites": [
     {
       "source": "/api/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "mining-os-git-(?<slug>.+)\\.vercel\\.app"
+        }
+      ],
+      "destination": "https://mining-os-api-staging.onrender.com/api/:path*"
+    },
+    {
+      "source": "/api/:path*",
       "destination": "https://miningos.onrender.com/api/:path*"
     },
     {

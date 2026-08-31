@@ -25,15 +25,22 @@ class FatalPipelineError(Exception):
 @dataclass
 class SourceStatus:
     source_id: str
-    status: str = "pending"  # success | cached | degraded | failed | skipped
+    status: str = "pending"  # success | cached | stale | empty | degraded | failed | skipped
     resolved_url: str | None = None
     retrieved_at: str | None = None
     record_count: int = 0
     cache_used: bool = False
     cache_age_hours: float | None = None
     message: str | None = None
+    outcome: str | None = None  # ok | empty | failed | stale — distinct from record_count=0
+    usable_for_assertions: bool | None = None
+    failure_class: str | None = None
+    extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        usable = self.usable_for_assertions
+        if usable is None:
+            usable = self.status not in {"failed", "stale", "unavailable", "degraded", "pending"}
         return {
             "status": self.status,
             "resolved_url": self.resolved_url,
@@ -42,6 +49,21 @@ class SourceStatus:
             "cache_used": self.cache_used,
             "cache_age_hours": self.cache_age_hours,
             "message": self.message,
+            "outcome": self.outcome
+            or (
+                "failed"
+                if self.status == "failed"
+                else "stale"
+                if self.status in {"stale", "degraded"}
+                else "empty"
+                if self.status == "empty" or (self.status in {"success", "cached"} and self.record_count == 0)
+                else "ok"
+                if self.status in {"success", "cached"}
+                else self.status
+            ),
+            "usable_for_assertions": usable,
+            "failure_class": self.failure_class,
+            "extra": self.extra or {},
         }
 
 

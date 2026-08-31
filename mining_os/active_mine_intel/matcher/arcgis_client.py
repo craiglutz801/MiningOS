@@ -361,6 +361,7 @@ class ArcGISClient:
             "selected_title": best.get("title"),
             "selection_score": best_score,
             "candidate_count": len(candidates),
+            "candidate_titles": [c.get("title") for _, c, _ in scored],
             "reasons": reasons,
             "fields": best.get("fields", []),
             "geometry_type": best.get("geometry_type", ""),

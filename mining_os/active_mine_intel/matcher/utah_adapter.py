@@ -216,12 +216,55 @@ def load_state_mines(
     status.cache_used = info["cache_used"]
     status.cache_age_hours = info["cache_age_hours"]
     features = payload.get("collection", {}).get("features", [])
-    if not features:
-        raise SourceUnavailableError("Utah DOGM layer contained no features")
+    diagnostics = payload.get("diagnostics") or {}
+    from mining_os.active_mine_intel.evidence.utah_coverage import diagnose_dogm_coverage
+
+    if info.get("stale"):
+        status.status = "stale"
+        status.outcome = "stale"
+        status.usable_for_assertions = False
+        status.failure_class = "stale"
+        status.message = "Utah DOGM cache exceeded freshness TTL"
+    elif not features:
+        status.status = "empty"
+        status.outcome = "empty"
+        status.usable_for_assertions = True
+        status.record_count = 0
+        status.message = "Valid zero-result response"
+        status.extra["coverage"] = diagnose_dogm_coverage(
+            selected_title=diagnostics.get("selected_title"),
+            selected_url=status.resolved_url,
+            candidate_titles=diagnostics.get("candidate_titles") or [],
+            record_count=0,
+            source_status="empty",
+        )
+        return gpd.GeoDataFrame(geometry=[], crs="EPSG:4326"), status
+
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     out = normalize_dogm(gdf, cfg, status.resolved_url or "")
     status.record_count = len(out)
-    status.status = "degraded" if info.get("stale") else (
-        "cached" if info["cache_used"] else "success"
+    if info.get("stale"):
+        status.status = "stale"
+    else:
+        status.status = "cached" if info["cache_used"] else "success"
+        status.outcome = "ok"
+        status.usable_for_assertions = True
+    commodities = []
+    if not out.empty and "commodity" in out.columns:
+        commodities = [str(v) for v in out["commodity"].dropna().unique().tolist()]
+    field_names: list[str] = []
+    for field in diagnostics.get("fields") or []:
+        if isinstance(field, dict):
+            field_names.append(str(field.get("name") or field.get("alias") or ""))
+        else:
+            field_names.append(str(field))
+    status.extra["coverage"] = diagnose_dogm_coverage(
+        selected_title=diagnostics.get("selected_title"),
+        selected_url=status.resolved_url,
+        candidate_titles=diagnostics.get("candidate_titles") or [],
+        candidate_fields=field_names,
+        commodities=commodities,
+        record_count=len(out),
+        source_status=status.status,
     )
     return out, status
