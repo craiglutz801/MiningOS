@@ -451,6 +451,20 @@ def test_missing_vite_chunk_is_not_spa_html():
     assert "<html" not in res.text.lower()
 
 
+def test_spa_root_accepts_head():
+    """Port-forward / tunnel probes send HEAD /; 405 surfaces as Internal service error."""
+    from fastapi.testclient import TestClient
+
+    if not (Path(__file__).resolve().parents[1] / "frontend" / "dist" / "index.html").exists():
+        pytest.skip("frontend dist not built")
+    from mining_os.api.main import app
+
+    client = TestClient(app)
+    res = client.head("/")
+    assert res.status_code == 200
+    assert "html" in (res.headers.get("content-type") or "").lower()
+
+
 def test_source_status_to_dict_distinguishes_empty():
     empty = SourceStatus(source_id="x", status="empty", record_count=0, outcome="empty")
     failed = SourceStatus(source_id="x", status="failed", record_count=0, outcome="failed")

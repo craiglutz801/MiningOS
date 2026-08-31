@@ -3393,7 +3393,7 @@ def _static_asset_response(asset: Path) -> FileResponse:
 
 
 if _index_html.exists():
-    @app.get("/assets/{asset_path:path}")
+    @app.api_route("/assets/{asset_path:path}", methods=["GET", "HEAD"])
     def frontend_assets(asset_path: str):
         # Hashed Vite chunks. Never fall through to index.html — that is the
         # dynamic-import crash (HTML served as a JS module).
@@ -3407,11 +3407,11 @@ if _index_html.exists():
             raise HTTPException(status_code=404, detail="Asset not found")
         return _static_asset_response(asset)
 
-    @app.get("/")
+    @app.api_route("/", methods=["GET", "HEAD"])
     def root():
         return _spa_index_response()
 
-    @app.get("/{full_path:path}")
+    @app.api_route("/{full_path:path}", methods=["GET", "HEAD"])
     def spa_catchall(full_path: str):
         # Never serve SPA for API paths — let API routes handle them
         if full_path.startswith("api/"):
